@@ -39,6 +39,7 @@ import { useChatListKeyboardEvents } from 'dashboard/composables/chatlist/useCha
 import { useBulkActions } from 'dashboard/composables/chatlist/useBulkActions';
 import { useFilter } from 'shared/composables/useFilter';
 import { useTrack } from 'dashboard/composables';
+import { useAdmin } from 'dashboard/composables/useAdmin';
 import { useI18n } from 'vue-i18n';
 import {
   useCamelCase,
@@ -62,6 +63,7 @@ import {
 } from '../store/modules/conversations/helpers/actionHelpers';
 import {
   getUserPermissions,
+  getUserRole,
   filterItemsByPermission,
 } from 'dashboard/helper/permissionsHelper.js';
 import { matchesFilters } from '../store/modules/conversations/helpers/filterHelpers';
@@ -194,11 +196,15 @@ const currentUserDetails = computed(() => {
 });
 
 const userPermissions = computed(() => {
-  return getUserPermissions(currentUser.value, currentAccountId.value);
+  const permissions = getUserPermissions(currentUser.value, currentAccountId.value);
+  const role = getUserRole(currentUser.value, currentAccountId.value);
+  return [...permissions, role];
 });
 
+const { isAdmin } = useAdmin();
+
 const assigneeTabItems = computed(() => {
-  return filterItemsByPermission(
+  const items = filterItemsByPermission(
     ASSIGNEE_TYPE_TAB_PERMISSIONS,
     userPermissions.value,
     item => item.permissions
@@ -207,6 +213,12 @@ const assigneeTabItems = computed(() => {
     name: t(`CHAT_LIST.ASSIGNEE_TYPE_TABS.${key}`),
     count: conversationStats.value[countKey] || 0,
   }));
+  
+  // Filter out 'all' tab for non-admin users
+  if (!isAdmin.value) {
+    return items.filter(item => item.key !== 'all');
+  }
+  return items;
 });
 
 const showAssigneeInConversationCard = computed(() => {
