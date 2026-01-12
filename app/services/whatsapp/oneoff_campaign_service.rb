@@ -14,11 +14,11 @@ class Whatsapp::OneoffCampaignService
   delegate :channel, to: :inbox
 
   def validate_campaign_type!
-    raise "Invalid campaign #{campaign.id}" unless whatsapp_campaign? && campaign.one_off?
+    raise "Invalid campaign #{campaign.id}" unless one_off_campaign?
   end
 
-  def whatsapp_campaign?
-    campaign.inbox.inbox_type == 'Whatsapp'
+  def one_off_campaign?
+    ['Whatsapp', 'API'].include?(campaign.inbox.inbox_type) && campaign.one_off?
   end
 
   def validate_campaign_status!
@@ -26,7 +26,9 @@ class Whatsapp::OneoffCampaignService
   end
 
   def validate_provider!
-    raise 'WhatsApp Cloud provider required' if channel.provider != 'whatsapp_cloud'
+    return if campaign.inbox.inbox_type == 'API'
+
+    # valid source for whatsapp campaign
   end
 
   def validate_feature_flag!
@@ -36,7 +38,7 @@ class Whatsapp::OneoffCampaignService
   def validate_campaign!
     validate_campaign_type!
     validate_campaign_status!
-    validate_provider!
+    # validate_provider! # Relaxing this as we want to support other providers/inboxes
     validate_feature_flag!
   end
 
@@ -53,12 +55,12 @@ class Whatsapp::OneoffCampaignService
       return
     end
 
-    if campaign.template_params.blank?
+    if campaign.template_params.blank? && campaign.inbox.inbox_type != 'API'
       Rails.logger.error "Skipping contact #{contact.name} - no template_params found for WhatsApp campaign"
       return
     end
 
-    send_whatsapp_template_message(to: contact.phone_number)
+    send_whatsapp_template_message(to: contact.phone_number, contact: contact)
   end
 
   def process_audience(audience_labels)
@@ -70,7 +72,12 @@ class Whatsapp::OneoffCampaignService
     Rails.logger.info "Campaign #{campaign.id} processing completed"
   end
 
-  def send_whatsapp_template_message(to:)
+  def send_whatsapp_template_message(to:, contact:)
+    if campaign.inbox.inbox_type == 'API'
+      create_api_message(contact)
+      return
+    end
+
     processor = Whatsapp::TemplateProcessorService.new(
       channel: channel,
       template_params: campaign.template_params
@@ -92,5 +99,18 @@ class Whatsapp::OneoffCampaignService
     Rails.logger.error "Backtrace: #{e.backtrace.first(5).join('\n')}"
     # continue processing remaining contacts
     nil
+  end
+
+  def create_api_message(contact)
+    conversation = Conversation.where(contact_id: contact.id, inbox_id: campaign.inbox.id).first_or_create!
+    conversation.update!(campaign: campaign)
+    Message.create!(
+      conversation: conversation,
+      account: campaign.account,
+      inbox: campaign.inbox,
+      message_type: :outgoing,
+      content: campaign.message,
+      additional_attributes: { campaign_id: campaign.id }
+    )
   end
 end

@@ -149,4 +149,8 @@ COPY --from=pre-builder /app/.git_sha /app/.git_sha
 
 WORKDIR /app
 
+# Fix permissions and line endings for entrypoints
+RUN chmod -R +x docker/entrypoints && \
+    find docker/entrypoints -type f -exec sed -i 's/\r$//' {} +
+
 EXPOSE 3000

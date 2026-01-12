@@ -89,11 +89,13 @@
       "CARD": {
         "STATUS": {
           "COMPLETED": "Completed",
-          "SCHEDULED": "Scheduled"
+          "SCHEDULED": "Scheduled",
+          "IN_PROGRESS": "In progress"
         },
         "CAMPAIGN_DETAILS": {
           "SENT_FROM": "Sent from",
-          "ON": "on"
+          "ON": "on",
+          "MESSAGES_SENT": "Sent messages:"
         }
       },
       "CREATE": {
@@ -138,11 +140,11 @@
       }
     },
     "WHATSAPP": {
-      "HEADER_TITLE": "WhatsApp campaigns",
+      "HEADER_TITLE": "WhatsApp Business campaigns",
       "NEW_CAMPAIGN": "Create campaign",
       "EMPTY_STATE": {
-        "TITLE": "No WhatsApp campaigns are available",
-        "SUBTITLE": "Launch a WhatsApp campaign to reach your customers directly. Send offers or make announcements with ease. Click 'Create campaign' to get started."
+        "TITLE": "No WhatsApp Business campaigns are available",
+        "SUBTITLE": "Launch a WhatsApp Business campaign to reach your customers directly. Send offers or make announcements with ease. Click 'Create campaign' to get started."
       },
       "CARD": {
         "STATUS": {
@@ -155,7 +157,7 @@
         }
       },
       "CREATE": {
-        "TITLE": "Create WhatsApp campaign",
+        "TITLE": "Create WhatsApp Business campaign",
         "CANCEL_BUTTON_TEXT": "Cancel",
         "CREATE_BUTTON_TEXT": "Create",
         "FORM": {
@@ -190,12 +192,72 @@
             "PLACEHOLDER": "Please select the time",
             "ERROR": "Scheduled time is required"
           },
+          "SCHEDULE_CAMPAIGN": "Schedule campaign",
           "BUTTONS": {
             "CREATE": "Create",
             "CANCEL": "Cancel"
           },
           "API": {
             "SUCCESS_MESSAGE": "WhatsApp campaign created successfully",
+            "ERROR_MESSAGE": "There was an error. Please try again."
+          }
+        }
+      }
+    },
+    "WHATSAPP_LITE": {
+      "HEADER_TITLE": "WhatsApp Lite campaigns",
+      "NEW_CAMPAIGN": "Create campaign",
+      "EMPTY_STATE": {
+        "TITLE": "No WhatsApp Lite campaigns are available",
+        "SUBTITLE": "Launch a WhatsApp Lite campaign to reach your customers directly. Click 'Create campaign' to get started."
+      },
+      "CARD": {
+        "STATUS": {
+          "COMPLETED": "Completed",
+          "SCHEDULED": "Scheduled"
+        },
+        "CAMPAIGN_DETAILS": {
+          "SENT_FROM": "Sent from",
+          "ON": "on"
+        }
+      },
+      "CREATE": {
+        "TITLE": "Create WhatsApp Lite campaign",
+        "CANCEL_BUTTON_TEXT": "Cancel",
+        "CREATE_BUTTON_TEXT": "Create",
+        "FORM": {
+          "TITLE": {
+            "LABEL": "Title",
+            "PLACEHOLDER": "Please enter the title of campaign",
+            "ERROR": "Title is required"
+          },
+          "MESSAGE": {
+            "LABEL": "Message",
+            "PLACEHOLDER": "Please enter the message of campaign",
+            "ERROR": "Message is required"
+          },
+          "INBOX": {
+            "LABEL": "Select Inbox",
+            "PLACEHOLDER": "Select Inbox",
+            "ERROR": "Inbox is required"
+          },
+          "AUDIENCE": {
+            "LABEL": "Audience",
+            "PLACEHOLDER": "Select the customer labels",
+            "ERROR": "Audience is required"
+          },
+          "SCHEDULED_AT": {
+            "LABEL": "Scheduled time",
+            "PLACEHOLDER": "Please select the time",
+            "ERROR": "Scheduled time is required"
+          },
+          "SCHEDULE_CAMPAIGN": "Schedule campaign",
+          "BUTTONS": {
+            "CREATE": "Create",
+            "CANCEL": "Cancel"
+          },
+          "API": {
+            "SUCCESS_MESSAGE": "WhatsApp Lite campaign created successfully",
             "ERROR_MESSAGE": "There was an error. Please try again."
           }
         }
