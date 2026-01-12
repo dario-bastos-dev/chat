@@ -433,6 +433,11 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.WHATSAPP'),
           to: accountScopedRoute('campaigns_whatsapp_index'),
         },
+        {
+          name: 'WhatsApp Lite',
+          label: t('SIDEBAR.WHATSAPP_LITE'),
+          to: accountScopedRoute('campaigns_whatsapp_lite_index'),
+        },
       ],
     },
     {

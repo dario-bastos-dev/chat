@@ -9,7 +9,7 @@ import Input from 'dashboard/components-next/input/Input.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
 import TagMultiSelectComboBox from 'dashboard/components-next/combobox/TagMultiSelectComboBox.vue';
-import WhatsAppTemplateParser from 'dashboard/components-next/whatsapp/WhatsAppTemplateParser.vue';
+import TextArea from 'dashboard/components-next/textarea/TextArea.vue';
 import Switch from 'dashboard/components-next/switch/Switch.vue';
 
 const emit = defineEmits(['submit', 'cancel']);
@@ -19,29 +19,27 @@ const { t } = useI18n();
 const formState = {
   uiFlags: useMapGetter('campaigns/getUIFlags'),
   labels: useMapGetter('labels/getLabels'),
-  inboxes: useMapGetter('inboxes/getWhatsAppInboxes'),
-  getFilteredWhatsAppTemplates: useMapGetter(
-    'inboxes/getFilteredWhatsAppTemplates'
-  ),
+  inboxes: useMapGetter('inboxes/getWhatsAppLiteInboxes'),
 };
 
 const initialState = {
   title: '',
   inboxId: null,
-  templateId: null,
+  message: '',
   scheduledAt: null,
   selectedAudience: [],
   isScheduled: false,
 };
 
 const state = reactive({ ...initialState });
-const templateParserRef = ref(null);
 
 const rules = {
   title: { required, minLength: minLength(1) },
   inboxId: { required },
-  templateId: { required },
-  scheduledAt: { required: requiredIf(() => state.isScheduled) },
+  message: { required, minLength: minLength(1) },
+  scheduledAt: {
+    required: requiredIf(() => state.isScheduled),
+  },
   selectedAudience: { required },
 };
 
@@ -70,49 +68,20 @@ const inboxOptions = computed(() =>
   mapToOptions(formState.inboxes.value, 'id', 'name')
 );
 
-const templateOptions = computed(() => {
-  if (!state.inboxId) return [];
-  const templates = formState.getFilteredWhatsAppTemplates.value(state.inboxId);
-  return templates.map(template => {
-    // Create a more user-friendly label from template name
-    const friendlyName = template.name
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
-
-    return {
-      value: template.id,
-      label: `${friendlyName} (${template.language || 'en'})`,
-      template: template,
-    };
-  });
-});
-
-const selectedTemplate = computed(() => {
-  if (!state.templateId) return null;
-  return templateOptions.value.find(option => option.value === state.templateId)
-    ?.template;
-});
-
 const getErrorMessage = (field, errorKey) => {
-  const baseKey = 'CAMPAIGN.WHATSAPP.CREATE.FORM';
+  const baseKey = 'CAMPAIGN.WHATSAPP_LITE.CREATE.FORM';
   return v$.value[field].$error ? t(`${baseKey}.${errorKey}.ERROR`) : '';
 };
 
 const formErrors = computed(() => ({
   title: getErrorMessage('title', 'TITLE'),
   inbox: getErrorMessage('inboxId', 'INBOX'),
-  template: getErrorMessage('templateId', 'TEMPLATE'),
+  message: getErrorMessage('message', 'MESSAGE'),
   scheduledAt: getErrorMessage('scheduledAt', 'SCHEDULED_AT'),
   audience: getErrorMessage('selectedAudience', 'AUDIENCE'),
 }));
 
-const hasRequiredTemplateParams = computed(() => {
-  return templateParserRef.value?.v$?.$invalid === false || true;
-});
-
-const isSubmitDisabled = computed(
-  () => v$.value.$invalid || !hasRequiredTemplateParams.value
-);
+const isSubmitDisabled = computed(() => v$.value.$invalid);
 
 const formatToUTCString = localDateTime =>
   localDateTime ? new Date(localDateTime).toISOString() : null;
@@ -125,26 +94,9 @@ const resetState = () => {
 const handleCancel = () => emit('cancel');
 
 const prepareCampaignDetails = () => {
-  // Find the selected template to get its content
-  const currentTemplate = selectedTemplate.value;
-  const parserData = templateParserRef.value;
-
-  // Extract template content - this should be the template message body
-  const templateContent = parserData?.renderedTemplate || '';
-
-  // Prepare template_params object with the same structure as used in contacts
-  const templateParams = {
-    name: currentTemplate?.name || '',
-    namespace: currentTemplate?.namespace || '',
-    category: currentTemplate?.category || 'UTILITY',
-    language: currentTemplate?.language || 'en_US',
-    processed_params: parserData?.processedParams || {},
-  };
-
   return {
     title: state.title,
-    message: templateContent,
-    template_params: templateParams,
+    message: state.message,
     inbox_id: state.inboxId,
     scheduled_at: state.isScheduled
       ? formatToUTCString(state.scheduledAt)
@@ -164,75 +116,51 @@ const handleSubmit = async () => {
   resetState();
   handleCancel();
 };
-
-// Reset template selection when inbox changes
-watch(
-  () => state.inboxId,
-  () => {
-    state.templateId = null;
-  }
-);
 </script>
 
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="handleSubmit">
     <Input
       v-model="state.title"
-      :label="t('CAMPAIGN.WHATSAPP.CREATE.FORM.TITLE.LABEL')"
-      :placeholder="t('CAMPAIGN.WHATSAPP.CREATE.FORM.TITLE.PLACEHOLDER')"
+      :label="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.TITLE.LABEL')"
+      :placeholder="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.TITLE.PLACEHOLDER')"
       :message="formErrors.title"
       :message-type="formErrors.title ? 'error' : 'info'"
     />
 
     <div class="flex flex-col gap-1">
       <label for="inbox" class="mb-0.5 text-sm font-medium text-n-slate-12">
-        {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.INBOX.LABEL') }}
+        {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.INBOX.LABEL') }}
       </label>
       <ComboBox
         id="inbox"
         v-model="state.inboxId"
         :options="inboxOptions"
         :has-error="!!formErrors.inbox"
-        :placeholder="t('CAMPAIGN.WHATSAPP.CREATE.FORM.INBOX.PLACEHOLDER')"
+        :placeholder="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.INBOX.PLACEHOLDER')"
         :message="formErrors.inbox"
         class="[&>div>button]:bg-n-alpha-black2 [&>div>button:not(.focused)]:dark:outline-n-weak [&>div>button:not(.focused)]:hover:!outline-n-slate-6"
       />
     </div>
 
-    <div class="flex flex-col gap-1">
-      <label for="template" class="mb-0.5 text-sm font-medium text-n-slate-12">
-        {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.TEMPLATE.LABEL') }}
-      </label>
-      <ComboBox
-        id="template"
-        v-model="state.templateId"
-        :options="templateOptions"
-        :has-error="!!formErrors.template"
-        :placeholder="t('CAMPAIGN.WHATSAPP.CREATE.FORM.TEMPLATE.PLACEHOLDER')"
-        :message="formErrors.template"
-        class="[&>div>button]:bg-n-alpha-black2 [&>div>button:not(.focused)]:dark:outline-n-weak [&>div>button:not(.focused)]:hover:!outline-n-slate-6"
-      />
-      <p class="mt-1 text-xs text-n-slate-11">
-        {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.TEMPLATE.INFO') }}
-      </p>
-    </div>
-
-    <!-- Template Parser -->
-    <WhatsAppTemplateParser
-      v-if="selectedTemplate"
-      ref="templateParserRef"
-      :template="selectedTemplate"
+    <TextArea
+      v-model="state.message"
+      :label="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.MESSAGE.LABEL')"
+      :placeholder="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.MESSAGE.PLACEHOLDER')"
+      :message="formErrors.message"
+      :message-type="formErrors.message ? 'error' : 'info'"
+      class="min-h-[100px]"
     />
 
     <div class="flex flex-col gap-1">
       <label for="audience" class="mb-0.5 text-sm font-medium text-n-slate-12">
-        {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.AUDIENCE.LABEL') }}
+        {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.AUDIENCE.LABEL') }}
       </label>
       <TagMultiSelectComboBox
         v-model="state.selectedAudience"
         :options="audienceList"
-        :label="t('CAMPAIGN.WHATSAPP.CREATE.FORM.AUDIENCE.LABEL')"
-        :placeholder="t('CAMPAIGN.WHATSAPP.CREATE.FORM.AUDIENCE.PLACEHOLDER')"
+        :label="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.AUDIENCE.LABEL')"
+        :placeholder="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.AUDIENCE.PLACEHOLDER')"
         :has-error="!!formErrors.audience"
         :message="formErrors.audience"
         class="[&>div>button]:bg-n-alpha-black2"
@@ -242,17 +170,17 @@ watch(
     <div class="flex items-center gap-3">
       <Switch v-model="state.isScheduled" />
       <label class="text-sm font-medium text-n-slate-12">
-        {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.SCHEDULE_CAMPAIGN') }}
+        {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.SCHEDULE_CAMPAIGN') }}
       </label>
     </div>
 
     <Input
       v-if="state.isScheduled"
       v-model="state.scheduledAt"
-      :label="t('CAMPAIGN.WHATSAPP.CREATE.FORM.SCHEDULED_AT.LABEL')"
+      :label="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.SCHEDULED_AT.LABEL')"
       type="datetime-local"
       :min="currentDateTime"
-      :placeholder="t('CAMPAIGN.WHATSAPP.CREATE.FORM.SCHEDULED_AT.PLACEHOLDER')"
+      :placeholder="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.SCHEDULED_AT.PLACEHOLDER')"
       :message="formErrors.scheduledAt"
       :message-type="formErrors.scheduledAt ? 'error' : 'info'"
     />
@@ -262,12 +190,12 @@ watch(
         variant="faded"
         color="slate"
         type="button"
-        :label="t('CAMPAIGN.WHATSAPP.CREATE.FORM.BUTTONS.CANCEL')"
+        :label="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.BUTTONS.CANCEL')"
         class="w-full bg-n-alpha-2 text-n-blue-text hover:bg-n-alpha-3"
         @click="handleCancel"
       />
       <Button
-        :label="t('CAMPAIGN.WHATSAPP.CREATE.FORM.BUTTONS.CREATE')"
+        :label="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.BUTTONS.CREATE')"
         class="w-full"
         type="submit"
         :is-loading="isCreating"
