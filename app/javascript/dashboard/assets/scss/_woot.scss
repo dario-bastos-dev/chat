@@ -67,3 +67,30 @@ body {
     scrollbar-width: none; /* Firefox */
   }
 }
+
+/* Evolution API Custom Icon */
+/* Chat bubble icon inspired by Evolution API logo */
+/* Uses currentColor to match Chatwoot's color scheme (gray in dark mode, etc) */
+.i-evolution-fill,
+.i-evolution-line {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  background-color: currentColor;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.i-evolution-fill {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.04 2 11c0 2.21 1.01 4.21 2.63 5.65L3.5 21l4.85-1.13c1.14.41 2.38.63 3.65.63 5.52 0 10-4.04 10-9S17.52 2 12 2z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.04 2 11c0 2.21 1.01 4.21 2.63 5.65L3.5 21l4.85-1.13c1.14.41 2.38.63 3.65.63 5.52 0 10-4.04 10-9S17.52 2 12 2z'/%3E%3C/svg%3E");
+}
+
+.i-evolution-line {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.04 2 11c0 2.21 1.01 4.21 2.63 5.65L3.5 21l4.85-1.13c1.14.41 2.38.63 3.65.63 5.52 0 10-4.04 10-9S17.52 2 12 2zm0 16c-1.1 0-2.15-.19-3.12-.53l-.22-.08-2.88.67.67-2.49-.15-.24C5.19 14.07 4.5 12.59 4.5 11c0-3.86 3.36-7 7.5-7s7.5 3.14 7.5 7-3.36 7-7.5 7z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.04 2 11c0 2.21 1.01 4.21 2.63 5.65L3.5 21l4.85-1.13c1.14.41 2.38.63 3.65.63 5.52 0 10-4.04 10-9S17.52 2 12 2zm0 16c-1.1 0-2.15-.19-3.12-.53l-.22-.08-2.88.67.67-2.49-.15-.24C5.19 14.07 4.5 12.59 4.5 11c0-3.86 3.36-7 7.5-7s7.5 3.14 7.5 7-3.36 7-7.5 7z'/%3E%3C/svg%3E");
+}

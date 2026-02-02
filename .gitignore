@@ -101,3 +101,8 @@ CLAUDE.local.md
 .histoire
 .pnpm-store/*
 local/
+
+# docs
+*.txt
+*.md
+docs/

@@ -37,8 +37,16 @@ const channelList = computed(() => {
     },
     {
       key: 'whatsapp',
-      title: t('INBOX_MGMT.ADD.AUTH.CHANNEL.WHATSAPP.TITLE'),
-      description: t('INBOX_MGMT.ADD.AUTH.CHANNEL.WHATSAPP.DESCRIPTION'),
+      title: t('INBOX_MGMT.ADD.AUTH.CHANNEL.WHATSAPP_BUSINESS.TITLE'),
+      description: t(
+        'INBOX_MGMT.ADD.AUTH.CHANNEL.WHATSAPP_BUSINESS.DESCRIPTION'
+      ),
+      icon: 'i-woot-whatsapp',
+    },
+    {
+      key: 'whatsapp_lite',
+      title: t('INBOX_MGMT.ADD.AUTH.CHANNEL.WHATSAPP_LITE.TITLE'),
+      description: t('INBOX_MGMT.ADD.AUTH.CHANNEL.WHATSAPP_LITE.DESCRIPTION'),
       icon: 'i-woot-whatsapp',
     },
     {

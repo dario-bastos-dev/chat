@@ -37,10 +37,11 @@ const transformInbox = ({
   channelType,
   phoneNumber,
   medium,
+  provider,
   ...rest
 }) => ({
   id,
-  icon: getInboxIconByType(channelType, medium, 'line'),
+  icon: getInboxIconByType(channelType, medium, 'line', provider),
   label: generateLabelForContactableInboxesList({
     name,
     email,
@@ -54,6 +55,7 @@ const transformInbox = ({
   phoneNumber,
   channelType,
   medium,
+  provider,
   ...rest,
 });
 

@@ -160,6 +160,20 @@
   locked: false
 # ------- End of WhatsApp Channel Related Config ------- #
 
+# ------- Evolution API Related Config (WhatsApp Lite) ------- #
+- name: EVOLUTION_API_URL
+  display_title: 'Evolution API URL'
+  description: 'The base URL of your Evolution API instance (e.g. https://evolution.example.com)'
+  value: ''
+  locked: false
+- name: EVOLUTION_API_TOKEN
+  display_title: 'Evolution API Token'
+  description: 'The API token for authenticating with Evolution API'
+  value: ''
+  locked: false
+  type: secret
+# ------- End of Evolution API Related Config ------- #
+
 # MARK: Microsoft Email Channel Config
 - name: AZURE_APP_ID
   display_title: 'Azure App ID'

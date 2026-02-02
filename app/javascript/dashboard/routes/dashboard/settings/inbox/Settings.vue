@@ -30,6 +30,7 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import { getInboxIconByType } from 'dashboard/helper/inbox';
 import Editor from 'dashboard/components-next/Editor/Editor.vue';
+import InstanceSettings from './channels/evolution/InstanceSettings.vue';
 
 export default {
   components: {
@@ -55,6 +56,7 @@ export default {
     Editor,
     Avatar,
     AccountHealth,
+    InstanceSettings,
   },
   mixins: [inboxMixin],
   setup() {
@@ -101,6 +103,9 @@ export default {
       return this.isAWhatsAppCloudChannel;
     },
     whatsAppAPIProviderName() {
+      if (this.isAEvolutionWhatsAppChannel) {
+        return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION');
+      }
       if (this.isAWhatsAppCloudChannel) {
         return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.WHATSAPP_CLOUD');
       }
@@ -190,6 +195,15 @@ export default {
           },
         ];
       }
+      if (this.isAEvolutionWhatsAppChannel) {
+        visibleToAllChannelTabs = [
+          ...visibleToAllChannelTabs,
+          {
+            key: 'evolution-instance',
+            name: this.$t('INBOX_MGMT.TABS.INSTANCE'),
+          },
+        ];
+      }
 
       return visibleToAllChannelTabs;
     },
@@ -200,8 +214,8 @@ export default {
       return this.$store.getters['inboxes/getInbox'](this.currentInboxId);
     },
     inboxIcon() {
-      const { medium, channel_type: type } = this.inbox;
-      return getInboxIconByType(type, medium);
+      const { medium, channel_type: type, provider } = this.inbox;
+      return getInboxIconByType(type, medium, 'fill', provider);
     },
     inboxName() {
       if (this.isATwilioSMSChannel || this.isATwilioWhatsAppChannel) {
@@ -540,6 +554,11 @@ export default {
         :content="$t('INBOX_MGMT.ADD.INSTAGRAM.DUPLICATE_INBOX_BANNER')"
         class="mx-8 mt-5"
       />
+
+      <div v-if="selectedTabKey === 'evolution-instance'" class="mx-8">
+        <InstanceSettings :inbox="inbox" />
+      </div>
+
       <div v-if="selectedTabKey === 'inbox-settings'" class="mx-8">
         <SettingsSection
           :title="$t('INBOX_MGMT.SETTINGS_POPUP.INBOX_UPDATE_TITLE')"
