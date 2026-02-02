@@ -142,13 +142,19 @@ export const getters = {
     );
   },
   getWhatsAppInboxes($state) {
+    // WhatsApp Business inboxes (excludes Evolution/Lite)
     return $state.records.filter(
-      item => item.channel_type === INBOX_TYPES.WHATSAPP
+      item =>
+        item.channel_type === INBOX_TYPES.WHATSAPP &&
+        item.provider !== 'evolution'
     );
   },
   getWhatsAppLiteInboxes($state) {
+    // WhatsApp Lite inboxes (Evolution API only)
     return $state.records.filter(
-      item => item.channel_type === INBOX_TYPES.API
+      item =>
+        item.channel_type === INBOX_TYPES.WHATSAPP &&
+        item.provider === 'evolution'
     );
   },
   dialogFlowEnabledInboxes($state) {

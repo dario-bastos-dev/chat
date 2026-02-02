@@ -25,7 +25,7 @@ class Conversations::MessageWindowService
     when 'Channel::Tiktok'
       tiktok_messaging_window
     when 'Channel::Whatsapp'
-      MESSAGING_WINDOW_24_HOURS
+      whatsapp_messaging_window
     when 'Channel::TwilioSms'
       twilio_messaging_window
     end
@@ -54,6 +54,14 @@ class Conversations::MessageWindowService
 
   def instagram_messaging_window
     meta_messaging_window('ENABLE_INSTAGRAM_CHANNEL_HUMAN_AGENT')
+  end
+
+  # Evolution API (WhatsApp Lite) does not have 24-hour window restriction
+  # Only WhatsApp Cloud API and 360Dialog have the restriction
+  def whatsapp_messaging_window
+    return nil if @conversation.inbox.channel.provider == 'evolution'
+
+    MESSAGING_WINDOW_24_HOURS
   end
 
   def tiktok_messaging_window

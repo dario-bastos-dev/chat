@@ -62,22 +62,31 @@ const state = reactive({
   attachedFiles: [],
 });
 
-const inboxTypes = computed(() => ({
-  isEmail: props.targetInbox?.channelType === INBOX_TYPES.EMAIL,
-  isTwilio: props.targetInbox?.channelType === INBOX_TYPES.TWILIO,
-  isWhatsapp: props.targetInbox?.channelType === INBOX_TYPES.WHATSAPP,
-  isWebWidget: props.targetInbox?.channelType === INBOX_TYPES.WEB,
-  isApi: props.targetInbox?.channelType === INBOX_TYPES.API,
-  isEmailOrWebWidget:
-    props.targetInbox?.channelType === INBOX_TYPES.EMAIL ||
-    props.targetInbox?.channelType === INBOX_TYPES.WEB,
-  isTwilioSMS:
-    props.targetInbox?.channelType === INBOX_TYPES.TWILIO &&
-    props.targetInbox?.medium === 'sms',
-  isTwilioWhatsapp:
-    props.targetInbox?.channelType === INBOX_TYPES.TWILIO &&
-    props.targetInbox?.medium === 'whatsapp',
-}));
+const inboxTypes = computed(() => {
+  const isEvolution = props.targetInbox?.provider === 'evolution';
+  const isWhatsappChannel =
+    props.targetInbox?.channelType === INBOX_TYPES.WHATSAPP;
+
+  return {
+    isEmail: props.targetInbox?.channelType === INBOX_TYPES.EMAIL,
+    isTwilio: props.targetInbox?.channelType === INBOX_TYPES.TWILIO,
+    // WhatsApp Cloud API (requires templates) - excludes Evolution
+    isWhatsapp: isWhatsappChannel && !isEvolution,
+    // Evolution WhatsApp (no templates needed, treated like API)
+    isEvolutionWhatsapp: isWhatsappChannel && isEvolution,
+    isWebWidget: props.targetInbox?.channelType === INBOX_TYPES.WEB,
+    isApi: props.targetInbox?.channelType === INBOX_TYPES.API,
+    isEmailOrWebWidget:
+      props.targetInbox?.channelType === INBOX_TYPES.EMAIL ||
+      props.targetInbox?.channelType === INBOX_TYPES.WEB,
+    isTwilioSMS:
+      props.targetInbox?.channelType === INBOX_TYPES.TWILIO &&
+      props.targetInbox?.medium === 'sms',
+    isTwilioWhatsapp:
+      props.targetInbox?.channelType === INBOX_TYPES.TWILIO &&
+      props.targetInbox?.medium === 'whatsapp',
+  };
+});
 
 const whatsappMessageTemplates = computed(() =>
   Object.keys(props.targetInbox?.messageTemplates || {}).length

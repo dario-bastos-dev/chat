@@ -236,7 +236,8 @@
           "WHATSAPP_CLOUD": "WhatsApp Cloud",
           "WHATSAPP_CLOUD_DESC": "Quick setup through Meta",
           "TWILIO_DESC": "Connect via Twilio credentials",
-          "360_DIALOG": "360Dialog"
+          "360_DIALOG": "360Dialog",
+          "EVOLUTION": "Evolution API"
         },
         "SELECT_PROVIDER": {
           "TITLE": "Select your API provider",
@@ -310,6 +311,62 @@
         },
         "API": {
           "ERROR_MESSAGE": "We were not able to save the WhatsApp channel"
+        }
+      },
+      "WHATSAPP_LITE": {
+        "TITLE": "WhatsApp Lite Channel",
+        "DESC": "Start supporting your customers via WhatsApp using Evolution API.",
+        "PROVIDERS": {
+          "LABEL": "API Provider",
+          "EVOLUTION": "Evolution",
+          "EVOLUTION_DESC": "Connect via Evolution API"
+        },
+        "SELECT_PROVIDER": {
+          "TITLE": "Select your API provider",
+          "DESCRIPTION": "Choose your WhatsApp Lite provider. Currently, Evolution API is available for connection."
+        },
+        "INBOX_NAME": {
+          "LABEL": "Inbox Name",
+          "PLACEHOLDER": "Please enter an inbox name",
+          "ERROR": "This field is required"
+        },
+        "PHONE_NUMBER": {
+          "LABEL": "Phone number",
+          "PLACEHOLDER": "Please enter the phone number (e.g. +5599999999999)",
+          "ERROR": "Please provide a valid phone number that starts with a + sign and does not contain any spaces."
+        },
+        "SUBMIT_BUTTON": "Create WhatsApp Lite Channel",
+        "API": {
+          "ERROR_MESSAGE": "We were not able to save the WhatsApp Lite channel"
+        },
+        "EVOLUTION_SETTINGS": {
+          "TITLE": "Behavior",
+          "REJECT_CALLS": {
+            "TITLE": "Reject Calls",
+            "DESC": "Reject all incoming calls",
+            "MSG_LABEL": "Call Rejection Message",
+            "MSG_PLACEHOLDER": "Ex: I do not accept calls."
+          },
+          "IGNORE_GROUPS": {
+            "TITLE": "Ignore Groups",
+            "DESC": "Ignore all group messages"
+          },
+          "ALWAYS_ONLINE": {
+            "TITLE": "Always Online",
+            "DESC": "Keep the session always online"
+          },
+          "READ_MESSAGES": {
+            "TITLE": "Read Messages",
+            "DESC": "Automatically mark messages as read"
+          },
+          "READ_STATUS": {
+            "TITLE": "Read Status",
+            "DESC": "Automatically mark status as viewed"
+          },
+          "SYNC_HISTORY": {
+            "TITLE": "Sync Full History",
+            "DESC": "Sync full history upon scanning QR Code"
+          }
         }
       },
       "VOICE": {
@@ -450,9 +507,13 @@
             "TITLE": "Facebook",
             "DESCRIPTION": "Connect your Facebook page"
           },
-          "WHATSAPP": {
-            "TITLE": "WhatsApp",
-            "DESCRIPTION": "Support your customers on WhatsApp"
+          "WHATSAPP_BUSINESS": {
+            "TITLE": "WhatsApp Business",
+            "DESCRIPTION": "Support your customers on WhatsApp (Business API)"
+          },
+          "WHATSAPP_LITE": {
+            "TITLE": "WhatsApp Lite",
+            "DESCRIPTION": "Support your customers on WhatsApp (Personal Number)"
           },
           "EMAIL": {
             "TITLE": "Email",
@@ -543,7 +604,19 @@
       "WEBSITE_SUCCESS": "You have successfully finished creating a website channel. Copy the code shown below and paste it on your website. Next time a customer use the live chat, the conversation will automatically appear on your inbox.",
       "WHATSAPP_QR_INSTRUCTION": "Scan the QR code above to quickly test your WhatsApp inbox",
       "MESSENGER_QR_INSTRUCTION": "Scan the QR code above to quickly test your Facebook Messenger inbox",
-      "TELEGRAM_QR_INSTRUCTION": "Scan the QR code above to quickly test your Telegram inbox"
+      "TELEGRAM_QR_INSTRUCTION": "Scan the QR code above to quickly test your Telegram inbox",
+      "EVOLUTION": {
+        "TITLE": "Connect WhatsApp",
+        "DESCRIPTION": "Choose how to connect your WhatsApp: scan a QR Code or enter a pairing code on your phone.",
+        "CONNECT_BUTTON": "Connect WhatsApp",
+        "CONNECT_DESCRIPTION": "Choose connection method",
+        "SCAN_QR": "Scan this QR code with WhatsApp on your phone",
+        "WAITING": "Waiting for connection...",
+        "LOADING": "Loading...",
+        "CONNECTED": "WhatsApp Connected!",
+        "CONNECTED_DESC": "Your WhatsApp number is now connected and ready to receive messages.",
+        "NOT_CONFIGURED": "Evolution API is not configured. Please contact your administrator to configure the Evolution API settings in the Super Admin panel."
+      }
     },
     "REAUTH": "Reauthorize",
     "VIEW": "View",
@@ -616,14 +689,34 @@
     "TABS": {
       "SETTINGS": "Settings",
       "COLLABORATORS": "Collaborators",
-      "CONFIGURATION": "Configuration",
-      "CAMPAIGN": "Campaigns",
-      "PRE_CHAT_FORM": "Pre Chat Form",
       "BUSINESS_HOURS": "Business Hours",
+      "CSAT": "CSAT",
+      "PRE_CHAT_FORM": "Pre-chat Form",
       "WIDGET_BUILDER": "Widget Builder",
+      "CONFIGURATION": "Configuration",
       "BOT_CONFIGURATION": "Bot Configuration",
       "ACCOUNT_HEALTH": "Account Health",
-      "CSAT": "CSAT"
+      "INSTANCE": "Instance"
+    },
+    "EVOLUTION_INSTANCE": {
+      "TITLE": "Instance Configuration",
+      "SUB_TITLE": "Manage your Evolution API instance connection and behavior.",
+      "STATUS": {
+        "TITLE": "Connection Status",
+        "CONNECTED": "Connected",
+        "CONNECTING": "Connecting...",
+        "DISCONNECTED": "Disconnected"
+      },
+      "CONNECT_BUTTON": "Connect WhatsApp",
+      "DISCONNECT_BUTTON": "Disconnect",
+      "DISCONNECT_SUCCESS": "WhatsApp disconnected successfully",
+      "CLOSE_BUTTON": "Close",
+      "SELECT_CONNECTION_METHOD": "Select a connection method",
+      "QR_ERROR": "Error generating QR Code",
+      "CONNECT_WITH_QR": "QR Code",
+      "CONNECT_WITH_PAIRING": "Code",
+      "PAIRING_CODE": "Pairing Code:",
+      "SETTINGS_AUTO_SAVE": "Note: Changes to these settings are saved automatically."
     },
     "ACCOUNT_HEALTH": {
       "TITLE": "Manage your WhatsApp account",

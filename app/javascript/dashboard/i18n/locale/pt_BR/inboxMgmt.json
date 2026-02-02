@@ -236,7 +236,8 @@
           "WHATSAPP_CLOUD": "Cloud do WhatsApp",
           "WHATSAPP_CLOUD_DESC": "Configuração rápida via Meta",
           "TWILIO_DESC": "Conectar através de credenciais Twilio",
-          "360_DIALOG": "360Dialog"
+          "360_DIALOG": "360Dialog",
+          "EVOLUTION": "Evolution API"
         },
         "SELECT_PROVIDER": {
           "TITLE": "Selecione seu provedor de API",
@@ -310,6 +311,62 @@
         },
         "API": {
           "ERROR_MESSAGE": "Não foi possível salvar o canal do WhatsApp"
+        }
+      },
+      "WHATSAPP_LITE": {
+        "TITLE": "Canal do WhatsApp Lite",
+        "DESC": "Comece a oferecer suporte a seus clientes pelo WhatsApp(API Lite).",
+        "PROVIDERS": {
+          "LABEL": "Provedor de API",
+          "EVOLUTION": "Evolution",
+          "EVOLUTION_DESC": "Conectar via Evolution API"
+        },
+        "SELECT_PROVIDER": {
+          "TITLE": "Selecione seu provedor de API",
+          "DESCRIPTION": "Escolha seu provedor do WhatsApp Lite. Atualmente, a Evolution API está disponível para conexão."
+        },
+        "INBOX_NAME": {
+          "LABEL": "Nome da Caixa de Entrada",
+          "PLACEHOLDER": "Por favor, digite um nome para a caixa de entrada",
+          "ERROR": "Este campo é obrigatório"
+        },
+        "PHONE_NUMBER": {
+          "LABEL": "Número de telefone",
+          "PLACEHOLDER": "Por favor, insira o número de telefone (ex: +5599999999999)",
+          "ERROR": "Por favor, forneça um número de telefone válido que comece com o símbolo + e não contenha espaços."
+        },
+        "SUBMIT_BUTTON": "Criar canal WhatsApp Lite",
+        "API": {
+          "ERROR_MESSAGE": "Não foi possível salvar o canal do WhatsApp Lite"
+        },
+        "EVOLUTION_SETTINGS": {
+          "TITLE": "Comportamento",
+          "REJECT_CALLS": {
+            "TITLE": "Rejeitar Chamadas",
+            "DESC": "Rejeitar todas as chamadas",
+            "MSG_LABEL": "Mensagem de rejeição de chamada",
+            "MSG_PLACEHOLDER": "Ex: Não aceito chamadas."
+          },
+          "IGNORE_GROUPS": {
+            "TITLE": "Ignorar Grupos",
+            "DESC": "Ignorar todas as mensagens de grupos"
+          },
+          "ALWAYS_ONLINE": {
+            "TITLE": "Sempre Online",
+            "DESC": "Permanecer sempre online"
+          },
+          "READ_MESSAGES": {
+            "TITLE": "Visualizar Mensagens",
+            "DESC": "Marcar todas as mensagens como lidas"
+          },
+          "READ_STATUS": {
+            "TITLE": "Visualizar Status",
+            "DESC": "Marcar todos os status como visualizados"
+          },
+          "SYNC_HISTORY": {
+            "TITLE": "Sincronizar Histórico Completo",
+            "DESC": "Sincronizar o histórico completo ao ler o QR Code"
+          }
         }
       },
       "VOICE": {
@@ -423,6 +480,7 @@
           "SUBTITLE": "Você precisa configurar a URL do webhook no aplicativo LINE com a URL mencionada aqui."
         }
       },
+
       "TELEGRAM_CHANNEL": {
         "TITLE": "Canal do Telegram",
         "DESC": "Integre com o canal do Telegram e comece a apoiar seus clientes.",
@@ -450,9 +508,42 @@
             "TITLE": "Facebook",
             "DESCRIPTION": "Conectar sua página do Facebook"
           },
-          "WHATSAPP": {
-            "TITLE": "WhatsApp",
-            "DESCRIPTION": "Atenda seus clientes no WhatsApp"
+          "WHATSAPP_BUSINESS": {
+            "TITLE": "WhatsApp Business",
+            "DESCRIPTION": "Atenda seus clientes no WhatsApp (API Business)"
+          },
+          "WHATSAPP_LITE": {
+            "TITLE": "WhatsApp Lite",
+            "DESCRIPTION": "Atenda seus clientes no WhatsApp (Número Pessoal)",
+            "EVOLUTION_SETTINGS": {
+              "TITLE": "Comportamento da Instância",
+              "REJECT_CALLS": {
+                "TITLE": "Rejeitar Chamadas",
+                "DESC": "Rejeitar todas as chamadas",
+                "MSG_LABEL": "Mensagem de rejeição",
+                "MSG_PLACEHOLDER": "Deixe sua mensagem"
+              },
+              "IGNORE_GROUPS": {
+                "TITLE": "Ignorar Grupos",
+                "DESC": "Ignorar todas as mensagens de grupos"
+              },
+              "ALWAYS_ONLINE": {
+                "TITLE": "Sempre Online",
+                "DESC": "Permanecer sempre online"
+              },
+              "READ_MESSAGES": {
+                "TITLE": "Visualizar Mensagens",
+                "DESC": "Marcar todas as mensagens como lidas"
+              },
+              "READ_STATUS": {
+                "TITLE": "Visualizar Status",
+                "DESC": "Marcar todos os status como visualizados"
+              },
+              "SYNC_HISTORY": {
+                "TITLE": "Sincronizar Histórico Completo",
+                "DESC": "Sincronizar o histórico completo ao ler o QR Code"
+              }
+            }
           },
           "EMAIL": {
             "TITLE": "e-mail",
@@ -543,7 +634,21 @@
       "WEBSITE_SUCCESS": "Você concluiu a criação de um canal de site. Copie o código mostrado abaixo e cole-o no seu site. Na próxima vez que um cliente usar o bate-papo ao vivo, a conversa aparecerá automaticamente na sua caixa de entrada.",
       "WHATSAPP_QR_INSTRUCTION": "Escaneie o código QR acima para testar rapidamente sua caixa de entrada do WhatsApp",
       "MESSENGER_QR_INSTRUCTION": "Escaneie o código QR acima para testar rapidamente sua caixa de entrada do Facebook Messenger",
-      "TELEGRAM_QR_INSTRUCTION": "Escaneie o código QR acima para testar rapidamente sua caixa de entrada do Telegram"
+      "TELEGRAM_QR_INSTRUCTION": "Escaneie o código QR acima para testar rapidamente sua caixa de entrada do Telegram",
+      "EVOLUTION": {
+        "TITLE": "Conectar WhatsApp",
+        "DESCRIPTION": "Escolha como deseja conectar seu WhatsApp: escaneie um QR Code ou insira um código de pareamento no seu celular.",
+        "CONNECT_BUTTON": "Conectar WhatsApp",
+        "SELECT_CONNECTION_METHOD": "Selecione um método de conexão",
+        "CONNECT_DESCRIPTION": "Escolha o método de conexão",
+        "CONNECT_WITH_QR": "Conectar com QR Code",
+        "SCAN_QR": "Escaneie este código QR com o WhatsApp no seu celular",
+        "WAITING": "Aguardando conexão...",
+        "LOADING": "Carregando...",
+        "CONNECTED": "WhatsApp Conectado!",
+        "CONNECTED_DESC": "Seu número do WhatsApp está agora conectado e pronto para receber mensagens.",
+        "NOT_CONFIGURED": "A API Evolution não está configurada. Por favor, entre em contato com o administrador para configurar as configurações da API Evolution no painel Super Admin."
+      }
     },
     "REAUTH": "Reautorizar",
     "VIEW": "Visualizar",
@@ -623,7 +728,26 @@
       "WIDGET_BUILDER": "Construtor de Widget",
       "BOT_CONFIGURATION": "Configuração do Bot",
       "ACCOUNT_HEALTH": "Saúde da conta",
-      "CSAT": "CSAT"
+      "CSAT": "CSAT",
+      "INSTANCE": "Instância"
+    },
+    "EVOLUTION_INSTANCE": {
+      "TITLE": "Configuração da Instância",
+      "SUB_TITLE": "Gerencie a conexão e o comportamento da sua instância Evolution API.",
+      "STATUS": {
+        "TITLE": "Status da Conexão",
+        "CONNECTED": "Conectado",
+        "CONNECTING": "Conectando...",
+        "DISCONNECTED": "Desconectado"
+      },
+      "CONNECT_BUTTON": "Conectar",
+      "DISCONNECT_BUTTON": "Desconectar",
+      "DISCONNECT_SUCCESS": "WhatsApp desconectado com sucesso",
+      "CLOSE_BUTTON": "Fechar",
+      "QR_ERROR": "Erro ao gerar QR Code",
+      "CONNECT_WITH_QR": "QR Code",
+      "CONNECT_WITH_PAIRING": "Código",
+      "PAIRING_CODE": "Código de Pareamento:"
     },
     "ACCOUNT_HEALTH": {
       "TITLE": "Gerencie sua conta do WhatsApp",

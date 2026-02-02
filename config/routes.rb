@@ -206,6 +206,11 @@ Rails.application.routes.draw do
             delete :avatar, on: :member
             post :sync_templates, on: :member
             get :health, on: :member
+            get :evolution_qrcode, on: :member
+            get :evolution_status, on: :member
+            post :evolution_create_instance, on: :member
+            post :evolution_disconnect, on: :member
+            get :evolution_diagnostics, on: :member
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member
@@ -547,6 +552,7 @@ Rails.application.routes.draw do
   get 'webhooks/instagram', to: 'webhooks/instagram#verify'
   post 'webhooks/instagram', to: 'webhooks/instagram#events'
   post 'webhooks/tiktok', to: 'webhooks/tiktok#events'
+  post 'webhooks/evolution/:phone_number', to: 'webhooks/evolution#process_payload'
 
   namespace :twitter do
     resource :callback, only: [:show]
