@@ -36,7 +36,8 @@ const emit = defineEmits([
   'closeMobileSidebar',
 ]);
 
-const { accountScopedRoute, isOnChatwootCloud } = useAccount();
+const { accountScopedRoute, isOnChatwootCloud, isCloudFeatureEnabled } =
+  useAccount();
 const store = useStore();
 const searchShortcut = useKbd([`$mod`, 'k']);
 const { t } = useI18n();
@@ -380,6 +381,23 @@ const menuItems = computed(() => {
         },
       ],
     },
+    ...(isCloudFeatureEnabled('crm')
+      ? [
+          {
+            name: 'CRM',
+            label: t('SIDEBAR.CRM'),
+            icon: 'i-lucide-kanban',
+            children: [
+              {
+                name: 'Deals',
+                label: t('SIDEBAR.CRM_DEALS'),
+                to: accountScopedRoute('deals_index'),
+                activeOn: ['deals_index', 'deals_kanban'],
+              },
+            ],
+          },
+        ]
+      : []),
     {
       name: 'Reports',
       label: t('SIDEBAR.REPORTS'),
@@ -564,6 +582,16 @@ const menuItems = computed(() => {
           icon: 'i-lucide-blocks',
           to: accountScopedRoute('settings_applications'),
         },
+        ...(isCloudFeatureEnabled('crm')
+          ? [
+              {
+                name: 'Settings Pipelines',
+                label: t('SIDEBAR.PIPELINES'),
+                icon: 'i-lucide-kanban',
+                to: accountScopedRoute('pipelines_settings_index'),
+              },
+            ]
+          : []),
         {
           name: 'Settings Audit Logs',
           label: t('SIDEBAR.AUDIT_LOGS'),

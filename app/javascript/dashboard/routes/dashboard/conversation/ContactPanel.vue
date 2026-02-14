@@ -11,6 +11,7 @@ import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 import AccordionItem from 'dashboard/components/Accordion/AccordionItem.vue';
 import ContactConversations from './ContactConversations.vue';
+import ContactDeals from './contact/ContactDeals.vue';
 import ConversationAction from './ConversationAction.vue';
 import ConversationParticipant from './ConversationParticipant.vue';
 import ContactInfo from './contact/ContactInfo.vue';
@@ -295,6 +296,22 @@ onMounted(() => {
               "
             >
               <ContactNotes :contact-id="contactId" />
+            </AccordionItem>
+          </div>
+          <div v-else-if="element.name === 'contact_deals'">
+            <AccordionItem
+              v-if="contactId"
+              :title="$t('CONVERSATION_SIDEBAR.ACCORDION.CONTACT_DEALS')"
+              :is-open="isContactSidebarItemOpen('is_contact_deals_open')"
+              compact
+              @toggle="
+                value => toggleSidebarUIState('is_contact_deals_open', value)
+              "
+            >
+              <ContactDeals
+                :contact-id="contactId"
+                :conversation-id="conversationId"
+              />
             </AccordionItem>
           </div>
         </template>

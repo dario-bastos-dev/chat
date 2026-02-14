@@ -183,6 +183,29 @@ Rails.application.routes.draw do
               post :call, on: :member, to: 'calls#create' if ChatwootApp.enterprise?
             end
           end
+
+          # CRM Routes
+          resources :pipelines do
+            resources :stages do
+              collection do
+                put :reorder
+              end
+            end
+          end
+
+          resources :deals do
+            member do
+              patch :move
+              patch :assign
+              patch :win
+              patch :lose
+            end
+            resources :activities, controller: 'deal_activities' do
+              member do
+                patch :complete
+              end
+            end
+          end
           resources :csat_survey_responses, only: [:index] do
             collection do
               get :metrics

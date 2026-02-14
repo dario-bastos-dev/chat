@@ -1,0 +1,131 @@
+{
+  "CRM": {
+    "TITLE": "CRM",
+    "LOADING": "Carregando...",
+    "CANCEL": "Cancelar",
+    "CREATE": "Criar",
+    "UPDATE": "Atualizar",
+    "DELETE": "Excluir",
+    "SETTINGS": "Configurações",
+    "VALUE": "Valor",
+    "TOTAL_DEALS": "Total de Negócios",
+    "TOTAL_VALUE": "Valor Total",
+    "PIPELINES": {
+      "TITLE": "Pipelines",
+      "CREATE": "Novo Pipeline",
+      "CREATE_DESCRIPTION": "Crie um novo pipeline para organizar seus negócios",
+      "CREATE_ERROR": "Erro ao criar pipeline",
+      "DEFAULT": "Padrão",
+      "EMPTY": {
+        "TITLE": "Nenhum pipeline encontrado",
+        "DESCRIPTION": "Crie seu primeiro pipeline para começar a gerenciar seus negócios"
+      },
+      "FORM": {
+        "NAME": "Nome do Pipeline",
+        "NAME_PLACEHOLDER": "Ex: Pipeline de Vendas",
+        "IS_DEFAULT": "Definir como pipeline padrão"
+      }
+    },
+    "STAGES": {
+      "TITLE": "Etapas",
+      "CREATE": "Nova Etapa",
+      "FORM": {
+        "NAME": "Nome da Etapa",
+        "WIN_PROBABILITY": "Probabilidade de Ganho (%)",
+        "ROTTING_DAYS": "Dias para Estagnar"
+      }
+    },
+    "DEALS": {
+      "TITLE": "Negócios",
+      "CREATE": "Novo Negócio",
+      "EDIT": "Editar Negócio",
+      "ADD": "Adicionar",
+      "ADD_TO_STAGE": "Adicionar negócio na etapa {stage}",
+      "DETAILS": "Detalhes",
+      "VALUE": "Valor",
+      "WEIGHTED_VALUE": "Valor Ponderado",
+      "STAGE": "Etapa",
+      "PIPELINE": "Pipeline",
+      "CONTACT": "Contato",
+      "ASSIGNEE": "Responsável",
+      "UNASSIGNED": "Não atribuído",
+      "EXPECTED_CLOSE": "Previsão de Fechamento",
+      "CREATED": "Criado em",
+      "MOVE_ERROR": "Erro ao mover negócio",
+      "DELETE_CONFIRM": "Tem certeza que deseja excluir este negócio? Esta ação não pode ser desfeita.",
+      "DELETE_TITLE": "Excluir Negócio",
+      "DELETE_ERROR": "Erro ao excluir negócio",
+      "MARK_WON": "Marcar como Ganho",
+      "MARK_LOST": "Marcar como Perdido",
+      "STATUS_WON": "Ganho",
+      "STATUS_LOST": "Perdido",
+      "WON_SUCCESS": "Negócio marcado como ganho!",
+      "WON_ERROR": "Erro ao marcar negócio como ganho",
+      "LOST_SUCCESS": "Negócio marcado como perdido",
+      "LOST_ERROR": "Erro ao marcar negócio como perdido",
+      "LOST_REASON": "Motivo da Perda",
+      "LOST_REASON_TITLE": "Por que este negócio foi perdido?",
+      "LOST_REASON_PLACEHOLDER": "Descreva o motivo pelo qual este negócio foi perdido...",
+      "LOST_REASON_REQUIRED": "O motivo da perda é obrigatório",
+      "FORM": {
+        "TITLE": "Título",
+        "TITLE_PLACEHOLDER": "Ex: Venda de produto X",
+        "VALUE": "Valor",
+        "VALUE_PLACEHOLDER": "0,00",
+        "CURRENCY": "Moeda",
+        "STAGE": "Etapa",
+        "CONTACT": "Contato",
+        "CONTACT_PLACEHOLDER": "Buscar contato...",
+        "CONTACT_REQUIRED": "Selecione um contato",
+        "ASSIGNEE": "Responsável",
+        "UNASSIGNED": "Não atribuído",
+        "EXPECTED_CLOSE": "Previsão de Fechamento",
+        "PIPELINE": "Pipeline",
+        "ERROR": "Erro ao salvar negócio"
+      },
+      "SIDEBAR": {
+        "EMPTY": "Nenhum negócio vinculado a este contato",
+        "CREATE": "Criar Negócio",
+        "ADD": "Adicionar Negócio",
+        "CREATE_SUCCESS": "Negócio criado com sucesso!",
+        "VIEW_IN_KANBAN": "Ver no Kanban"
+      }
+    },
+    "ACTIVITIES": {
+      "TITLE": "Atividades",
+      "ADD": "Adicionar Atividade",
+      "EMPTY": "Nenhuma atividade registrada",
+      "COMPLETE_ERROR": "Erro ao completar atividade",
+      "TYPES": {
+        "CALL": "Ligação",
+        "EMAIL": "E-mail",
+        "MEETING": "Reunião",
+        "TASK": "Tarefa",
+        "NOTE": "Nota"
+      }
+    },
+    "REPORTS": {
+      "TITLE": "Relatórios CRM",
+      "SUMMARY": "Resumo",
+      "SELECT_PIPELINE": "Selecionar Pipeline",
+      "DOWNLOAD": "Baixar Relatório",
+      "DOWNLOAD_ERROR": "Erro ao baixar relatório",
+      "TOTAL_DEALS": "Total de Negócios",
+      "TOTAL_VALUE": "Valor Total",
+      "WON_DEALS": "Negócios Ganhos",
+      "LOST_DEALS": "Negócios Perdidos",
+      "WIN_RATE": "Taxa de Conversão",
+      "AVG_CYCLE_TIME": "Tempo Médio de Ciclo",
+      "DAYS": "dias",
+      "FUNNEL_TITLE": "Funil de Vendas",
+      "DEALS_OVER_TIME": "Evolução de Negócios",
+      "WON_VS_LOST": "Ganhos vs Perdidos",
+      "AGENT_PERFORMANCE": "Desempenho por Agente",
+      "TOP_DEALS": "Principais Negócios",
+      "AGENT": "Agente",
+      "CREATED": "Criados",
+      "OPEN": "Aberto",
+      "NO_DATA": "Nenhum dado disponível"
+    }
+  }
+}
