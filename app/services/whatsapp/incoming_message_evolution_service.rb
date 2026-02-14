@@ -32,9 +32,11 @@ class Whatsapp::IncomingMessageEvolutionService
     # Early return if no data
     return if data_params.blank?
 
-    # Filter out redundant message types (Broadcasts, Status)
-    # Allow @g.us (Groups)
+    # Filter out redundant message types (Broadcasts, Status, Groups)
+    # Groups (@g.us) are not supported as individual conversations in Chatwoot
+    # Also filter @lid JIDs that couldn't be resolved to a phone number
     return if remote_jid.to_s.match?(/(@broadcast|status)/)
+    return if is_group? # Skip group messages - Chatwoot doesn't support group conversations
 
     # Skip if no valid phone number
     if contact_phone_number.blank?
@@ -74,8 +76,13 @@ class Whatsapp::IncomingMessageEvolutionService
     Rails.logger.info "[EVOLUTION MSG] #{direction} | #{contact_phone_number} | #{message_type_from_payload}"
 
     set_contact
+    set_contact_avatar
     set_conversation  
     create_message
+
+    # Save LID→phone mapping when addressingMode is "lid"
+    # This ensures future messages.update with @lid JID can resolve to this contact
+    save_lid_mapping_if_needed
   end
 
   # Normalize params to ensure consistent access with string keys
@@ -116,26 +123,35 @@ class Whatsapp::IncomingMessageEvolutionService
     @message_params ||= data_params['message'] || {}
   end
 
-  # Remote JID - prefer the one without @lid suffix
-  # remoteJid can be: "5527997774194@s.whatsapp.net" or "246085134118923@lid"
-  # remoteJidAlt can be the alternative format
-  # We need to use the one with @s.whatsapp.net (phone number format)
+  # Remote JID - prefer the one with @s.whatsapp.net (phone number format)
+  # remoteJid can be: "5527997774194@s.whatsapp.net", "246085134118923@lid", or "120363403723253389@g.us"
+  # For @lid JIDs, we use participantAlt which has the real phone number
   def remote_jid
     return @remote_jid if defined?(@remote_jid)
 
     primary_jid = key_params['remoteJid'].to_s
     alt_jid = key_params['remoteJidAlt'].to_s
+    participant_alt = key_params['participantAlt'].to_s
 
-    Rails.logger.info "[EVOLUTION MSG] JID check: primary=#{primary_jid}, alt=#{alt_jid}"
+    Rails.logger.info "[EVOLUTION MSG] JID check: primary=#{primary_jid}, alt=#{alt_jid}, participantAlt=#{participant_alt}"
 
-    # Check if primary JID has @lid suffix (internal WhatsApp ID, not phone number)
-    if primary_jid.include?('@lid')
-      # Use alternative JID if available
-      @remote_jid = alt_jid.present? ? alt_jid : primary_jid
-    else
-      # Primary JID is good (has phone number format)
-      @remote_jid = primary_jid
-    end
+    @remote_jid = if primary_jid.include?('@lid')
+                    # Internal WhatsApp ID (@lid) - try alternatives
+                    if alt_jid.present? && alt_jid.include?('@s.whatsapp.net')
+                      alt_jid
+                    elsif participant_alt.present? && participant_alt.include?('@s.whatsapp.net')
+                      participant_alt
+                    else
+                      primary_jid
+                    end
+                  elsif primary_jid.include?('@g.us')
+                    # Group JID - keep as-is for group detection, 
+                    # but for contact creation we'll need participantAlt
+                    primary_jid
+                  else
+                    # Regular @s.whatsapp.net JID - good as-is
+                    primary_jid
+                  end
 
     Rails.logger.info "[EVOLUTION MSG] JID selected: #{@remote_jid}"
     @remote_jid
@@ -151,6 +167,7 @@ class Whatsapp::IncomingMessageEvolutionService
   end
 
   # Extract phone number from remoteJid (the part before @)
+  # Ensures the number is in valid E.164 format (+ followed by 1-15 digits)
   def contact_phone_number
     return @contact_phone_number if defined?(@contact_phone_number)
 
@@ -160,11 +177,12 @@ class Whatsapp::IncomingMessageEvolutionService
     # Strip device identifier if present (e.g. 55279998877:57)
     phone = local_part.to_s.split(':').first
     
-    # Only format as phone if it looks like a phone number (all digits)
-    if phone.present? && phone.match?(/^\d+$/)
+    # Validate: must be all digits AND between 7-15 digits (E.164 range)
+    # This prevents group IDs (18+ digits) and internal IDs from being used as phone numbers
+    if phone.present? && phone.match?(/^\d{7,15}$/)
       @contact_phone_number = "+#{phone}"
     else
-      Rails.logger.warn "[EVOLUTION MSG] Invalid phone number format: #{local_part} (parsed: #{phone})"
+      Rails.logger.warn "[EVOLUTION MSG] Invalid phone number format: #{local_part} (parsed: #{phone}, length: #{phone&.length})"
       @contact_phone_number = nil
     end
 
@@ -249,6 +267,11 @@ class Whatsapp::IncomingMessageEvolutionService
              # For groups, we don't want to use the participant's push_name as the Group Name
              # We use a generic name or keep existing. 
              "Grupo #{contact_phone_number}"
+           elsif from_me?
+             # When fromMe=true, pushName is OUR name, not the contact's.
+             # Use just the phone number — the contact's real name will be set
+             # when they send a message (fromMe=false) with their pushName.
+             contact_phone_number
            else
              push_name.presence || contact_phone_number
            end
@@ -270,6 +293,71 @@ class Whatsapp::IncomingMessageEvolutionService
 
     @contact_inbox = contact_inbox
     @contact = contact_inbox.contact
+
+    # When fromMe=false and the contact has pushName, update the contact's name
+    # if it currently looks like a phone number (was set from a fromMe=true message)
+    update_contact_name_if_needed
+  end
+
+  # Update contact name when we receive a message FROM the contact (fromMe=false)
+  # and the contact currently has a phone-number-style name (e.g., "+5527997774194")
+  def update_contact_name_if_needed
+    return if from_me?
+    return if is_group?
+    return if push_name.blank?
+    return unless @contact.present?
+
+    current_name = @contact.name.to_s
+
+    # Only update if the current name looks like a phone number
+    # (starts with + and digits, or is just digits, or matches the contact_phone_number)
+    is_phone_name = current_name.match?(/\A\+?\d+\z/) || current_name == contact_phone_number
+
+    return unless is_phone_name
+
+    @contact.update!(name: push_name)
+    Rails.logger.info "[EVOLUTION MSG] Updated contact #{@contact.id} name: '#{current_name}' → '#{push_name}'"
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION MSG] Failed to update contact name: #{e.message}"
+  end
+
+  # Fetch and set contact avatar from Evolution API or jpegThumbnail
+  # Only runs for contacts without an avatar (new contacts)
+  def set_contact_avatar
+    return if @contact.blank?
+    return if @contact.avatar.attached?
+    return if from_me? # Don't set avatar from our own messages
+
+    # Extract jpegThumbnail bytes from message payload (if present)
+    thumbnail_bytes = extract_jpeg_thumbnail
+
+    Rails.logger.info "[EVOLUTION MSG] Scheduling avatar fetch for Contact #{@contact.id} (thumbnail: #{thumbnail_bytes.present?})"
+
+    # Schedule background job to fetch avatar (won't block message processing)
+    Webhooks::EvolutionContactAvatarJob.perform_later(
+      @contact.id,
+      inbox.id,
+      remote_jid,
+      thumbnail_bytes
+    )
+  rescue StandardError => e
+    # Never fail message processing because of avatar
+    Rails.logger.warn "[EVOLUTION MSG] Avatar scheduling failed: #{e.message}"
+  end
+
+  # Extract jpegThumbnail from the message payload
+  # It can be found inside imageMessage, videoMessage, stickerMessage, etc.
+  def extract_jpeg_thumbnail
+    # Try each message type that can have a thumbnail
+    %w[imageMessage videoMessage stickerMessage documentMessage].each do |msg_type|
+      msg_data = message_params[msg_type]
+      next unless msg_data.is_a?(Hash)
+
+      thumbnail = msg_data['jpegThumbnail']
+      return thumbnail if thumbnail.present?
+    end
+
+    nil
   end
 
   # Find or create conversation
@@ -331,8 +419,9 @@ class Whatsapp::IncomingMessageEvolutionService
   def process_attachments
     return unless @message # Ensure message exists
     
+    Rails.logger.info "[EVOLUTION DEBUG] Message type: #{message_type_from_payload} | fromMe: #{from_me?}"
     Rails.logger.info "[EVOLUTION DEBUG] Message Params Keys: #{message_params.keys}"
-    Rails.logger.info "[EVOLUTION DEBUG] Audio Data Present: #{audio_data.present?}"
+    Rails.logger.info "[EVOLUTION DEBUG] Top-level mediaUrl present: #{data_params['mediaUrl'].present?}"
 
     media_payload = {
       image: image_data,
@@ -342,17 +431,23 @@ class Whatsapp::IncomingMessageEvolutionService
       sticker: sticker_data
     }.find { |_, data| data.present? }
 
-    Rails.logger.info "[EVOLUTION DEBUG] Media Payload Found: #{media_payload.inspect}"
+    Rails.logger.info "[EVOLUTION DEBUG] Media Payload Found: #{media_payload&.first}"
 
     return unless media_payload
     
     type, data = media_payload
     
+    # Sanitize media data: remove huge binary blobs (fileSha256, mediaKey, jpegThumbnail, etc.)
+    # that cause Sidekiq serialization failures. Keep only essential fields.
+    sanitized_data = sanitize_media_data(data)
+    
+    Rails.logger.info "[EVOLUTION DEBUG] Sanitized data keys: #{sanitized_data.keys} | url: #{sanitized_data['url'].to_s.truncate(60)} | mediaUrl: #{sanitized_data['mediaUrl'].to_s.truncate(60)}"
+    
     # Schedule background job for media processing
     # This releases the main worker immediately to handle other messages
-    Webhooks::EvolutionMediaJob.perform_later(@message.id, data, type)
+    Webhooks::EvolutionMediaJob.perform_later(@message.id, sanitized_data, type)
     
-    Rails.logger.info "[EVOLUTION MSG] Media attachment scheduled for Message #{@message.id}"
+    Rails.logger.info "[EVOLUTION MSG] Media attachment scheduled for Message #{@message.id} (type: #{type}, fromMe: #{from_me?})"
   end
   
   # Called by Background Job (EvolutionMediaJob)
@@ -563,8 +658,46 @@ class Whatsapp::IncomingMessageEvolutionService
     
     if media_url.present?
       data['mediaUrl'] = media_url
+      # Also set as the primary 'url' if the existing url is a WhatsApp CDN URL
+      # (which expires quickly and is not accessible from the server)
+      existing_url = data['url'].to_s
+      if existing_url.blank? || existing_url.include?('mmg.whatsapp.net')
+        data['url'] = media_url
+      end
     end
     data
+  end
+
+  # Sanitize media data to remove huge binary blob fields that cause
+  # Sidekiq serialization issues. Evolution API sends fields like fileSha256,
+  # mediaKey, jpegThumbnail, fileEncSha256, scansSidecar, etc. as objects with
+  # hundreds of numeric keys representing raw bytes.
+  def sanitize_media_data(data)
+    return {} unless data.is_a?(Hash)
+    
+    # Only keep essential fields needed for media attachment
+    essential_keys = %w[
+      url mediaUrl mimetype fileName caption base64
+      fileLength height width directPath seconds ptt
+    ]
+    
+    sanitized = {}
+    essential_keys.each do |key|
+      value = data[key]
+      next if value.nil?
+      
+      # Skip if the value is a large hash (binary blob)
+      if value.is_a?(Hash) && key == 'fileLength'
+        # fileLength has {low: N, high: N, unsigned: bool} - extract the number
+        sanitized[key] = value['low'] || value[:low]
+      elsif value.is_a?(Hash)
+        next # Skip other hash values (likely binary blobs)
+      else
+        sanitized[key] = value
+      end
+    end
+    
+    sanitized
   end
 
   def delete_original_minio_file(url)
@@ -600,6 +733,99 @@ class Whatsapp::IncomingMessageEvolutionService
     rescue StandardError => e
       Rails.logger.error "[EVOLUTION MSG] Failed to delete from MinIO: #{e.message}"
     end
+  end
+
+  # ---- LID Mapping ----
+  # The Evolution API may send the LID in either remoteJid or remoteJidAlt.
+  # When one field is @lid and the other is @s.whatsapp.net, we can map LID↔phone directly.
+  # The messages.update (DELIVERY_ACK) only has the @lid JID, so we need this mapping
+  # to resolve the correct contact for media recovery.
+  #
+  # LID extraction strategy (in priority order):
+  #   1. Compare remoteJid vs remoteJidAlt — if one is @lid and the other @s.whatsapp.net
+  #   2. If addressingMode is "lid" and remoteJid is @lid → extract directly
+  #   3. If addressingMode is "lid" and mediaUrl contains @lid → extract from URL path
+  def save_lid_mapping_if_needed
+    return unless @contact.present?
+
+    lid_value = extract_lid_for_mapping
+    return if lid_value.blank?
+
+    # We have: LID, phone number (from contact), and contact
+    phone = @contact.phone_number
+    return if phone.blank?
+
+    Channel::WhatsappLidMapping.create_or_update_mapping!(
+      lid: lid_value,
+      phone_number: phone,
+      account_id: inbox.account_id,
+      inbox_id: inbox.id,
+      contact_id: @contact.id
+    )
+  rescue StandardError => e
+    # LID mapping is non-critical; don't break message processing
+    Rails.logger.error "[EVOLUTION MSG] Failed to save LID mapping: #{e.message}"
+  end
+
+  # Extract LID value from available sources (in priority order)
+  def extract_lid_for_mapping
+    primary_jid = key_params['remoteJid'].to_s
+    alt_jid = key_params['remoteJidAlt'].to_s
+
+    # ---- Source 1 (highest priority): Compare remoteJid vs remoteJidAlt ----
+    # If one is @lid and the other is @s.whatsapp.net, we have a direct LID↔phone pair
+    primary_is_lid = primary_jid.include?('@lid')
+    alt_is_lid = alt_jid.include?('@lid')
+    primary_is_phone = primary_jid.include?('@s.whatsapp.net')
+    alt_is_phone = alt_jid.include?('@s.whatsapp.net')
+
+    # Case A: remoteJid is @lid, remoteJidAlt is @s.whatsapp.net
+    if primary_is_lid && alt_is_phone
+      lid_value = extract_lid_digits(primary_jid)
+      return lid_value if lid_value.present?
+    end
+
+    # Case B: remoteJid is @s.whatsapp.net, remoteJidAlt is @lid
+    if primary_is_phone && alt_is_lid
+      lid_value = extract_lid_digits(alt_jid)
+      return lid_value if lid_value.present?
+    end
+
+    # Case C: Both are @lid (rare, but handle it)
+    if primary_is_lid
+      lid_value = extract_lid_digits(primary_jid)
+      return lid_value if lid_value.present?
+    end
+
+    if alt_is_lid
+      lid_value = extract_lid_digits(alt_jid)
+      return lid_value if lid_value.present?
+    end
+
+    # ---- Source 2: addressingMode check + mediaUrl fallback ----
+    addressing_mode = key_params['addressingMode'].to_s
+    return nil unless addressing_mode == 'lid'
+
+    # Extract LID from mediaUrl path (e.g., ".../246085134118923%40lid/audioMessage/...")
+    media_url = data_params['mediaUrl'].to_s
+    if media_url.present?
+      match = media_url.match(%r{/(\d+)(?:%40|@)lid/}i)
+      if match
+        lid_value = match[1]
+        return lid_value if lid_value.match?(/^\d+$/)
+      end
+    end
+
+    nil
+  end
+
+  # Extract digits-only LID from a @lid JID
+  # "246085134118923@lid" → "246085134118923"
+  # "246085134118923:39@lid" → "246085134118923"
+  def extract_lid_digits(jid)
+    lid_part = jid.to_s.split('@').first
+    lid_value = lid_part.split(':').first
+    lid_value if lid_value.present? && lid_value.match?(/^\d+$/)
   end
 
   def s3_client

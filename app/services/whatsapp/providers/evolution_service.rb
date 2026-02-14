@@ -185,6 +185,45 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     nil
   end
 
+  # Fetch Base64 media content from Evolution API using message keyId
+  # Used to recover media from messages sent directly from the phone (fromMe)
+  # See: docs/example/incoming_messages.md
+  def get_base64_from_media_message(key_id)
+    return nil unless evolution_configured? && key_id.present?
+
+    url = "#{api_base_url}/chat/getBase64FromMediaMessage/#{instance_name}"
+
+    body = {
+      message: {
+        key: {
+          id: key_id
+        }
+      },
+      convertToMp4: false
+    }
+
+    Rails.logger.info "[EVOLUTION] Fetching base64 media for keyId: #{key_id}"
+
+    response = HTTParty.post(
+      url,
+      headers: api_headers,
+      body: body.to_json,
+      timeout: 30
+    )
+
+    if response.success?
+      parsed = response.parsed_response
+      Rails.logger.info "[EVOLUTION] Base64 media fetched successfully for keyId: #{key_id}"
+      parsed
+    else
+      Rails.logger.error "[EVOLUTION] Failed to fetch base64 media: #{response.code} - #{response.body.to_s.truncate(200)}"
+      nil
+    end
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION] Error fetching base64 media: #{e.message}"
+    nil
+  end
+
   def api_headers
     {
       'Content-Type' => 'application/json',
@@ -264,10 +303,43 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
 
     if response.success?
       Rails.logger.info "[EVOLUTION] Settings updated successfully: #{response.body}"
+      # Also sync webhook configuration to ensure all events are registered
+      update_webhook
     else
       Rails.logger.error "[EVOLUTION] Update settings failed: #{response.body}"
       raise "Evolution API Update Failed: #{response.code} - #{response.body}"
     end
+  end
+
+  # Ensure webhook is properly configured with all required events
+  # This fixes issues where the instance was created before all events were registered
+  def update_webhook
+    webhook_url = build_webhook_url
+
+    webhook_config = {
+      url: webhook_url,
+      webhook_by_events: false,
+      webhook_base64: true,
+      events: %w[QRCODE_UPDATED MESSAGES_UPSERT MESSAGES_UPDATE CONNECTION_UPDATE SEND_MESSAGE]
+    }
+
+    url = "#{api_base_url}/webhook/set/#{instance_name}"
+    Rails.logger.info "[EVOLUTION] Updating webhook config: #{url}"
+
+    response = HTTParty.post(
+      url,
+      headers: api_headers,
+      body: webhook_config.to_json
+    )
+
+    if response.success?
+      Rails.logger.info "[EVOLUTION] Webhook updated successfully: #{response.body}"
+    else
+      Rails.logger.warn "[EVOLUTION] Webhook update failed (non-critical): #{response.body}"
+    end
+  rescue StandardError => e
+    # Webhook update failure should not block settings update
+    Rails.logger.warn "[EVOLUTION] Webhook update error (non-critical): #{e.message}"
   end
 
   def delete_instance

@@ -94,4 +94,36 @@ unless Rails.env.production?
   Seeders::MessageSeeder.create_sample_csat_collect_message conversation
 
   CannedResponse.create!(account: account, short_code: 'start', content: 'Hello welcome to chatwoot.')
+
+  # CRM: Default Pipeline and Stages
+  pipeline = Pipeline.create!(
+    account: account,
+    name: 'Pipeline de Vendas',
+    is_default: true
+  )
+
+  [
+    { name: 'Novo Lead', position: 0, win_probability: 10, rotting_days: 7 },
+    { name: 'Qualificação', position: 1, win_probability: 25, rotting_days: 5 },
+    { name: 'Proposta', position: 2, win_probability: 50, rotting_days: 7 },
+    { name: 'Negociação', position: 3, win_probability: 75, rotting_days: 10 },
+    { name: 'Fechamento', position: 4, win_probability: 90, rotting_days: 14 }
+  ].each do |stage_attrs|
+    pipeline.stages.create!(stage_attrs)
+  end
+
+  # Create a sample deal
+  Deal.create!(
+    account: account,
+    pipeline: pipeline,
+    stage: pipeline.stages.first,
+    contact: contact_inbox.contact,
+    inbox: inbox,
+    assignee: user,
+    title: 'Venda Plano Pro - Jane',
+    value: 5000.00,
+    currency: 'BRL',
+    status: 'open',
+    last_activity_at: Time.current
+  )
 end

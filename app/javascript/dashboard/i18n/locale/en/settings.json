@@ -326,6 +326,7 @@
     "NOTIFICATIONS": "Notifications",
     "CANNED_RESPONSES": "Canned Responses",
     "INTEGRATIONS": "Integrations",
+    "PIPELINES": "Pipelines",
     "PROFILE_SETTINGS": "Profile Settings",
     "ACCOUNT_SETTINGS": "Account Settings",
     "APPLICATIONS": "Applications",
@@ -379,7 +380,9 @@
       "INFO_SHORT": "Automatically mark offline when you aren't using the app."
     },
     "DOCS": "Read docs",
-    "SECURITY": "Security"
+    "SECURITY": "Security",
+    "CRM": "CRM",
+    "CRM_DEALS": "Deals"
   },
   "BILLING_SETTINGS": {
     "TITLE": "Billing",

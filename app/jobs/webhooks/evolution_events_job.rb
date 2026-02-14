@@ -13,7 +13,7 @@ class Webhooks::EvolutionEventsJob < ApplicationJob
     event_name = @event.to_s.downcase.tr('.', '_')
     
     case event_name
-    when 'messages_upsert'
+    when 'messages_upsert', 'send_message'
       process_message_event(channel)
     when 'messages_update'
       process_message_update(channel)
@@ -21,7 +21,8 @@ class Webhooks::EvolutionEventsJob < ApplicationJob
       process_connection_update(channel)
     when 'qrcode_updated'
       process_qrcode_update(channel)
-    # Ignore send_message (already handled by messages_upsert)
+    else
+      Rails.logger.debug "[EVOLUTION JOB] Unhandled event: #{event_name}"
     end
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION JOB] Error: #{e.message}"
