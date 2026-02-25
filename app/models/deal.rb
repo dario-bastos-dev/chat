@@ -97,17 +97,45 @@ class Deal < ApplicationRecord
     update!(status: 'lost', lost_at: Time.current, lost_reason: reason)
   end
 
+  def mark_as_rotting!
+    return if custom_attributes['is_rotting']
+
+    self.custom_attributes['is_rotting'] = true
+    save!
+    dispatch_rotting_event
+  end
+
   def move_to_stage!(new_stage, new_position = nil)
+    old_stage_id = stage_id
     self.stage = new_stage
     self.position = new_position if new_position.present?
     self.last_activity_at = Time.current
     save!
+    dispatch_stage_changed_event(old_stage_id, new_stage.id)
   end
 
   def weighted_value
     return 0 if value.nil? || stage.win_probability.nil?
 
     value * (stage.win_probability / 100.0)
+  end
+
+  def webhook_data
+    {
+      id: id,
+      title: title,
+      value: value.to_f,
+      currency: currency,
+      status: status,
+      stage_id: stage_id,
+      pipeline_id: pipeline_id,
+      contact_id: contact_id,
+      assignee_id: assignee_id,
+      account_id: account_id,
+      last_activity_at: last_activity_at&.to_i,
+      created_at: created_at.to_i,
+      updated_at: updated_at.to_i
+    }
   end
 
   def push_event_data
@@ -159,9 +187,42 @@ class Deal < ApplicationRecord
 
   def dispatch_update_event
     Rails.configuration.dispatcher.dispatch(DEAL_UPDATED, Time.zone.now, deal: self, changed_attributes: previous_changes)
+
+    # Dispatch specific events based on what changed
+    dispatch_won_event if previous_changes.key?('status') && status == 'won'
+    dispatch_lost_event if previous_changes.key?('status') && status == 'lost'
+    dispatch_stage_changed_event(previous_changes['stage_id']&.first, stage_id) if previous_changes.key?('stage_id')
   end
 
   def dispatch_destroy_event
     Rails.configuration.dispatcher.dispatch(DEAL_DELETED, Time.zone.now, deal: self)
+  end
+
+  def dispatch_stage_changed_event(from_stage_id, to_stage_id)
+    Rails.configuration.dispatcher.dispatch(
+      DEAL_STAGE_CHANGED, Time.zone.now,
+      deal: self, from_stage_id: from_stage_id, to_stage_id: to_stage_id
+    )
+  end
+
+  def dispatch_won_event
+    Rails.configuration.dispatcher.dispatch(
+      DEAL_WON, Time.zone.now,
+      deal: self, value: value, won_at: won_at
+    )
+  end
+
+  def dispatch_lost_event
+    Rails.configuration.dispatcher.dispatch(
+      DEAL_LOST, Time.zone.now,
+      deal: self, lost_reason: lost_reason
+    )
+  end
+
+  def dispatch_rotting_event
+    Rails.configuration.dispatcher.dispatch(
+      DEAL_ROTTING, Time.zone.now,
+      deal: self, days_inactive: last_activity_at.present? ? (Time.current - last_activity_at).to_i / 1.day : 0
+    )
   end
 end

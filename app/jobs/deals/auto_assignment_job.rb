@@ -1,4 +1,6 @@
 class Deals::AutoAssignmentJob < ApplicationJob
+  include Events::Types
+
   queue_as :default
 
   def perform(deal_id)
@@ -12,22 +14,19 @@ class Deals::AutoAssignmentJob < ApplicationJob
 
     # 2. Select Best Candidate (Least Load Strategy)
     # Orders by number of open deals assigned to the user
-    selected_agent = candidates.sort_by { |user| user.deals.where(status: 'open').count }.first
+    selected_agent = candidates.min_by { |user| Deal.where(assignee_id: user.id, status: 'open').count }
 
     # 3. Assign
-    if selected_agent
-      deal.update!(assignee: selected_agent)
-      
-      # Create activity log
-      deal.deal_activities.create!(
-        account: deal.account,
-        activity_type: 'note',
-        description: "Auto-assigned to #{selected_agent.name} based on workload."
-      )
+    return unless selected_agent
 
-      # Dispatch update event
-      Rails.configuration.dispatcher.dispatch('deal.updated', deal, { changed_attributes: ['assignee_id'] })
-    end
+    deal.update!(assignee: selected_agent)
+
+    # Create activity log
+    deal.deal_activities.create!(
+      account: deal.account,
+      activity_type: 'note',
+      description: "Auto-assigned to #{selected_agent.name} based on workload."
+    )
   end
 
   private

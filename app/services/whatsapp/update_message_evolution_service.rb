@@ -25,6 +25,16 @@ class Whatsapp::UpdateMessageEvolutionService
       return
     end
 
+    # Handle incoming video messages from contacts (fromMe: false)
+    # When a contact sends a video, the Evolution API sends a messages.update
+    # event (not messages.upsert) with the keyId. We need to call
+    # getBase64FromMediaMessage to fetch the video content from data.base64.
+    # See: docs/example/example.json and docs/example/example-2.json
+    if !from_me? && key_id.present?
+      handle_incoming_video_with_lock
+      return
+    end
+
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION MSG UPDATE] Error: #{e.message}"
     Rails.logger.debug "[EVOLUTION MSG UPDATE] Backtrace:\n#{e.backtrace&.first(5)&.join("\n")}"
@@ -125,6 +135,157 @@ class Whatsapp::UpdateMessageEvolutionService
       Rails.logger.info "[EVOLUTION MEDIA RECOVERY] 🔒 Lock not acquired for keyId: #{key_id}, " \
                         "another worker is already processing this media. Skipping."
     end
+  end
+
+  # ---- Incoming Video Recovery ----
+  # When a contact sends a video, Evolution API sends a messages.update event
+  # (not messages.upsert) with fromMe: false. We call getBase64FromMediaMessage
+  # using the keyId to fetch the video content from data.base64.
+  # See: docs/example/example.json (incoming payload)
+  # See: docs/example/example-2.json (API response with data.base64)
+
+  def handle_incoming_video_with_lock
+    lock_key = "evol:incoming_video:#{key_id}"
+    lock_manager = Redis::LockManager.new
+
+    if lock_manager.lock(lock_key, 30.seconds)
+      begin
+        handle_incoming_video_recovery
+      ensure
+        lock_manager.unlock(lock_key)
+      end
+    else
+      Rails.logger.info "[EVOLUTION VIDEO RECOVERY] 🔒 Lock not acquired for keyId: #{key_id}, " \
+                        "another worker is already processing this video. Skipping."
+    end
+  end
+
+  def handle_incoming_video_recovery
+    Rails.logger.info "[EVOLUTION VIDEO RECOVERY] messages.update fromMe=false for keyId: #{key_id}, remoteJid: #{remote_jid}"
+
+    # Check if the message already exists with attachments
+    existing_message = Message.find_by(source_id: key_id)
+    if existing_message
+      # Save LID mapping opportunistically
+      save_lid_mapping_from_existing_message(existing_message) if lid_jid?
+
+      if existing_message.attachments.any?
+        Rails.logger.info "[EVOLUTION VIDEO RECOVERY] Message #{existing_message.id} already has attachments, skipping"
+        return
+      end
+
+      # Message exists but no attachments — try to fetch and attach the video
+      Rails.logger.info "[EVOLUTION VIDEO RECOVERY] Message #{existing_message.id} has no attachments, fetching video"
+      fetch_and_attach_video(existing_message)
+      return
+    end
+
+    # Message doesn't exist — fetch video, resolve contact, and create message
+    Rails.logger.info "[EVOLUTION VIDEO RECOVERY] Message not found for keyId: #{key_id}, checking if it's a video..."
+    fetch_and_create_video_message
+  end
+
+  # Fetch video from Evolution API and attach to an existing message
+  def fetch_and_attach_video(message)
+    channel = inbox.channel
+    return unless channel
+
+    service = Whatsapp::Providers::EvolutionService.new(whatsapp_channel: channel)
+    media_response = service.get_base64_from_media_message(key_id)
+
+    unless media_response
+      Rails.logger.info "[EVOLUTION VIDEO RECOVERY] No media returned for keyId: #{key_id}"
+      return
+    end
+
+    media_data = extract_media_data_inline(media_response)
+
+    unless media_data[:base64].present?
+      Rails.logger.info "[EVOLUTION VIDEO RECOVERY] No base64 in response for keyId: #{key_id}"
+      return
+    end
+
+    # Only process if it's actually a video
+    unless media_data[:mimetype].to_s.include?('video') || media_data[:mediaType].to_s == 'videoMessage'
+      Rails.logger.info "[EVOLUTION VIDEO RECOVERY] Media is not a video (#{media_data[:mimetype]}), skipping"
+      return
+    end
+
+    Rails.logger.info "[EVOLUTION VIDEO RECOVERY] ✅ Video confirmed! Attaching to Message #{message.id}"
+    attach_media_directly(message, media_data)
+  end
+
+  # Fetch video from Evolution API, resolve contact/conversation, and create new message
+  def fetch_and_create_video_message
+    channel = inbox.channel
+    return unless channel
+
+    # Deduplication check
+    if Message.exists?(source_id: key_id)
+      Rails.logger.info "[EVOLUTION VIDEO RECOVERY] Message with source_id #{key_id} already exists, skipping"
+      return
+    end
+
+    # Call Evolution API: getBase64FromMediaMessage
+    service = Whatsapp::Providers::EvolutionService.new(whatsapp_channel: channel)
+    media_response = service.get_base64_from_media_message(key_id)
+
+    unless media_response
+      Rails.logger.info "[EVOLUTION VIDEO RECOVERY] No media for keyId: #{key_id}, skipping"
+      return
+    end
+
+    media_data = extract_media_data_inline(media_response)
+
+    unless media_data[:base64].present?
+      Rails.logger.info "[EVOLUTION VIDEO RECOVERY] No base64 in response for keyId: #{key_id}"
+      return
+    end
+
+    # Only process if it's actually a video
+    unless media_data[:mimetype].to_s.include?('video') || media_data[:mediaType].to_s == 'videoMessage'
+      Rails.logger.info "[EVOLUTION VIDEO RECOVERY] Media is not a video (#{media_data[:mimetype]}), skipping"
+      return
+    end
+
+    Rails.logger.info "[EVOLUTION VIDEO RECOVERY] ✅ Video confirmed! Type: #{media_data[:mimetype]}"
+
+    # Resolve contact and conversation
+    contact_and_conversation = resolve_contact_and_conversation
+    return unless contact_and_conversation
+
+    contact = contact_and_conversation[:contact]
+    conversation = contact_and_conversation[:conversation]
+
+    # Final deduplication check
+    if Message.exists?(source_id: key_id)
+      Rails.logger.info "[EVOLUTION VIDEO RECOVERY] Message with source_id #{key_id} created while resolving contact, skipping"
+      return
+    end
+
+    # Create the incoming message (fromMe: false = incoming from contact)
+    message = conversation.messages.create!(
+      account_id: inbox.account_id,
+      inbox_id: inbox.id,
+      content: '',
+      message_type: :incoming,
+      source_id: key_id,
+      sender: contact
+    )
+
+    Rails.logger.info "[EVOLUTION VIDEO RECOVERY] Created incoming video message #{message.id} in conversation #{conversation.id}"
+
+    # Attach the video
+    attach_media_directly(message, media_data)
+
+    # Save LID mapping for future lookups
+    save_lid_mapping(contact) if lid_jid?
+
+  rescue ActiveRecord::RecordNotUnique
+    Rails.logger.info "[EVOLUTION VIDEO RECOVERY] Duplicate source_id #{key_id} caught by DB constraint, skipping"
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION VIDEO RECOVERY] Failed: #{e.message}"
+    Rails.logger.debug "[EVOLUTION VIDEO RECOVERY] Backtrace:\n#{e.backtrace&.first(5)&.join("\n")}"
   end
 
   def handle_media_recovery
@@ -517,20 +678,38 @@ class Whatsapp::UpdateMessageEvolutionService
 
   def extract_media_data_inline(response)
     if response.is_a?(Hash)
-      {
-        base64: response['base64'] || response[:base64],
-        mimetype: response['mimetype'] || response[:mimetype] || 'application/octet-stream',
-        fileName: response['fileName'] || response[:fileName]
-      }
+      # Evolution API returns nested structure: { success: true, data: { base64: "...", mimetype: "...", ... } }
+      # See: docs/example/example-2.json
+      data = response['data'] || response[:data]
+
+      if data.is_a?(Hash)
+        {
+          base64: data['base64'] || data[:base64],
+          mimetype: data['mimetype'] || data[:mimetype] || 'application/octet-stream',
+          fileName: data['fileName'] || data[:fileName],
+          mediaType: data['mediaType'] || data[:mediaType]
+        }
+      else
+        # Fallback: try root-level fields (legacy format)
+        {
+          base64: response['base64'] || response[:base64],
+          mimetype: response['mimetype'] || response[:mimetype] || 'application/octet-stream',
+          fileName: response['fileName'] || response[:fileName],
+          mediaType: response['mediaType'] || response[:mediaType]
+        }
+      end
     elsif response.is_a?(Array) && response.first.is_a?(Hash)
       first = response.first
+      data = first['data'] || first[:data]
+      source = data.is_a?(Hash) ? data : first
       {
-        base64: first['base64'] || first[:base64],
-        mimetype: first['mimetype'] || first[:mimetype] || 'application/octet-stream',
-        fileName: first['fileName'] || first[:fileName]
+        base64: source['base64'] || source[:base64],
+        mimetype: source['mimetype'] || source[:mimetype] || 'application/octet-stream',
+        fileName: source['fileName'] || source[:fileName],
+        mediaType: source['mediaType'] || source[:mediaType]
       }
     else
-      { base64: nil, mimetype: nil, fileName: nil }
+      { base64: nil, mimetype: nil, fileName: nil, mediaType: nil }
     end
   end
 

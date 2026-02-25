@@ -59,3 +59,10 @@ periodic_assignment_job:
   cron: '*/30 * * * *'
   class: 'AutoAssignment::PeriodicAssignmentJob'
   queue: scheduled_jobs
+
+# CRM: executed every hour to detect rotting deals
+# (deals with no activity past the stage's rotting_days threshold)
+deals_rotting_checker_job:
+  cron: '0 * * * *'
+  class: 'Deals::RottingCheckerJob'
+  queue: scheduled_jobs

@@ -205,6 +205,7 @@ Rails.application.routes.draw do
                 patch :complete
               end
             end
+            resources :conversations, controller: 'deal_conversations', only: [:index, :create, :destroy]
           end
           resources :csat_survey_responses, only: [:index] do
             collection do

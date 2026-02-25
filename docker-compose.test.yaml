@@ -125,11 +125,12 @@ networks:
     driver: bridge
 
 volumes:
+  chatwoot:
   postgres:
   redis:
   bundle:
   packs:
   node_modules_rails:
-  redis_data_evo:
-  evolution_instances:
-  evolution_store:
+  # redis_data_evo:
+  # evolution_instances:
+  # evolution_store:

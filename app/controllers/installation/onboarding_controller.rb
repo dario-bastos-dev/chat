@@ -38,6 +38,8 @@ class Installation::OnboardingController < ApplicationController
   end
 
   def ensure_installation_onboarding
-    redirect_to '/' unless ::Redis::Alfred.get(::Redis::Alfred::CHATWOOT_INSTALLATION_ONBOARDING)
+    # Allow onboarding if the Redis flag is set OR if there are no accounts
+    # This prevents a deadlock where Redis loses the flag but no accounts exist yet
+    redirect_to '/' unless ::Redis::Alfred.get(::Redis::Alfred::CHATWOOT_INSTALLATION_ONBOARDING) || Account.count.zero?
   end
 end
