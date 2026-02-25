@@ -84,6 +84,23 @@ class DealsAPI extends ApiClient {
       `${this.url}/${dealId}/activities/${activityId}/complete`
     );
   }
+
+  // Conversations
+  getConversations(dealId) {
+    return axios.get(`${this.url}/${dealId}/conversations`);
+  }
+
+  linkConversation(dealId, conversationDisplayId) {
+    return axios.post(`${this.url}/${dealId}/conversations`, {
+      conversation_id: conversationDisplayId,
+    });
+  }
+
+  unlinkConversation(dealId, conversationDealId) {
+    return axios.delete(
+      `${this.url}/${dealId}/conversations/${conversationDealId}`
+    );
+  }
 }
 
 export default new DealsAPI();

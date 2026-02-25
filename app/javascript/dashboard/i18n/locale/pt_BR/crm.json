@@ -67,6 +67,14 @@
       "LOST_REASON_TITLE": "Por que este negócio foi perdido?",
       "LOST_REASON_PLACEHOLDER": "Descreva o motivo pelo qual este negócio foi perdido...",
       "LOST_REASON_REQUIRED": "O motivo da perda é obrigatório",
+      "CONVERSATIONS": "Conversas Vinculadas",
+      "LINK_CONVERSATION": "Vincular Conversa",
+      "NO_CONVERSATIONS": "Nenhuma conversa vinculada a este negócio",
+      "CONVERSATION_ID": "ID da Conversa",
+      "CONVERSATION_ID_PLACEHOLDER": "Digite o ID da conversa",
+      "LINK": "Vincular",
+      "LINK_SUCCESS": "Conversa vinculada com sucesso!",
+      "LINK_ERROR": "Erro ao vincular conversa",
       "FORM": {
         "TITLE": "Título",
         "TITLE_PLACEHOLDER": "Ex: Venda de produto X",
@@ -102,7 +110,13 @@
         "MEETING": "Reunião",
         "TASK": "Tarefa",
         "NOTE": "Nota"
-      }
+      },
+      "TYPE": "Tipo",
+      "DESCRIPTION": "Descrição",
+      "DESCRIPTION_PLACEHOLDER": "Descreva a atividade...",
+      "DUE_DATE": "Data de Vencimento",
+      "CREATE_SUCCESS": "Atividade criada com sucesso!",
+      "CREATE_ERROR": "Erro ao criar atividade"
     },
     "REPORTS": {
       "TITLE": "Relatórios CRM",

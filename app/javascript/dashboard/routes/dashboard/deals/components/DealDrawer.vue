@@ -194,6 +194,58 @@
               </div>
             </div>
           </div>
+
+          <!-- Linked Conversations -->
+          <div class="deal-info-section">
+            <div class="section-header">
+              <h3 class="section-title">{{ $t('CRM.DEALS.CONVERSATIONS') }}</h3>
+              <woot-button
+                variant="smooth"
+                size="small"
+                icon="add"
+                @click="openLinkConversationModal"
+              >
+                {{ $t('CRM.DEALS.LINK_CONVERSATION') }}
+              </woot-button>
+            </div>
+
+            <div
+              v-if="linkedConversations.length === 0"
+              class="empty-conversations"
+            >
+              {{ $t('CRM.DEALS.NO_CONVERSATIONS') }}
+            </div>
+
+            <div v-else class="conversations-list">
+              <div
+                v-for="conv in linkedConversations"
+                :key="conv.id"
+                class="conversation-item"
+                @click="openConversation(conv)"
+              >
+                <div class="conversation-icon">
+                  <fluent-icon
+                    :icon="getInboxIcon(conv.inbox?.channel_type)"
+                    size="16"
+                  />
+                </div>
+                <div class="conversation-content">
+                  <span class="conversation-id"
+                    >#{{ conv.display_id || conv.id }}</span
+                  >
+                  <span class="conversation-contact">{{
+                    conv.contact?.name || conv.meta?.sender?.name || '-'
+                  }}</span>
+                  <span class="conversation-meta">
+                    {{ conv.inbox?.name }} • {{ formatDate(conv.created_at) }}
+                  </span>
+                </div>
+                <span class="conversation-status" :class="conv.status">
+                  {{ conv.status }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -235,6 +287,84 @@
       </div>
     </div>
   </woot-modal>
+
+  <!-- Add Activity Modal -->
+  <woot-modal v-model:show="showActivityModal" :on-close="closeActivityModal">
+    <div class="activity-modal">
+      <woot-modal-header :header-title="$t('CRM.ACTIVITIES.ADD')" />
+      <form @submit.prevent="submitActivity">
+        <div class="form-field">
+          <label>{{ $t('CRM.ACTIVITIES.TYPE') }} *</label>
+          <select v-model="newActivity.activity_type" required>
+            <option value="call">{{ $t('CRM.ACTIVITIES.TYPES.CALL') }}</option>
+            <option value="email">
+              {{ $t('CRM.ACTIVITIES.TYPES.EMAIL') }}
+            </option>
+            <option value="meeting">
+              {{ $t('CRM.ACTIVITIES.TYPES.MEETING') }}
+            </option>
+            <option value="task">{{ $t('CRM.ACTIVITIES.TYPES.TASK') }}</option>
+            <option value="note">{{ $t('CRM.ACTIVITIES.TYPES.NOTE') }}</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>{{ $t('CRM.ACTIVITIES.DESCRIPTION') }}</label>
+          <textarea
+            v-model="newActivity.description"
+            :placeholder="$t('CRM.ACTIVITIES.DESCRIPTION_PLACEHOLDER')"
+            rows="3"
+          />
+        </div>
+        <div class="form-field">
+          <label>{{ $t('CRM.ACTIVITIES.DUE_DATE') }}</label>
+          <input v-model="newActivity.due_date" type="datetime-local" />
+        </div>
+        <div class="modal-footer">
+          <woot-button variant="clear" @click.prevent="closeActivityModal">
+            {{ $t('CRM.CANCEL') }}
+          </woot-button>
+          <woot-button
+            type="submit"
+            color-scheme="primary"
+            :is-loading="isCreatingActivity"
+          >
+            {{ $t('CRM.CREATE') }}
+          </woot-button>
+        </div>
+      </form>
+    </div>
+  </woot-modal>
+
+  <!-- Link Conversation Modal -->
+  <woot-modal
+    v-model:show="showLinkConversationModal"
+    :on-close="closeLinkConversationModal"
+  >
+    <div class="link-conversation-modal">
+      <woot-modal-header :header-title="$t('CRM.DEALS.LINK_CONVERSATION')" />
+      <div class="form-field">
+        <label>{{ $t('CRM.DEALS.CONVERSATION_ID') }}</label>
+        <input
+          v-model="conversationIdToLink"
+          type="number"
+          :placeholder="$t('CRM.DEALS.CONVERSATION_ID_PLACEHOLDER')"
+          min="1"
+        />
+      </div>
+      <div class="modal-footer">
+        <woot-button variant="clear" @click="closeLinkConversationModal">
+          {{ $t('CRM.CANCEL') }}
+        </woot-button>
+        <woot-button
+          color-scheme="primary"
+          :is-loading="isLinkingConversation"
+          @click="linkConversation"
+        >
+          {{ $t('CRM.DEALS.LINK') }}
+        </woot-button>
+      </div>
+    </div>
+  </woot-modal>
 </template>
 
 <script>
@@ -265,16 +395,28 @@ export default {
   data() {
     return {
       activities: [],
+      linkedConversations: [],
       showEditModal: false,
       showLostModal: false,
+      showActivityModal: false,
+      showLinkConversationModal: false,
       lostReason: '',
       isUpdating: false,
+      isCreatingActivity: false,
+      isLinkingConversation: false,
+      conversationIdToLink: null,
+      newActivity: {
+        activity_type: 'note',
+        description: '',
+        due_date: null,
+      },
     };
   },
   watch: {
     isOpen(newVal) {
       if (newVal) {
         this.fetchActivities();
+        this.fetchLinkedConversations();
       }
     },
   },
@@ -364,7 +506,82 @@ export default {
       });
     },
     openAddActivityModal() {
-      // TODO: Implementar modal de adicionar atividade
+      this.showActivityModal = true;
+    },
+    closeActivityModal() {
+      this.showActivityModal = false;
+      this.newActivity = {
+        activity_type: 'note',
+        description: '',
+        due_date: null,
+      };
+    },
+    async submitActivity() {
+      this.isCreatingActivity = true;
+      try {
+        await DealsAPI.createActivity(this.deal.id, this.newActivity);
+        this.closeActivityModal();
+        this.fetchActivities();
+        this.$toast.success(this.$t('CRM.ACTIVITIES.CREATE_SUCCESS'));
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.ACTIVITIES.CREATE_ERROR'));
+      } finally {
+        this.isCreatingActivity = false;
+      }
+    },
+    async fetchLinkedConversations() {
+      try {
+        const response = await DealsAPI.getConversations(this.deal.id);
+        this.linkedConversations = response.data || [];
+      } catch (error) {
+        this.linkedConversations = [];
+      }
+    },
+    openLinkConversationModal() {
+      this.showLinkConversationModal = true;
+    },
+    closeLinkConversationModal() {
+      this.showLinkConversationModal = false;
+      this.conversationIdToLink = null;
+    },
+    async linkConversation() {
+      if (!this.conversationIdToLink) return;
+      this.isLinkingConversation = true;
+      try {
+        await DealsAPI.linkConversation(
+          this.deal.id,
+          this.conversationIdToLink
+        );
+        this.closeLinkConversationModal();
+        this.fetchLinkedConversations();
+        this.$toast.success(this.$t('CRM.DEALS.LINK_SUCCESS'));
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.DEALS.LINK_ERROR'));
+      } finally {
+        this.isLinkingConversation = false;
+      }
+    },
+    openConversation(conv) {
+      this.$router.push({
+        name: 'inbox_conversation',
+        params: {
+          accountId: this.$route.params.accountId,
+          conversation_id: conv.display_id || conv.id,
+        },
+      });
+    },
+    getInboxIcon(channelType) {
+      const icons = {
+        'Channel::WebWidget': 'globe',
+        'Channel::FacebookPage': 'brand-facebook',
+        'Channel::TwitterProfile': 'brand-twitter',
+        'Channel::Whatsapp': 'brand-whatsapp',
+        'Channel::Api': 'code',
+        'Channel::Email': 'mail',
+        'Channel::Telegram': 'send',
+        'Channel::Sms': 'chat',
+      };
+      return icons[channelType] || 'chat';
     },
     async completeActivity(activityId) {
       try {
@@ -582,7 +799,8 @@ export default {
   font-style: italic;
 }
 
-.empty-activities {
+.empty-activities,
+.empty-conversations {
   text-align: center;
   padding: var(--space-normal);
   color: var(--color-body);
@@ -643,7 +861,87 @@ export default {
   color: var(--s-500);
 }
 
-.lost-modal {
+// Conversations linked section
+.conversations-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-small);
+}
+
+.conversation-item {
+  display: flex;
+  gap: var(--space-small);
+  padding: var(--space-small);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-small);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: var(--w-500);
+    background: var(--s-25);
+  }
+}
+
+.conversation-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--w-100);
+  border-radius: var(--border-radius-small);
+  color: var(--w-700);
+}
+
+.conversation-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-micro);
+}
+
+.conversation-id {
+  font-size: var(--font-size-mini);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-heading);
+}
+
+.conversation-contact {
+  font-size: var(--font-size-small);
+  color: var(--color-body);
+}
+
+.conversation-meta {
+  font-size: var(--font-size-micro);
+  color: var(--s-500);
+}
+
+.conversation-status {
+  font-size: var(--font-size-micro);
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-micro) var(--space-smaller);
+  border-radius: var(--border-radius-small);
+  align-self: center;
+  text-transform: uppercase;
+
+  &.open {
+    background: var(--g-100);
+    color: var(--g-800);
+  }
+  &.resolved {
+    background: var(--s-100);
+    color: var(--s-700);
+  }
+  &.pending {
+    background: var(--y-100);
+    color: var(--y-800);
+  }
+}
+
+.lost-modal,
+.activity-modal,
+.link-conversation-modal {
   padding: var(--space-normal);
   min-width: 400px;
 }
@@ -657,7 +955,9 @@ export default {
     font-weight: var(--font-weight-medium);
   }
 
-  textarea {
+  textarea,
+  input,
+  select {
     width: 100%;
     padding: var(--space-small);
     border: 1px solid var(--color-border);

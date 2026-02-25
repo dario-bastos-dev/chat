@@ -67,6 +67,14 @@
       "LOST_REASON_TITLE": "Why was this deal lost?",
       "LOST_REASON_PLACEHOLDER": "Describe why this deal was lost...",
       "LOST_REASON_REQUIRED": "Lost reason is required",
+      "CONVERSATIONS": "Linked Conversations",
+      "LINK_CONVERSATION": "Link Conversation",
+      "NO_CONVERSATIONS": "No conversations linked to this deal",
+      "CONVERSATION_ID": "Conversation ID",
+      "CONVERSATION_ID_PLACEHOLDER": "Enter conversation ID",
+      "LINK": "Link",
+      "LINK_SUCCESS": "Conversation linked successfully!",
+      "LINK_ERROR": "Error linking conversation",
       "FORM": {
         "TITLE": "Title",
         "TITLE_PLACEHOLDER": "E.g.: Product X Sale",
@@ -102,7 +110,13 @@
         "MEETING": "Meeting",
         "TASK": "Task",
         "NOTE": "Note"
-      }
+      },
+      "TYPE": "Type",
+      "DESCRIPTION": "Description",
+      "DESCRIPTION_PLACEHOLDER": "Describe the activity...",
+      "DUE_DATE": "Due Date",
+      "CREATE_SUCCESS": "Activity created successfully!",
+      "CREATE_ERROR": "Error creating activity"
     },
     "REPORTS": {
       "TITLE": "CRM Reports",

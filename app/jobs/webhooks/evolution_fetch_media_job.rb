@@ -61,18 +61,33 @@ class Webhooks::EvolutionFetchMediaJob < ApplicationJob
 
   def extract_media_data(response)
     # Handle different response formats from Evolution API
+    # Evolution API returns nested structure: { success: true, data: { base64: "...", mimetype: "...", ... } }
+    # See: docs/example/example-2.json
     if response.is_a?(Hash)
-      {
-        base64: response['base64'] || response[:base64],
-        mimetype: response['mimetype'] || response[:mimetype] || 'application/octet-stream',
-        fileName: response['fileName'] || response[:fileName]
-      }
+      data = response['data'] || response[:data]
+
+      if data.is_a?(Hash)
+        {
+          base64: data['base64'] || data[:base64],
+          mimetype: data['mimetype'] || data[:mimetype] || 'application/octet-stream',
+          fileName: data['fileName'] || data[:fileName]
+        }
+      else
+        # Fallback: try root-level fields (legacy format)
+        {
+          base64: response['base64'] || response[:base64],
+          mimetype: response['mimetype'] || response[:mimetype] || 'application/octet-stream',
+          fileName: response['fileName'] || response[:fileName]
+        }
+      end
     elsif response.is_a?(Array) && response.first.is_a?(Hash)
       first = response.first
+      data = first['data'] || first[:data]
+      source = data.is_a?(Hash) ? data : first
       {
-        base64: first['base64'] || first[:base64],
-        mimetype: first['mimetype'] || first[:mimetype] || 'application/octet-stream',
-        fileName: first['fileName'] || first[:fileName]
+        base64: source['base64'] || source[:base64],
+        mimetype: source['mimetype'] || source[:mimetype] || 'application/octet-stream',
+        fileName: source['fileName'] || source[:fileName]
       }
     else
       { base64: nil, mimetype: nil, fileName: nil }
