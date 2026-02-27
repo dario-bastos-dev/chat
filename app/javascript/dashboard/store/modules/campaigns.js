@@ -41,8 +41,28 @@ export const getters = {
     return _getters.getCampaigns(CAMPAIGN_TYPES.ONE_OFF, smsChannelTypes);
   },
   getWhatsAppCampaigns: (_state, _getters) => {
-    const whatsappChannelTypes = [INBOX_TYPES.WHATSAPP];
-    return _getters.getCampaigns(CAMPAIGN_TYPES.ONE_OFF, whatsappChannelTypes);
+    // WhatsApp Business campaigns (excludes Evolution/Lite)
+    return _state.records
+      .filter(record => {
+        return (
+          record.campaign_type === CAMPAIGN_TYPES.ONE_OFF &&
+          record.inbox?.channel_type === INBOX_TYPES.WHATSAPP &&
+          record.inbox?.provider !== 'evolution'
+        );
+      })
+      .sort((a1, a2) => a1.id - a2.id);
+  },
+  getWhatsAppLiteCampaigns: (_state, _getters) => {
+    // WhatsApp Lite campaigns (Evolution API only)
+    return _state.records
+      .filter(record => {
+        return (
+          record.campaign_type === CAMPAIGN_TYPES.ONE_OFF &&
+          record.inbox?.channel_type === INBOX_TYPES.WHATSAPP &&
+          record.inbox?.provider === 'evolution'
+        );
+      })
+      .sort((a1, a2) => a1.id - a2.id);
   },
   getLiveChatCampaigns: (_state, _getters) => {
     const liveChatChannelTypes = [INBOX_TYPES.WEB];

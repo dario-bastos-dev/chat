@@ -4,7 +4,7 @@ class TriggerScheduledItemsJob < ApplicationJob
   def perform
     # trigger the scheduled campaign jobs
     Campaign.where(campaign_type: :one_off,
-                   campaign_status: :active).where(scheduled_at: 3.days.ago..Time.current).all.find_each(batch_size: 100) do |campaign|
+                   campaign_status: :active).where(scheduled_at: 3.days.ago..Time.current).all.find_each(batch_size: 10) do |campaign|
       Campaigns::TriggerOneoffCampaignJob.perform_later(campaign)
     end
 
@@ -19,6 +19,12 @@ class TriggerScheduledItemsJob < ApplicationJob
 
     # Job to sync whatsapp templates
     Channels::Whatsapp::TemplatesSyncSchedulerJob.perform_later
+
+    # Job to dispatch scheduled messages
+    ScheduledMessages::DispatchJob.perform_later
+
+    # Job to process message sequences
+    MessageSequences::ProcessJob.perform_later
   end
 end
 

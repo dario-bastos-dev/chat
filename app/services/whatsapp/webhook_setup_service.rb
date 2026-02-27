@@ -23,6 +23,7 @@ class Whatsapp::WebhookSetupService
     raise ArgumentError, 'Channel is required' if @channel.blank?
     raise ArgumentError, 'WABA ID is required' if @waba_id.blank?
     raise ArgumentError, 'Access token is required' if @access_token.blank?
+    raise ArgumentError, 'FRONTEND_URL environment variable is required for webhook setup' if ENV.fetch('FRONTEND_URL', nil).blank?
   end
 
   def register_phone_number

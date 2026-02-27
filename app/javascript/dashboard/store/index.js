@@ -30,6 +30,7 @@ import csat from './modules/csat';
 import customRole from './modules/customRole';
 import customViews from './modules/customViews';
 import dashboardApps from './modules/dashboardApps';
+import deals from './modules/deals';
 import draftMessages from './modules/draftMessages';
 import globalConfig from 'shared/store/globalConfig';
 import inboxAssignableAgents from './modules/inboxAssignableAgents';
@@ -39,6 +40,7 @@ import integrations from './modules/integrations';
 import labels from './modules/labels';
 import macros from './modules/macros';
 import notifications from './modules/notifications';
+import pipelines from './modules/pipelines';
 import portals from './modules/helpCenterPortals';
 import reports from './modules/reports';
 import sla from './modules/sla';
@@ -48,6 +50,9 @@ import teamMembers from './modules/teamMembers';
 import teams from './modules/teams';
 import userNotificationSettings from './modules/userNotificationSettings';
 import webhooks from './modules/webhooks';
+import scheduledMessages from './modules/scheduledMessages';
+import messageSequences from './modules/messageSequences';
+import conversationSequences from './modules/conversationSequences';
 import captainAssistants from './captain/assistant';
 import captainDocuments from './captain/document';
 import captainResponses from './captain/response';
@@ -93,6 +98,7 @@ export default createStore({
     customRole,
     customViews,
     dashboardApps,
+    deals,
     draftMessages,
     globalConfig,
     inboxAssignableAgents,
@@ -102,6 +108,7 @@ export default createStore({
     labels,
     macros,
     notifications,
+    pipelines,
     portals,
     reports,
     sla,
@@ -111,6 +118,9 @@ export default createStore({
     teams,
     userNotificationSettings,
     webhooks,
+    scheduledMessages,
+    messageSequences,
+    conversationSequences,
     captainAssistants,
     captainDocuments,
     captainResponses,

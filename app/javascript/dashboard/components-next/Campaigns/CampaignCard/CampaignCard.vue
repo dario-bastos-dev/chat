@@ -42,6 +42,14 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  conversationsCount: {
+    type: Number,
+    default: 0,
+  },
+  totalContacts: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const emit = defineEmits(['edit', 'delete']);
@@ -68,16 +76,21 @@ const campaignStatus = computed(() => {
       : t('CAMPAIGN.LIVE_CHAT.CARD.STATUS.DISABLED');
   }
 
-  return props.status === STATUS_COMPLETED
-    ? t('CAMPAIGN.SMS.CARD.STATUS.COMPLETED')
-    : t('CAMPAIGN.SMS.CARD.STATUS.SCHEDULED');
+  if (props.status === STATUS_COMPLETED) {
+    return t('CAMPAIGN.SMS.CARD.STATUS.COMPLETED');
+  }
+
+  const isScheduledInFuture = props.scheduledAt * 1000 > Date.now();
+  return isScheduledInFuture
+    ? t('CAMPAIGN.SMS.CARD.STATUS.SCHEDULED')
+    : t('CAMPAIGN.SMS.CARD.STATUS.IN_PROGRESS');
 });
 
 const inboxName = computed(() => props.inbox?.name || '');
 
 const inboxIcon = computed(() => {
-  const { medium, channel_type: type } = props.inbox;
-  return getInboxIconByType(type, medium);
+  const { medium, channel_type: type, provider } = props.inbox;
+  return getInboxIconByType(type, medium, 'fill', provider);
 });
 </script>
 
@@ -113,6 +126,8 @@ const inboxIcon = computed(() => {
           :inbox-name="inboxName"
           :inbox-icon="inboxIcon"
           :scheduled-at="scheduledAt"
+          :conversations-count="conversationsCount"
+          :total-contacts="totalContacts"
         />
       </div>
     </div>

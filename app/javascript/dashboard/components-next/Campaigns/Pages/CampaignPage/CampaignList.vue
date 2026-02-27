@@ -30,6 +30,8 @@ const handleDelete = campaign => emit('delete', campaign);
       :sender="campaign.sender"
       :inbox="campaign.inbox"
       :scheduled-at="campaign.scheduled_at"
+      :conversations-count="campaign.conversations_count"
+      :total-contacts="campaign.total_contacts"
       :is-live-chat-type="isLiveChatType"
       @edit="handleEdit(campaign)"
       @delete="handleDelete(campaign)"

@@ -35,10 +35,7 @@ import { getInboxIconByType } from 'dashboard/helper/inbox';
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
 import { LocalStorage } from 'shared/helpers/localStorage';
 import Editor from 'dashboard/components-next/Editor/Editor.vue';
-import ColorPicker from 'dashboard/components-next/colorpicker/ColorPicker.vue';
-import SelectInput from 'dashboard/components-next/select/Select.vue';
-import Widget from 'dashboard/modules/widget-preview/components/Widget.vue';
-
+import InstanceSettings from './channels/evolution/InstanceSettings.vue';
 export default {
   components: {
     BotConfiguration,
@@ -68,7 +65,6 @@ export default {
     ColorPicker,
     SelectInput,
     AccountHealth,
-    Widget,
   },
   mixins: [inboxMixin],
   setup() {
@@ -118,6 +114,9 @@ export default {
       return this.isAWhatsAppCloudChannel;
     },
     whatsAppAPIProviderName() {
+      if (this.isAEvolutionWhatsAppChannel) {
+        return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION');
+      }
       if (this.isAWhatsAppCloudChannel) {
         return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.WHATSAPP_CLOUD');
       }
@@ -203,6 +202,15 @@ export default {
           },
         ];
       }
+      if (this.isAEvolutionWhatsAppChannel) {
+        visibleToAllChannelTabs = [
+          ...visibleToAllChannelTabs,
+          {
+            key: 'evolution-instance',
+            name: this.$t('INBOX_MGMT.TABS.INSTANCE'),
+          },
+        ];
+      }
 
       return visibleToAllChannelTabs;
     },
@@ -214,19 +222,7 @@ export default {
     },
     inboxIcon() {
       const { medium, channel_type: type } = this.inbox;
-      return getInboxIconByType(type, medium, 'line');
-    },
-    bannerMaxWidth() {
-      const narrowTabs = [
-        'collaborators',
-        'configuration',
-        'bot-configuration',
-      ];
-      if (narrowTabs.includes(this.selectedTabKey)) return 'max-w-4xl';
-      if (this.selectedTabKey === 'inbox-settings') {
-        return this.isAWebWidgetInbox ? 'max-w-7xl' : 'max-w-4xl';
-      }
-      return 'max-w-7xl';
+      return getInboxIconByType(type, medium);
     },
     inboxName() {
       if (this.isATwilioSMSChannel || this.isATwilioWhatsAppChannel) {
@@ -585,237 +581,139 @@ export default {
         />
       </woot-tabs>
     </SettingIntroBanner>
-    <section class="w-full overflow-auto py-8">
-      <div class="max-w-7xl mx-auto w-full">
-        <MicrosoftReauthorize
-          v-if="microsoftUnauthorized"
-          :inbox="inbox"
-          class="mb-4"
-          :class="bannerMaxWidth"
-        />
-        <FacebookReauthorize
-          v-if="facebookUnauthorized"
-          :inbox="inbox"
-          class="mb-4"
-          :class="bannerMaxWidth"
-        />
-        <GoogleReauthorize
-          v-if="googleUnauthorized"
-          :inbox="inbox"
-          class="mb-4"
-          :class="bannerMaxWidth"
-        />
-        <InstagramReauthorize
-          v-if="instagramUnauthorized"
-          :inbox="inbox"
-          class="mb-4"
-          :class="bannerMaxWidth"
-        />
-        <TiktokReauthorize
-          v-if="tiktokUnauthorized"
-          :inbox="inbox"
-          class="mb-4"
-          :class="bannerMaxWidth"
-        />
-        <WhatsappReauthorize
-          v-if="whatsappUnauthorized"
-          :whatsapp-registration-incomplete="whatsappRegistrationIncomplete"
-          :inbox="inbox"
-          class="mb-4"
-          :class="bannerMaxWidth"
-        />
-        <DuplicateInboxBanner
-          v-if="hasDuplicateInstagramInbox"
-          :content="$t('INBOX_MGMT.ADD.INSTAGRAM.DUPLICATE_INBOX_BANNER')"
-          class="mx-6 mb-4"
-          :class="bannerMaxWidth"
-        />
-
-        <div
-          v-if="selectedTabKey === 'inbox-settings'"
-          class="flex flex-col md:flex-row items-center lg:items-start justify-between gap-5 lg:gap-10 mx-6"
+    <section class="mx-auto w-full max-w-6xl">
+      <MicrosoftReauthorize v-if="microsoftUnauthorized" :inbox="inbox" />
+      <FacebookReauthorize v-if="facebookUnauthorized" :inbox="inbox" />
+      <GoogleReauthorize v-if="googleUnauthorized" :inbox="inbox" />
+      <InstagramReauthorize v-if="instagramUnauthorized" :inbox="inbox" />
+      <TiktokReauthorize v-if="tiktokUnauthorized" :inbox="inbox" />
+      <WhatsappReauthorize
+        v-if="whatsappUnauthorized"
+        :whatsapp-registration-incomplete="whatsappRegistrationIncomplete"
+        :inbox="inbox"
+      />
+      <DuplicateInboxBanner
+        v-if="hasDuplicateInstagramInbox"
+        :content="$t('INBOX_MGMT.ADD.INSTAGRAM.DUPLICATE_INBOX_BANNER')"
+        class="mx-8 mt-5"
+      />
+      <div v-if="selectedTabKey === 'inbox-settings'" class="mx-8">
+        <SettingsSection
+          :title="$t('INBOX_MGMT.SETTINGS_POPUP.INBOX_UPDATE_TITLE')"
+          :sub-title="$t('INBOX_MGMT.SETTINGS_POPUP.INBOX_UPDATE_SUB_TEXT')"
+          :show-border="false"
         >
-          <div
-            class="flex-1 flex flex-col min-w-0"
-            :class="{
-              'max-w-2xl': isAWebWidgetInbox,
-              'max-w-4xl': !isAWebWidgetInbox,
-            }"
-          >
-            <div class="flex flex-col gap-1 items-start mb-4">
-              <label class="text-heading-3 text-n-slate-12">
-                {{ $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_AVATAR.LABEL') }}
-              </label>
-              <Avatar
-                :src="avatarUrl"
-                :size="64"
-                :icon-name="inboxIcon"
-                name=""
-                allow-upload
-                rounded-full
-                @upload="handleImageUpload"
-                @delete="handleAvatarDelete"
-              />
-            </div>
-            <SettingsFieldSection :label="inboxNameLabel">
-              <woot-input
-                v-model="selectedInboxName"
-                class="[&>input]:!mb-0"
-                :class="{ error: v$.selectedInboxName.$error }"
-                :placeholder="inboxNamePlaceHolder"
-                :error="
-                  v$.selectedInboxName.$error
-                    ? $t('INBOX_MGMT.ADD.CHANNEL_NAME.ERROR')
-                    : ''
-                "
-                @blur="v$.selectedInboxName.$touch"
-              />
-            </SettingsFieldSection>
-            <SettingsFieldSection
-              v-if="isAPIInbox"
-              :label="
-                $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_URL.LABEL')
-              "
-            >
-              <woot-input
-                v-model="webhookUrl"
-                class="[&>input]:!mb-0"
-                :class="{ error: v$.webhookUrl.$error }"
-                :placeholder="
+          <div class="flex flex-col gap-1 items-start mb-4">
+            <label class="mb-0.5 text-sm font-medium text-n-slate-12">
+              {{ $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_AVATAR.LABEL') }}
+            </label>
+            <Avatar
+              :src="avatarUrl"
+              :size="72"
+              :icon-name="inboxIcon"
+              name=""
+              allow-upload
+              rounded-full
+              @upload="handleImageUpload"
+              @delete="handleAvatarDelete"
+            />
+          </div>
+          <woot-input
+            v-model="selectedInboxName"
+            class="pb-4"
+            :class="{ error: v$.selectedInboxName.$error }"
+            :label="inboxNameLabel"
+            :placeholder="inboxNamePlaceHolder"
+            :error="
+              v$.selectedInboxName.$error
+                ? $t('INBOX_MGMT.ADD.CHANNEL_NAME.ERROR')
+                : ''
+            "
+            @blur="v$.selectedInboxName.$touch"
+          />
+          <woot-input
+            v-if="isAPIInbox"
+            v-model="webhookUrl"
+            class="pb-4"
+            :class="{ error: v$.webhookUrl.$error }"
+            :label="
+              $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_URL.LABEL')
+            "
+            :placeholder="
+              $t(
+                'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_URL.PLACEHOLDER'
+              )
+            "
+            :error="
+              v$.webhookUrl.$error
+                ? $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_URL.ERROR')
+                : ''
+            "
+            @blur="v$.webhookUrl.$touch"
+          />
+          <woot-input
+            v-if="isAWebWidgetInbox"
+            v-model="channelWebsiteUrl"
+            class="pb-4"
+            :label="$t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_DOMAIN.LABEL')"
+            :placeholder="
+              $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_DOMAIN.PLACEHOLDER')
+            "
+          />
+          <woot-input
+            v-if="isAWebWidgetInbox"
+            v-model="channelWelcomeTitle"
+            class="pb-4"
+            :label="
+              $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WELCOME_TITLE.LABEL')
+            "
+            :placeholder="
+              $t(
+                'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WELCOME_TITLE.PLACEHOLDER'
+              )
+            "
+          />
+
+          <Editor
+            v-if="isAWebWidgetInbox"
+            v-model="channelWelcomeTagline"
+            class="mb-4"
+            :label="
+              $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WELCOME_TAGLINE.LABEL')
+            "
+            :placeholder="
+              $t(
+                'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WELCOME_TAGLINE.PLACEHOLDER'
+              )
+            "
+            :max-length="255"
+            channel-type="Context::InboxSettings"
+          />
+
+          <label v-if="isAWebWidgetInbox" class="pb-4">
+            {{ $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.WIDGET_COLOR.LABEL') }}
+            <woot-color-picker v-model="inbox.widget_color" />
+          </label>
+
+          <label v-if="isAWhatsAppChannel" class="pb-4">
+            {{ $t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.LABEL') }}
+            <input v-model="whatsAppAPIProviderName" type="text" disabled />
+          </label>
+
+          <label class="pb-4">
+            {{
+              $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_GREETING_TOGGLE.LABEL')
+            }}
+            <select v-model="greetingEnabled">
+              <option :value="true">
+                {{
                   $t(
-                    'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_URL.PLACEHOLDER'
+                    'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_GREETING_TOGGLE.ENABLED'
                   )
-                "
-                :error="
-                  v$.webhookUrl.$error
-                    ? $t(
-                        'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_URL.ERROR'
-                      )
-                    : ''
-                "
-                @blur="v$.webhookUrl.$touch"
-              />
-            </SettingsFieldSection>
-
-            <SettingsFieldSection
-              v-if="isAWebWidgetInbox"
-              :label="$t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_DOMAIN.LABEL')"
-            >
-              <woot-input
-                v-model="channelWebsiteUrl"
-                class="[&>input]:!mb-0"
-                :placeholder="
-                  $t(
-                    'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_DOMAIN.PLACEHOLDER'
-                  )
-                "
-              />
-            </SettingsFieldSection>
-
-            <SettingsFieldSection
-              v-if="isAWhatsAppChannel"
-              :label="$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.LABEL')"
-            >
-              <input
-                v-model="whatsAppAPIProviderName"
-                type="text"
-                disabled
-                class="!mb-0"
-              />
-            </SettingsFieldSection>
-
-            <SettingsFieldSection
-              v-if="!isAVoiceChannel"
-              :label="$t('INBOX_MGMT.HELP_CENTER.LABEL')"
-              :help-text="$t('INBOX_MGMT.HELP_CENTER.SUB_TEXT')"
-            >
-              <SelectInput
-                v-model="selectedPortalSlug"
-                :placeholder="$t('INBOX_MGMT.HELP_CENTER.PLACEHOLDER')"
-                :options="[
-                  { value: '', label: $t('INBOX_MGMT.HELP_CENTER.NONE') },
-                  ...portals.map(p => ({ value: p.slug, label: p.name })),
-                ]"
-              />
-            </SettingsFieldSection>
-
-            <SettingsFieldSection
-              v-if="canLocktoSingleConversation"
-              :label="
-                $t('INBOX_MGMT.SETTINGS_POPUP.LOCK_TO_SINGLE_CONVERSATION')
-              "
-              class="[&>div>div]:justify-end [&>div>div]:flex lg:[&>div:first-child]:h-12 [&>div:first-child]:h-16"
-            >
-              <template #extra>
-                <LockToSingleConversationPreview
-                  :lock-to-single-conversation="locktoSingleConversation"
-                  @update="toggleLockToSingleConversation"
-                />
-              </template>
-            </SettingsFieldSection>
-
-            <SettingsFieldSection
-              v-if="isAWebWidgetInbox || isAnEmailChannel"
-              :label="$t('INBOX_MGMT.EDIT.SENDER_NAME_SECTION.TITLE')"
-              class="[&>div>div]:justify-end [&>div>div]:flex lg:[&>div:first-child]:h-12 [&>div:first-child]:h-16"
-            >
-              <NextButton
-                v-if="!showBusinessNameInput"
-                ghost
-                blue
-                sm
-                :label="
-                  $t(
-                    'INBOX_MGMT.EDIT.SENDER_NAME_SECTION.BUSINESS_NAME.BUTTON_TEXT'
-                  )
-                "
-                @click="onClickShowBusinessNameInput"
-              />
-
-              <div
-                v-if="showBusinessNameInput"
-                v-on-clickaway="hideBusinessNameInput"
-                class="flex justify-end gap-2 w-full"
-              >
-                <input
-                  ref="businessNameInput"
-                  v-model="businessName"
-                  :placeholder="
-                    $t(
-                      'INBOX_MGMT.EDIT.SENDER_NAME_SECTION.BUSINESS_NAME.PLACEHOLDER'
-                    )
-                  "
-                  class="!mb-0"
-                  type="text"
-                />
-                <NextButton
-                  :label="
-                    $t(
-                      'INBOX_MGMT.EDIT.SENDER_NAME_SECTION.BUSINESS_NAME.SAVE_BUTTON_TEXT'
-                    )
-                  "
-                  class="flex-shrink-0"
-                  @click="updateInbox"
-                />
-              </div>
-
-              <template #extra>
-                <SenderNameExamplePreview
-                  :sender-name-type="senderNameType"
-                  :business-name="businessName"
-                  :is-website-channel="isAWebWidgetInbox"
-                  @update="toggleSenderNameType"
-                />
-              </template>
-            </SettingsFieldSection>
-
-            <SettingsAccordion
-              v-if="isAWebWidgetInbox"
-              :title="$t('INBOX_MGMT.WIDGET_FEATURES')"
-              class="mt-6"
-            >
-              <SettingsFieldSection
-                :label="
+                }}
+              </option>
+              <option :value="false">
+                {{
                   $t(
                     'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WELCOME_TITLE.LABEL'
                   )

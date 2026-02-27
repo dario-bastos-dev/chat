@@ -1,3 +1,4 @@
+.git
 .bundle
 .env
 .env.*
@@ -15,3 +16,6 @@ vendor/bundle
 .DS_Store
 *.swp
 *~
+*.txt
+*.md
+/docs

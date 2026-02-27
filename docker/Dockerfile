@@ -87,13 +87,18 @@ RUN if [ "$RAILS_ENV" = "production" ]; then \
   fi
 
 # Generate .git_sha file with current commit hash
-RUN git rev-parse HEAD > /app/.git_sha
+# If .git is excluded via .dockerignore, use the pre-generated .git_sha from host
+RUN if [ -d .git ]; then \
+  git rev-parse HEAD > /app/.git_sha; \
+  elif [ ! -f /app/.git_sha ]; then \
+  echo "unknown" > /app/.git_sha; \
+  fi
 
 # Remove unnecessary files
 RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
   && find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete \
   && rm -rf .git \
-  && rm .gitignore
+  && rm -f .gitignore
 
 # final build stage
 FROM ruby:3.4.4-alpine3.21
@@ -148,5 +153,9 @@ COPY --from=pre-builder /app /app
 COPY --from=pre-builder /app/.git_sha /app/.git_sha
 
 WORKDIR /app
+
+# Fix permissions and line endings for entrypoints
+RUN chmod -R +x docker/entrypoints && \
+    find docker/entrypoints -type f -exec sed -i 's/\r$//' {} +
 
 EXPOSE 3000

@@ -1,0 +1,624 @@
+# ============================================================
+# CHATWOOT + EVOLUTION API - DOCKER COMPOSE COM TRAEFIK
+# ============================================================
+#
+# Este arquivo contém 4 configurações para diferentes escalas:
+# 1. DEZENAS (10-50 usuários) - Pequenas empresas
+# 2. CENTENAS (100-500 usuários) - Médias empresas
+# 3. MILHARES (1000-10000 usuários) - Grandes empresas
+# 4. MILHÕES (100k+ usuários) - Enterprise
+#
+# INSTRUÇÕES:
+# 1. Copie a seção desejada para seu compose.yml
+# 2. Ajuste as variáveis no arquivo .env
+# 3. Execute: docker-compose up -d
+#
+# PRÉ-REQUISITOS:
+# - Traefik rodando (rede externa 'traefik-network')
+# - Domínio apontando para o servidor
+#
+# ============================================================
+
+# ============================================================
+# 📌 CONFIGURAÇÃO 1: DEZENAS DE USUÁRIOS (10-50)
+# ============================================================
+# Servidor mínimo: 2 CPU, 4GB RAM
+# Uso: Pequenas empresas, startups, testes
+# Capacidade: ~5 req/s, ~100 msg/min
+# ============================================================
+
+version: "3.8"
+
+networks:
+  traefik-network:
+    external: true
+  chatwoot-internal:
+    driver: bridge
+
+x-base-config: &base-config
+  FRONTEND_URL: https://${CHATWOOT_DOMAIN}
+  SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+  POSTGRES_HOST: postgres
+  POSTGRES_USERNAME: chatwoot
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  POSTGRES_DATABASE: chatwoot_production
+  REDIS_URL: redis://redis:6379
+  RAILS_ENV: production
+  EVOLUTION_API_URL: ${EVOLUTION_API_URL}
+  EVOLUTION_API_TOKEN: ${EVOLUTION_API_TOKEN}
+
+services:
+  rails:
+    image: dariobastosdev/chatwoot:latest
+    command: bundle exec rails s -p 3000 -b '0.0.0.0'
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - traefik-network
+      - chatwoot-internal
+    environment:
+      <<: *base-config
+      # DEZENAS: Configuração leve
+      WEB_CONCURRENCY: 0 # Single process
+      RAILS_MAX_THREADS: 5 # 5 threads
+      POSTGRES_POOL: 10
+    labels:
+      # Traefik - Roteamento principal
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-network"
+
+      # HTTP Router
+      - "traefik.http.routers.chatwoot.rule=Host(`${CHATWOOT_DOMAIN}`)"
+      - "traefik.http.routers.chatwoot.entrypoints=websecure"
+      - "traefik.http.routers.chatwoot.tls=true"
+      - "traefik.http.routers.chatwoot.tls.certresolver=letsencrypt"
+
+      # Service
+      - "traefik.http.services.chatwoot.loadbalancer.server.port=3000"
+      - "traefik.http.services.chatwoot.loadbalancer.sticky.cookie=true"
+      - "traefik.http.services.chatwoot.loadbalancer.sticky.cookie.name=chatwoot_sticky"
+
+      # Health check
+      - "traefik.http.services.chatwoot.loadbalancer.healthcheck.path=/api"
+      - "traefik.http.services.chatwoot.loadbalancer.healthcheck.interval=10s"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+
+  sidekiq:
+    image: dariobastosdev/chatwoot:latest
+    command: bundle exec sidekiq
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - chatwoot-internal
+    environment:
+      <<: *base-config
+      SIDEKIQ_CONCURRENCY: 10
+      POSTGRES_POOL: 15
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 1G
+
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    networks:
+      - chatwoot-internal
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: chatwoot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: chatwoot_production
+    command: >
+      postgres
+      -c max_connections=50
+      -c shared_buffers=256MB
+      -c work_mem=4MB
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks:
+      - chatwoot-internal
+    volumes:
+      - redis_data:/data
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+volumes:
+  postgres_data:
+  redis_data:
+# ============================================================
+# 📌 CONFIGURAÇÃO 2: CENTENAS DE USUÁRIOS (100-500)
+# ============================================================
+# Servidor recomendado: 4 CPU, 8GB RAM
+# Uso: Médias empresas, múltiplos atendentes
+# Capacidade: ~40 req/s, ~1000 msg/min
+# ============================================================
+#
+# DESCOMENTE ABAIXO E COMENTE A SEÇÃO ANTERIOR PARA USAR
+#
+# ---
+# version: '3.8'
+#
+# networks:
+#   traefik-network:
+#     external: true
+#   chatwoot-internal:
+#     driver: bridge
+#
+# x-base-config: &base-config
+#   FRONTEND_URL: https://${CHATWOOT_DOMAIN}
+#   SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+#   POSTGRES_HOST: postgres
+#   POSTGRES_USERNAME: chatwoot
+#   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#   POSTGRES_DATABASE: chatwoot_production
+#   REDIS_URL: redis://redis:6379
+#   RAILS_ENV: production
+#   EVOLUTION_API_URL: ${EVOLUTION_API_URL}
+#   EVOLUTION_API_TOKEN: ${EVOLUTION_API_TOKEN}
+#
+# services:
+#   rails:
+#     image: dariobastosdev/chatwoot:latest
+#     command: bundle exec rails s -p 3000 -b '0.0.0.0'
+#     restart: unless-stopped
+#     depends_on:
+#       - postgres
+#       - redis
+#     networks:
+#       - traefik-network
+#       - chatwoot-internal
+#     environment:
+#       <<: *base-config
+#       # CENTENAS: Multi-process
+#       WEB_CONCURRENCY: 4          # 4 workers
+#       RAILS_MAX_THREADS: 10       # 10 threads cada = 40 total
+#       POSTGRES_POOL: 50
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.docker.network=traefik-network"
+#
+#       # Router com rate limiting
+#       - "traefik.http.routers.chatwoot.rule=Host(`${CHATWOOT_DOMAIN}`)"
+#       - "traefik.http.routers.chatwoot.entrypoints=websecure"
+#       - "traefik.http.routers.chatwoot.tls=true"
+#       - "traefik.http.routers.chatwoot.tls.certresolver=letsencrypt"
+#       - "traefik.http.routers.chatwoot.middlewares=chatwoot-ratelimit"
+#
+#       # Rate limit middleware (100 req/s average, burst 200)
+#       - "traefik.http.middlewares.chatwoot-ratelimit.ratelimit.average=100"
+#       - "traefik.http.middlewares.chatwoot-ratelimit.ratelimit.burst=200"
+#
+#       # Service com sticky sessions
+#       - "traefik.http.services.chatwoot.loadbalancer.server.port=3000"
+#       - "traefik.http.services.chatwoot.loadbalancer.sticky.cookie=true"
+#       - "traefik.http.services.chatwoot.loadbalancer.sticky.cookie.name=chatwoot_sticky"
+#       - "traefik.http.services.chatwoot.loadbalancer.healthcheck.path=/api"
+#       - "traefik.http.services.chatwoot.loadbalancer.healthcheck.interval=10s"
+#     deploy:
+#       replicas: 2                  # 2 containers = 80 threads totais
+#       resources:
+#         limits:
+#           cpus: '2'
+#           memory: 4G
+#         reservations:
+#           cpus: '1'
+#           memory: 2G
+#
+#   sidekiq:
+#     image: dariobastosdev/chatwoot:latest
+#     command: bundle exec sidekiq
+#     restart: unless-stopped
+#     depends_on:
+#       - postgres
+#       - redis
+#     networks:
+#       - chatwoot-internal
+#     environment:
+#       <<: *base-config
+#       SIDEKIQ_CONCURRENCY: 25
+#       POSTGRES_POOL: 30
+#     deploy:
+#       replicas: 2                  # 2 containers = 50 jobs paralelos
+#       resources:
+#         limits:
+#           cpus: '1'
+#           memory: 2G
+#
+#   postgres:
+#     image: postgres:15-alpine
+#     restart: unless-stopped
+#     networks:
+#       - chatwoot-internal
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     environment:
+#       POSTGRES_USER: chatwoot
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#       POSTGRES_DB: chatwoot_production
+#     command: >
+#       postgres
+#       -c max_connections=200
+#       -c shared_buffers=1GB
+#       -c work_mem=16MB
+#       -c maintenance_work_mem=256MB
+#       -c effective_cache_size=3GB
+#     deploy:
+#       resources:
+#         limits:
+#           cpus: '1'
+#           memory: 2G
+#
+#   redis:
+#     image: redis:7-alpine
+#     restart: unless-stopped
+#     networks:
+#       - chatwoot-internal
+#     volumes:
+#       - redis_data:/data
+#     command: redis-server --maxmemory 1gb --maxmemory-policy allkeys-lru
+#     deploy:
+#       resources:
+#         limits:
+#           cpus: '0.5'
+#           memory: 1G
+#
+# volumes:
+#   postgres_data:
+#   redis_data:
+
+# ============================================================
+# 📌 CONFIGURAÇÃO 3: MILHARES DE USUÁRIOS (1000-10000)
+# ============================================================
+# Servidor recomendado: 8+ CPU, 16GB+ RAM ou cluster
+# Uso: Grandes empresas, call centers
+# Capacidade: ~200 req/s, ~5000 msg/min
+# ============================================================
+#
+# ---
+# version: '3.8'
+#
+# networks:
+#   traefik-network:
+#     external: true
+#   chatwoot-internal:
+#     driver: bridge
+#
+# x-base-config: &base-config
+#   FRONTEND_URL: https://${CHATWOOT_DOMAIN}
+#   SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+#   POSTGRES_HOST: postgres
+#   POSTGRES_USERNAME: chatwoot
+#   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#   POSTGRES_DATABASE: chatwoot_production
+#   REDIS_URL: redis://redis:6379
+#   RAILS_ENV: production
+#   EVOLUTION_API_URL: ${EVOLUTION_API_URL}
+#   EVOLUTION_API_TOKEN: ${EVOLUTION_API_TOKEN}
+#
+# services:
+#   rails:
+#     image: dariobastosdev/chatwoot:latest
+#     command: bundle exec rails s -p 3000 -b '0.0.0.0'
+#     restart: unless-stopped
+#     depends_on:
+#       - postgres
+#       - redis
+#     networks:
+#       - traefik-network
+#       - chatwoot-internal
+#     environment:
+#       <<: *base-config
+#       # MILHARES: Máxima concorrência
+#       WEB_CONCURRENCY: 4          # 4 workers por container
+#       RAILS_MAX_THREADS: 15       # 15 threads cada
+#       POSTGRES_POOL: 70
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.docker.network=traefik-network"
+#
+#       # Router principal
+#       - "traefik.http.routers.chatwoot.rule=Host(`${CHATWOOT_DOMAIN}`)"
+#       - "traefik.http.routers.chatwoot.entrypoints=websecure"
+#       - "traefik.http.routers.chatwoot.tls=true"
+#       - "traefik.http.routers.chatwoot.tls.certresolver=letsencrypt"
+#       - "traefik.http.routers.chatwoot.middlewares=chatwoot-chain"
+#
+#       # Chain de middlewares
+#       - "traefik.http.middlewares.chatwoot-chain.chain.middlewares=chatwoot-ratelimit,chatwoot-compress,chatwoot-retry"
+#
+#       # Rate limit (200 req/s, burst 500)
+#       - "traefik.http.middlewares.chatwoot-ratelimit.ratelimit.average=200"
+#       - "traefik.http.middlewares.chatwoot-ratelimit.ratelimit.burst=500"
+#       - "traefik.http.middlewares.chatwoot-ratelimit.ratelimit.period=1s"
+#
+#       # Compressão
+#       - "traefik.http.middlewares.chatwoot-compress.compress=true"
+#
+#       # Retry em falhas
+#       - "traefik.http.middlewares.chatwoot-retry.retry.attempts=3"
+#       - "traefik.http.middlewares.chatwoot-retry.retry.initialinterval=100ms"
+#
+#       # Service com load balancing avançado
+#       - "traefik.http.services.chatwoot.loadbalancer.server.port=3000"
+#       - "traefik.http.services.chatwoot.loadbalancer.sticky.cookie=true"
+#       - "traefik.http.services.chatwoot.loadbalancer.sticky.cookie.name=chatwoot_sticky"
+#       - "traefik.http.services.chatwoot.loadbalancer.sticky.cookie.httponly=true"
+#       - "traefik.http.services.chatwoot.loadbalancer.healthcheck.path=/api"
+#       - "traefik.http.services.chatwoot.loadbalancer.healthcheck.interval=5s"
+#       - "traefik.http.services.chatwoot.loadbalancer.healthcheck.timeout=3s"
+#     deploy:
+#       replicas: 4                  # 4 containers = 240 threads
+#       resources:
+#         limits:
+#           cpus: '2'
+#           memory: 4G
+#       update_config:
+#         parallelism: 1
+#         delay: 30s
+#         order: start-first        # Zero downtime deploy
+#
+#   sidekiq:
+#     image: dariobastosdev/chatwoot:latest
+#     command: bundle exec sidekiq
+#     restart: unless-stopped
+#     depends_on:
+#       - postgres
+#       - redis
+#     networks:
+#       - chatwoot-internal
+#     environment:
+#       <<: *base-config
+#       SIDEKIQ_CONCURRENCY: 30
+#       POSTGRES_POOL: 35
+#     deploy:
+#       replicas: 4                  # 4 containers = 120 jobs paralelos
+#       resources:
+#         limits:
+#           cpus: '2'
+#           memory: 2G
+#
+#   postgres:
+#     image: postgres:15
+#     restart: unless-stopped
+#     networks:
+#       - chatwoot-internal
+#     volumes:
+#       - postgres_data:/var/lib/postgresql/data
+#     environment:
+#       POSTGRES_USER: chatwoot
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#       POSTGRES_DB: chatwoot_production
+#     command: >
+#       postgres
+#       -c max_connections=500
+#       -c shared_buffers=4GB
+#       -c work_mem=32MB
+#       -c maintenance_work_mem=1GB
+#       -c effective_cache_size=12GB
+#       -c checkpoint_completion_target=0.9
+#       -c wal_buffers=64MB
+#       -c max_wal_size=4GB
+#       -c random_page_cost=1.1
+#     deploy:
+#       resources:
+#         limits:
+#           cpus: '4'
+#           memory: 8G
+#
+#   redis:
+#     image: redis:7
+#     restart: unless-stopped
+#     networks:
+#       - chatwoot-internal
+#     volumes:
+#       - redis_data:/data
+#     command: redis-server --maxmemory 4gb --maxmemory-policy allkeys-lru --appendonly yes
+#     deploy:
+#       resources:
+#         limits:
+#           cpus: '1'
+#           memory: 4G
+#
+# volumes:
+#   postgres_data:
+#   redis_data:
+
+# ============================================================
+# 📌 CONFIGURAÇÃO 4: MILHÕES DE USUÁRIOS (Enterprise)
+# ============================================================
+# ARQUITETURA: Docker Swarm / Kubernetes
+# Infraestrutura: Multi-node com auto-scaling
+# Uso: SaaS, operações massivas
+# Capacidade: ~2000+ req/s, ~50000+ msg/min
+# ============================================================
+#
+# ---
+# version: '3.8'
+#
+# # NOTA: Para milhões de usuários, considere:
+# # 1. Migrar para Kubernetes com HPA
+# # 2. PostgreSQL gerenciado (RDS, Cloud SQL)
+# # 3. Redis Cluster (ElastiCache, Memorystore)
+# # 4. CDN para assets (CloudFront, Cloudflare)
+#
+# networks:
+#   traefik-network:
+#     external: true
+#   chatwoot-internal:
+#     driver: overlay          # Overlay para Swarm multi-node
+#     attachable: true
+#
+# x-base-config: &base-config
+#   FRONTEND_URL: https://${CHATWOOT_DOMAIN}
+#   SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+#   # Use PostgreSQL externo/gerenciado
+#   POSTGRES_HOST: ${POSTGRES_HOST}
+#   POSTGRES_USERNAME: ${POSTGRES_USERNAME}
+#   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#   POSTGRES_DATABASE: ${POSTGRES_DATABASE}
+#   # Use Redis externo/cluster
+#   REDIS_URL: ${REDIS_URL}
+#   RAILS_ENV: production
+#   EVOLUTION_API_URL: ${EVOLUTION_API_URL}
+#   EVOLUTION_API_TOKEN: ${EVOLUTION_API_TOKEN}
+#   # Configurações adicionais para escala
+#   RAILS_LOG_TO_STDOUT: true
+#   ENABLE_ACCOUNT_SIGNUP: false
+#
+# services:
+#   rails:
+#     image: dariobastosdev/chatwoot:latest
+#     command: bundle exec rails s -p 3000 -b '0.0.0.0'
+#     networks:
+#       - traefik-network
+#       - chatwoot-internal
+#     environment:
+#       <<: *base-config
+#       # MILHÕES: Configuração por container
+#       WEB_CONCURRENCY: 4
+#       RAILS_MAX_THREADS: 20
+#       POSTGRES_POOL: 25           # Menor por container, mais containers
+#     labels:
+#       - "traefik.enable=true"
+#       - "traefik.docker.network=traefik-network"
+#
+#       # Router com middlewares avançados
+#       - "traefik.http.routers.chatwoot.rule=Host(`${CHATWOOT_DOMAIN}`)"
+#       - "traefik.http.routers.chatwoot.entrypoints=websecure"
+#       - "traefik.http.routers.chatwoot.tls=true"
+#       - "traefik.http.routers.chatwoot.tls.certresolver=letsencrypt"
+#       - "traefik.http.routers.chatwoot.middlewares=chatwoot-enterprise"
+#
+#       # Chain enterprise
+#       - "traefik.http.middlewares.chatwoot-enterprise.chain.middlewares=chatwoot-ratelimit,chatwoot-compress,chatwoot-headers,chatwoot-circuitbreaker"
+#
+#       # Rate limit alto
+#       - "traefik.http.middlewares.chatwoot-ratelimit.ratelimit.average=500"
+#       - "traefik.http.middlewares.chatwoot-ratelimit.ratelimit.burst=1000"
+#
+#       # Compressão
+#       - "traefik.http.middlewares.chatwoot-compress.compress=true"
+#
+#       # Headers de segurança
+#       - "traefik.http.middlewares.chatwoot-headers.headers.stsSeconds=31536000"
+#       - "traefik.http.middlewares.chatwoot-headers.headers.stsIncludeSubdomains=true"
+#       - "traefik.http.middlewares.chatwoot-headers.headers.contentTypeNosniff=true"
+#       - "traefik.http.middlewares.chatwoot-headers.headers.browserXssFilter=true"
+#
+#       # Circuit breaker para resiliência
+#       - "traefik.http.middlewares.chatwoot-circuitbreaker.circuitbreaker.expression=ResponseCodeRatio(500, 600, 0, 600) > 0.30"
+#
+#       # Service
+#       - "traefik.http.services.chatwoot.loadbalancer.server.port=3000"
+#       - "traefik.http.services.chatwoot.loadbalancer.sticky.cookie=true"
+#       - "traefik.http.services.chatwoot.loadbalancer.healthcheck.path=/api"
+#       - "traefik.http.services.chatwoot.loadbalancer.healthcheck.interval=3s"
+#     deploy:
+#       mode: replicated
+#       replicas: 10                 # 10 containers = 800 threads
+#       update_config:
+#         parallelism: 2
+#         delay: 10s
+#         failure_action: rollback
+#         order: start-first
+#       rollback_config:
+#         parallelism: 2
+#         delay: 10s
+#       restart_policy:
+#         condition: on-failure
+#         delay: 5s
+#         max_attempts: 3
+#       resources:
+#         limits:
+#           cpus: '2'
+#           memory: 4G
+#         reservations:
+#           cpus: '1'
+#           memory: 2G
+#       placement:
+#         constraints:
+#           - node.role == worker
+#         preferences:
+#           - spread: node.labels.zone
+#
+#   sidekiq:
+#     image: dariobastosdev/chatwoot:latest
+#     command: bundle exec sidekiq
+#     networks:
+#       - chatwoot-internal
+#     environment:
+#       <<: *base-config
+#       SIDEKIQ_CONCURRENCY: 30
+#       POSTGRES_POOL: 35
+#     deploy:
+#       mode: replicated
+#       replicas: 8                  # 8 containers = 240 jobs paralelos
+#       resources:
+#         limits:
+#           cpus: '2'
+#           memory: 2G
+#       placement:
+#         constraints:
+#           - node.role == worker
+#
+# # PostgreSQL e Redis devem ser EXTERNOS/GERENCIADOS para esta escala
+# # Exemplo: AWS RDS + ElastiCache ou Google Cloud SQL + Memorystore
+
+# ============================================================
+# 📊 TABELA RESUMO DE CONFIGURAÇÕES
+# ============================================================
+#
+# | Escala    | Rails              | Sidekiq       | Postgres     | Redis  | Servidor          |
+# |-----------|-------------------|---------------|--------------|--------|-------------------|
+# | DEZENAS   | 1×(1×5)=5 threads | 1×10 jobs     | 50 conn      | 256MB  | 2 CPU, 4GB        |
+# | CENTENAS  | 2×(4×10)=80       | 2×25=50 jobs  | 200 conn     | 1GB    | 4 CPU, 8GB        |
+# | MILHARES  | 4×(4×15)=240      | 4×30=120 jobs | 500 conn     | 4GB    | 8+ CPU, 16GB+     |
+# | MILHÕES   | 10×(4×20)=800     | 8×30=240 jobs | RDS          | Cluster| Multi-node/K8s    |
+#
+# ============================================================
+# 📈 CAPACIDADES ESTIMADAS
+# ============================================================
+#
+# | Escala    | HTTP/s | Msg Evolution/min | Webhooks/s | Usuários Ativos |
+# |-----------|--------|-------------------|------------|-----------------|
+# | DEZENAS   | ~5     | ~100              | ~10        | 10-50           |
+# | CENTENAS  | ~40    | ~1000             | ~100       | 100-500         |
+# | MILHARES  | ~200   | ~5000             | ~500       | 1000-10000      |
+# | MILHÕES   | ~2000+ | ~50000+           | ~2000+     | 100k+           |
+#
+# ============================================================
+# 🔧 MIDDLEWARES TRAEFIK UTILIZADOS
+# ============================================================
+#
+# ratelimit    - Limita requisições por IP
+# compress     - Compressão gzip/brotli
+# retry        - Retry automático em falhas
+# headers      - Headers de segurança (HSTS, XSS, etc)
+# circuitbreaker - Abre circuito se muitos erros 5xx
+#
+# ============================================================

@@ -133,6 +133,10 @@ class Account < ApplicationRecord
   has_many :webhooks, dependent: :destroy_async
   has_many :whatsapp_channels, dependent: :destroy_async, class_name: '::Channel::Whatsapp'
   has_many :working_hours, dependent: :destroy_async
+  has_many :pipelines, dependent: :destroy_async
+  has_many :deals, dependent: :destroy_async
+  has_many :deal_activities, dependent: :destroy_async
+  has_many :message_sequences, dependent: :destroy_async
 
   has_one_attached :contacts_export
 
@@ -143,6 +147,7 @@ class Account < ApplicationRecord
 
   before_validation :validate_limit_keys
   after_create_commit :notify_creation
+  after_create_commit :create_default_pipeline
   after_destroy :remove_account_sequences
 
   def agents
@@ -198,6 +203,10 @@ class Account < ApplicationRecord
 
   def notify_creation
     Rails.configuration.dispatcher.dispatch(ACCOUNT_CREATED, Time.zone.now, account: self)
+  end
+
+  def create_default_pipeline
+    ::Pipelines::CreateDefaultService.new(self).perform
   end
 
   trigger.after(:insert).for_each(:row) do

@@ -4,6 +4,9 @@ import agentMgmt from './agentMgmt.json';
 import attributesMgmt from './attributesMgmt.json';
 import auditLogs from './auditLogs.json';
 import automation from './automation.json';
+import messageSequences from './messageSequences.json';
+import scheduledMessages from './scheduledMessages.json';
+import conversationSequences from './conversationSequences.json';
 import bulkActions from './bulkActions.json';
 import campaign from './campaign.json';
 import cannedMgmt from './cannedMgmt.json';
@@ -12,6 +15,7 @@ import components from './components.json';
 import contact from './contact.json';
 import contactFilters from './contactFilters.json';
 import conversation from './conversation.json';
+import crm from './crm.json';
 import csatMgmt from './csatMgmt.json';
 import customRole from './customRole.json';
 import datePicker from './datePicker.json';
@@ -51,6 +55,7 @@ export default {
   ...contact,
   ...contactFilters,
   ...conversation,
+  ...crm,
   ...csatMgmt,
   ...customRole,
   ...datePicker,
@@ -74,4 +79,7 @@ export default {
   ...sla,
   ...teamsSettings,
   ...whatsappTemplates,
+  ...messageSequences,
+  ...scheduledMessages,
+  ...conversationSequences,
 };

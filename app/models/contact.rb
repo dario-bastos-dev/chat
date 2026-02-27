@@ -12,8 +12,11 @@
 #  custom_attributes     :jsonb
 #  email                 :string
 #  identifier            :string
+#  is_lead               :boolean          default(FALSE)
 #  last_activity_at      :datetime
 #  last_name             :string           default("")
+#  lead_score            :integer          default(0)
+#  lead_source           :string(100)
 #  location              :string           default("")
 #  middle_name           :string           default("")
 #  name                  :string           default("")
@@ -27,7 +30,9 @@
 #
 #  index_contacts_on_account_id                          (account_id)
 #  index_contacts_on_account_id_and_contact_type         (account_id,contact_type)
+#  index_contacts_on_account_id_and_is_lead              (account_id,is_lead)
 #  index_contacts_on_account_id_and_last_activity_at     (account_id,last_activity_at DESC NULLS LAST)
+#  index_contacts_on_account_id_and_lead_score           (account_id,lead_score)
 #  index_contacts_on_blocked                             (blocked)
 #  index_contacts_on_company_id                          (company_id)
 #  index_contacts_on_lower_email_account_id              (lower((email)::text), account_id)
@@ -62,6 +67,8 @@ class Contact < ApplicationRecord
   has_many :inboxes, through: :contact_inboxes
   has_many :messages, as: :sender, dependent: :destroy_async
   has_many :notes, dependent: :destroy_async
+  has_many :whatsapp_lid_mappings, class_name: 'Channel::WhatsappLidMapping', dependent: :destroy_async
+  has_many :deals, dependent: :destroy_async
   before_validation :prepare_contact_attributes
   after_create_commit :dispatch_create_event, :ip_lookup
   after_update_commit :dispatch_update_event
@@ -69,6 +76,11 @@ class Contact < ApplicationRecord
   before_save :sync_contact_attributes
 
   enum contact_type: { visitor: 0, lead: 1, customer: 2 }
+
+  # CRM Lead scopes
+  scope :leads, -> { where(is_lead: true) }
+  scope :by_lead_source, ->(source) { where(lead_source: source) }
+  scope :high_score_leads, ->(min_score = 70) { leads.where('lead_score >= ?', min_score) }
 
   scope :order_on_last_activity_at, lambda { |direction|
     order(

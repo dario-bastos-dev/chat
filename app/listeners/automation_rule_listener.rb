@@ -34,6 +34,27 @@ class AutomationRuleListener < BaseListener
     end
   end
 
+  # CRM: Deal event automation handlers
+  def deal_created(event)
+    process_deal_event(event, 'deal_created')
+  end
+
+  def deal_updated(event)
+    process_deal_event(event, 'deal_updated')
+  end
+
+  def deal_stage_changed(event)
+    process_deal_event(event, 'deal_stage_changed')
+  end
+
+  def deal_won(event)
+    process_deal_event(event, 'deal_won')
+  end
+
+  def deal_lost(event)
+    process_deal_event(event, 'deal_lost')
+  end
+
   private
 
   def process_conversation_event(event, event_name)
@@ -52,6 +73,33 @@ class AutomationRuleListener < BaseListener
 
     rules.each do |rule|
       conditions_match = ::AutomationRules::ConditionsFilterService.new(rule, conversation, { changed_attributes: changed_attributes }).perform
+      AutomationRules::ActionService.new(rule, account, conversation).perform if conditions_match.present?
+    end
+  end
+
+  def process_deal_event(event, event_name)
+    return if performed_by_automation?(event)
+
+    deal = event.data[:deal]
+    return unless deal
+
+    account = deal.account
+    return unless rule_present?(event_name, account)
+
+    # For deal automations, we use the deal's primary conversation (if any)
+    # to execute conversation-targeted actions (like sending messages)
+    conversation = deal.conversations.order(created_at: :desc).first
+    changed_attributes = event.data[:changed_attributes]
+
+    rules = current_account_rules(event_name, account)
+
+    rules.each do |rule|
+      next unless conversation.present?
+
+      conditions_match = ::AutomationRules::ConditionsFilterService.new(
+        rule, conversation,
+        { deal: deal, changed_attributes: changed_attributes }
+      ).perform
       AutomationRules::ActionService.new(rule, account, conversation).perform if conditions_match.present?
     end
   end

@@ -16,6 +16,14 @@ defineProps({
     type: Number,
     default: 0,
   },
+  conversationsCount: {
+    type: Number,
+    default: 0,
+  },
+  totalContacts: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const { t } = useI18n();
@@ -37,5 +45,12 @@ const { t } = useI18n();
   </span>
   <span class="flex-1 text-sm font-medium truncate text-n-slate-12">
     {{ messageStamp(new Date(scheduledAt), 'LLL d, h:mm a') }}
+  </span>
+
+  <span class="flex-shrink-0 text-sm text-n-slate-11 whitespace-nowrap">
+    {{ t('CAMPAIGN.SMS.CARD.CAMPAIGN_DETAILS.MESSAGES_SENT') }}
+  </span>
+  <span class="text-sm font-medium truncate text-n-slate-12">
+    {{ conversationsCount }} / {{ totalContacts }}
   </span>
 </template>

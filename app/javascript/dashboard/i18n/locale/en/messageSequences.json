@@ -1,0 +1,53 @@
+{
+  "MESSAGE_SEQUENCES": {
+    "HEADER": "Message Sequences",
+    "SIDEBAR_TITLE": "Message Sequences",
+    "DESCRIPTION": "Configure automated message sequences based on inactivity.",
+    "NEW_BUTTON": "Add a sequence",
+    "LOADING": "Loading sequences...",
+    "EMPTY": "No sequences configured.",
+    "TABLE": {
+      "NAME": "Name",
+      "ACTIVATION": "Activation",
+      "STATUS": "Status"
+    },
+    "NEW": {
+      "HEADER": "New Sequence",
+      "SUCCESS": "Message sequence created successfully!"
+    },
+    "EDIT": {
+      "HEADER": "Edit Sequence",
+      "FETCH_ERROR": "Error fetching sequence.",
+      "SUCCESS": "Sequence updated successfully!"
+    },
+    "SAVE": "Save sequence",
+    "FORM": {
+      "NAME": "Sequence name",
+      "NAME_REQUIRED": "You must provide a name for the sequence.",
+      "ERROR": "There was an error processing the form. Please check the fields."
+    },
+    "STEPS": {
+      "TITLE": "Sequence Steps",
+      "TYPE": "Action",
+      "WAIT_TIME": "Inactivity Time",
+      "CONTENT": "Content",
+      "ADD": "Add new message"
+    },
+    "RULES": {
+      "ACTIVATION": "Activation Mode",
+      "TAG": "When conversation receives the defined tag",
+      "ALWAYS": "Always active",
+      "INBOX": "Limit to Inboxes",
+      "ALL_INBOXES": "All Inboxes",
+      "SELECTED_INBOXES": "Only selected Inboxes (IDs)"
+    },
+    "DELETE": {
+      "TITLE": "Delete Sequence",
+      "MESSAGE": "Are you sure you want to permanently delete sequence",
+      "CONFIRM": "Yes, delete",
+      "CANCEL": "Cancel",
+      "SUCCESS": "Sequence deleted.",
+      "ERROR": "Could not delete sequence."
+    }
+  }
+}

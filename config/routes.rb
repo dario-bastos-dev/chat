@@ -109,6 +109,7 @@ Rails.application.routes.draw do
           resources :macros, only: [:index, :create, :show, :update, :destroy] do
             post :execute, on: :member
           end
+          resources :message_sequences, only: [:index, :create, :show, :update, :destroy]
           resources :sla_policies, only: [:index, :create, :show, :update, :destroy]
           resources :custom_roles, only: [:index, :create, :show, :update, :destroy]
           resources :agent_capacity_policies, only: [:index, :create, :show, :update, :destroy] do
@@ -139,7 +140,9 @@ Rails.application.routes.draw do
               resources :labels, only: [:create, :index]
               resource :participants, only: [:show, :create, :update, :destroy]
               resource :direct_uploads, only: [:create]
-              resource :draft_messages, only: [:show, :update, :destroy]
+              resources :draft_messages, only: [:show, :update, :destroy]
+              resources :scheduled_messages, only: [:index, :create, :update, :destroy]
+              resources :conversation_sequences, only: [:index, :create, :destroy]
             end
             member do
               post :mute
@@ -192,6 +195,30 @@ Rails.application.routes.draw do
               post :call, on: :member, to: 'calls#create' if ChatwootApp.enterprise?
             end
           end
+
+          # CRM Routes
+          resources :pipelines do
+            resources :stages do
+              collection do
+                put :reorder
+              end
+            end
+          end
+
+          resources :deals do
+            member do
+              patch :move
+              patch :assign
+              patch :win
+              patch :lose
+            end
+            resources :activities, controller: 'deal_activities' do
+              member do
+                patch :complete
+              end
+            end
+            resources :conversations, controller: 'deal_conversations', only: [:index, :create, :destroy]
+          end
           resources :csat_survey_responses, only: [:index] do
             collection do
               get :metrics
@@ -218,6 +245,11 @@ Rails.application.routes.draw do
             delete :avatar, on: :member
             post :sync_templates, on: :member
             get :health, on: :member
+            get :evolution_qrcode, on: :member
+            get :evolution_status, on: :member
+            post :evolution_create_instance, on: :member
+            post :evolution_disconnect, on: :member
+            get :evolution_diagnostics, on: :member
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member
@@ -566,6 +598,7 @@ Rails.application.routes.draw do
   get 'webhooks/instagram', to: 'webhooks/instagram#verify'
   post 'webhooks/instagram', to: 'webhooks/instagram#events'
   post 'webhooks/tiktok', to: 'webhooks/tiktok#events'
+  post 'webhooks/evolution/:phone_number', to: 'webhooks/evolution#process_payload'
   post 'webhooks/shopify', to: 'webhooks/shopify#events'
 
   namespace :twitter do

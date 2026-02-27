@@ -2,7 +2,7 @@
 import { reactive, computed, watch, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useVuelidate } from '@vuelidate/core';
-import { required, minLength } from '@vuelidate/validators';
+import { required, minLength, requiredIf } from '@vuelidate/validators';
 import { useMapGetter } from 'dashboard/composables/store';
 
 import Input from 'dashboard/components-next/input/Input.vue';
@@ -10,6 +10,7 @@ import Button from 'dashboard/components-next/button/Button.vue';
 import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
 import TagMultiSelectComboBox from 'dashboard/components-next/combobox/TagMultiSelectComboBox.vue';
 import WhatsAppTemplateParser from 'dashboard/components-next/whatsapp/WhatsAppTemplateParser.vue';
+import Switch from 'dashboard/components-next/switch/Switch.vue';
 
 const emit = defineEmits(['submit', 'cancel']);
 
@@ -30,6 +31,7 @@ const initialState = {
   templateId: null,
   scheduledAt: null,
   selectedAudience: [],
+  isScheduled: false,
 };
 
 const state = reactive({ ...initialState });
@@ -39,7 +41,7 @@ const rules = {
   title: { required, minLength: minLength(1) },
   inboxId: { required },
   templateId: { required },
-  scheduledAt: { required },
+  scheduledAt: { required: requiredIf(() => state.isScheduled) },
   selectedAudience: { required },
 };
 
@@ -144,7 +146,9 @@ const prepareCampaignDetails = () => {
     message: templateContent,
     template_params: templateParams,
     inbox_id: state.inboxId,
-    scheduled_at: formatToUTCString(state.scheduledAt),
+    scheduled_at: state.isScheduled
+      ? formatToUTCString(state.scheduledAt)
+      : null,
     audience: state.selectedAudience?.map(id => ({
       id,
       type: 'Label',
@@ -195,6 +199,13 @@ watch(
       />
     </div>
 
+    <div class="flex items-center gap-3">
+      <Switch v-model="state.isScheduled" />
+      <label class="text-sm font-medium text-n-slate-12">
+        {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.SCHEDULE_CAMPAIGN') }}
+      </label>
+    </div>
+
     <div class="flex flex-col gap-1">
       <label for="template" class="mb-0.5 text-sm font-medium text-n-slate-12">
         {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.TEMPLATE.LABEL') }}
@@ -236,6 +247,7 @@ watch(
     </div>
 
     <Input
+      v-if="state.isScheduled"
       v-model="state.scheduledAt"
       :label="t('CAMPAIGN.WHATSAPP.CREATE.FORM.SCHEDULED_AT.LABEL')"
       type="datetime-local"

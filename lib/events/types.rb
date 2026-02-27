@@ -57,4 +57,13 @@ module Events::Types
 
   # copilot events
   COPILOT_MESSAGE_CREATED = 'copilot.message.created'
+
+  # deal events (CRM)
+  DEAL_CREATED = 'deal.created'
+  DEAL_UPDATED = 'deal.updated'
+  DEAL_DELETED = 'deal.deleted'
+  DEAL_STAGE_CHANGED = 'deal.stage_changed'
+  DEAL_WON = 'deal.won'
+  DEAL_LOST = 'deal.lost'
+  DEAL_ROTTING = 'deal.rotting'
 end

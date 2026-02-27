@@ -1,0 +1,53 @@
+# == Schema Information
+#
+# Table name: scheduled_messages
+#
+#  id              :bigint           not null, primary key
+#  account_id      :bigint           not null
+#  conversation_id :bigint           not null
+#  created_by_id   :bigint           not null
+#  title           :string           not null
+#  content         :text             not null
+#  scheduled_at    :datetime         not null
+#  status          :integer          default("pending"), not null
+#  created_at      :datetime         not null
+#  updated_at      :datetime         not null
+#
+# Indexes
+#
+#  index_scheduled_messages_on_account_id       (account_id)
+#  index_scheduled_messages_on_conversation_id  (conversation_id)
+#  idx_sched_msgs_dispatch                      (account_id, status, scheduled_at)
+#
+class ScheduledMessage < ApplicationRecord
+  belongs_to :account
+  belongs_to :conversation
+  belongs_to :created_by, class_name: 'User'
+
+  enum status: { pending: 0, sent: 1, cancelled: 2 }
+
+  validates :title, :content, :scheduled_at, presence: true
+  validate :scheduled_at_must_be_in_future, on: :create
+  validate :template_required_for_whatsapp_cloud, on: :create
+
+  scope :dispatchable, -> { pending.where(scheduled_at: ..Time.current) }
+
+  private
+
+  def scheduled_at_must_be_in_future
+    return if scheduled_at.blank?
+
+    errors.add(:scheduled_at, 'must be in the future') if scheduled_at < Time.current
+  end
+
+  def template_required_for_whatsapp_cloud
+    return if scheduled_at.blank? || conversation.blank?
+
+    inbox = conversation.inbox
+    return unless inbox&.channel_type == 'Channel::Whatsapp'
+    return unless inbox.channel&.provider == 'whatsapp_cloud'
+    return if scheduled_at <= 24.hours.from_now
+
+    errors.add(:template_params, 'is required for WhatsApp Business when scheduling beyond 24 hours') if template_params.blank?
+  end
+end

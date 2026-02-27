@@ -45,6 +45,7 @@ class DashboardController < ActionController::Base
 
   def set_global_config
     @global_config = GlobalConfig.get(*GLOBAL_CONFIG_KEYS).merge(app_config)
+    @global_config['INSTALLATION_PRICING_PLAN'] = 'enterprise'
   end
 
   def set_dashboard_scripts
@@ -52,7 +53,9 @@ class DashboardController < ActionController::Base
   end
 
   def ensure_installation_onboarding
-    redirect_to '/installation/onboarding' if ::Redis::Alfred.get(::Redis::Alfred::CHATWOOT_INSTALLATION_ONBOARDING)
+    # Redirect to onboarding if the Redis flag is set (first run after seed)
+    # OR if there are no accounts at all (handles Redis data loss / pre-existing DB without seed)
+    redirect_to '/installation/onboarding' if ::Redis::Alfred.get(::Redis::Alfred::CHATWOOT_INSTALLATION_ONBOARDING) || Account.count.zero?
   end
 
   def render_hc_if_custom_domain
@@ -80,7 +83,8 @@ class DashboardController < ActionController::Base
       IS_ENTERPRISE: ChatwootApp.enterprise?,
       AZURE_APP_ID: GlobalConfigService.load('AZURE_APP_ID', ''),
       GIT_SHA: GIT_HASH,
-      ALLOWED_LOGIN_METHODS: allowed_login_methods
+      ALLOWED_LOGIN_METHODS: allowed_login_methods,
+      evolutionApiConfigured: GlobalConfigService.load('EVOLUTION_API_URL', '').present?
     }
   end
 

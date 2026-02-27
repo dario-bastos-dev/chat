@@ -33,6 +33,23 @@ class Inboxes extends CacheEnabledApiClient {
     return axios.post(`${this.url}/${inboxId}/sync_templates`);
   }
 
+  // Evolution API methods
+  getEvolutionQRCode(inboxId, params = {}) {
+    return axios.get(`${this.url}/${inboxId}/evolution_qrcode`, { params });
+  }
+
+  getEvolutionStatus(inboxId) {
+    return axios.get(`${this.url}/${inboxId}/evolution_status`);
+  }
+
+  createEvolutionInstance(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_create_instance`);
+  }
+
+  disconnectEvolution(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_disconnect`);
+  }
+
   createCSATTemplate(inboxId, template) {
     return axios.post(`${this.url}/${inboxId}/csat_template`, {
       template,

@@ -326,6 +326,7 @@
     "NOTIFICATIONS": "Notificações",
     "CANNED_RESPONSES": "Respostas Prontas",
     "INTEGRATIONS": "Integrações",
+    "PIPELINES": "Pipelines",
     "PROFILE_SETTINGS": "Configurações do Perfil",
     "ACCOUNT_SETTINGS": "Conta",
     "APPLICATIONS": "Aplicações",
@@ -346,7 +347,8 @@
     "CSAT": "CSAT",
     "LIVE_CHAT": "Chat ao vivo",
     "SMS": "SMS",
-    "WHATSAPP": "WhatsApp",
+    "WHATSAPP": "WhatsApp Business",
+    "WHATSAPP_LITE": "WhatsApp Lite",
     "CAMPAIGNS": "Campanhas",
     "ONGOING": "Em andamento",
     "ONE_OFF": "Única",
@@ -378,7 +380,9 @@
       "INFO_SHORT": "Marcar off-line automaticamente quando não estiver usando o aplicativo."
     },
     "DOCS": "Ler documentos",
-    "SECURITY": "Segurança"
+    "SECURITY": "Segurança",
+    "CRM": "CRM",
+    "CRM_DEALS": "Negócios"
   },
   "BILLING_SETTINGS": {
     "TITLE": "Cobrança",

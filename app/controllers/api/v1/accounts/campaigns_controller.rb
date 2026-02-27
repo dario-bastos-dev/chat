@@ -10,6 +10,7 @@ class Api::V1::Accounts::CampaignsController < Api::V1::Accounts::BaseController
 
   def create
     @campaign = Current.account.campaigns.create!(campaign_params)
+    Campaigns::TriggerOneoffCampaignJob.perform_later(@campaign) if @campaign.one_off? && @campaign.scheduled_at <= Time.now.utc
   end
 
   def update

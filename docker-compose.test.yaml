@@ -1,4 +1,3 @@
-version: '3'
 
 services:
   base: &base
@@ -10,57 +9,128 @@ services:
         EXECJS_RUNTIME: Disabled
         RAILS_ENV: 'production'
         RAILS_SERVE_STATIC_FILES: 'true'
-    image: chatwoot:latest
+    image: dariobastosdev/chatwoot:4.9.1
     env_file: .env ## Change this file for customized env variables
 
   rails:
     <<: *base
-    image: chatwoot:latest
+    image: dariobastosdev/chatwoot:4.9.1
     depends_on:
       - postgres
       - redis
     ports:
-      - 3000:3000
+      - "3000:3000"
     environment:
       - NODE_ENV=production
       - RAILS_ENV=production
+    networks:
+      - chatwoot
     entrypoint: docker/entrypoints/rails.sh
-    command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
+    command: bundle exec rails s -p 3000 -b 0.0.0.0
 
   sidekiq:
     <<: *base
-    image: chatwoot:latest
+    image: dariobastosdev/chatwoot:4.9.1
     depends_on:
       - postgres
       - redis
     environment:
       - NODE_ENV=production
       - RAILS_ENV=production
-    command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
+    networks:
+      - chatwoot
+    command: bundle exec sidekiq -C config/sidekiq.yml
 
   postgres:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg17
     restart: always
     ports:
-      - '5432:5432'
+      - "5432:5432"
+    networks:
+      - chatwoot
     volumes:
-      - postgres:/data/postgres
+      - postgres:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=chatwoot
+      - POSTGRES_DB=chatwoot_production
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=
+      - POSTGRES_PASSWORD=postgres
 
   redis:
     image: redis:alpine
     restart: always
+    networks:
+      - chatwoot
     volumes:
       - redis:/data/redis
     ports:
-      - '6379:6379'
+      - "6379:6379"
+
+  # evo-redis:
+  #   image: redis:alpine
+  #   command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+  #   volumes:
+  #     - redis_data_evo:/data
+  #   networks:
+  #     - chatwoot
+
+  # evolution:
+  #   image: evoapicloud/evolution-api:latest
+  #   restart: always
+  #   environment:
+  #     - AUTHENTICATION_API_KEY=62dnxpUUurkxgrzPpWrJNBRqAgfNCEnM
+  #     - SERVER_TYPE=http
+  #     - SERVER_PORT=8080
+  #     - SERVER_URL=http://localhost:8080
+  #     - LOG_LEVEL=ERROR,WARN,DEBUG,INFO,LOG,VERBOSE,DARK,WEBHOOKS
+  #     # Postgres
+  #     - DATABASE_ENABLED=true
+  #     - DATABASE_PROVIDER=postgresql
+  #     - DATABASE_CONNECTION_URI=postgresql://postgres:postgres@postgres:5432/evolution
+  #     - DATABASE_CONNECTION_CLIENT_NAME=evolution_exchange
+  #     - DATABASE_SAVE_DATA_INSTANCE=true
+  #     - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+  #     - DATABASE_SAVE_MESSAGE_UPDATE=true
+  #     - DATABASE_SAVE_DATA_CONTACTS=true
+  #     - DATABASE_SAVE_DATA_CHATS=true
+  #     - DATABASE_SAVE_DATA_LABELS=true
+  #     - DATABASE_SAVE_DATA_HISTORIC=true
+  #     # Redis
+  #     - CACHE_REDIS_ENABLED=true
+  #     - CACHE_REDIS_URI=redis://evo-redis:6379/0
+  #     - CACHE_REDIS_PREFIX_KEY=evolution
+  #     - CACHE_REDIS_SAVE_INSTANCES=false
+  #     - CACHE_REDIS_SAVE_MESSAGES=false
+  #     # MinIO
+  #     - S3_ENABLED=false
+  #     # Options
+  #     - QRCODE_LIMIT=1902
+  #     - LANGUAGE=pt-BR
+  #     - DEL_INSTANCE=false
+  #     # Session
+  #     #- CONFIG_SESSION_PHONE_VERSION=2.3000.1023204200
+  #     - CONFIG_SESSION_PHONE_CLIENT=Evolution_API
+  #     - CONFIG_SESSION_PHONE_NAME=Chrome
+  #     # Services
+  #     - CHATWOOT_ENABLED=true
+  #     - N8N_ENABLED=true
+  #     - TYPEBOT_ENABLED=true
+  #   volumes:
+  #     - evolution_instances:/evolution/instances
+  #     - evolution_store:/evolution/store
+  #   networks:
+  #     - chatwoot
+
+networks:
+  chatwoot:
+    driver: bridge
 
 volumes:
+  chatwoot:
   postgres:
   redis:
   bundle:
   packs:
   node_modules_rails:
+  # redis_data_evo:
+  # evolution_instances:
+  # evolution_store:

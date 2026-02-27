@@ -61,6 +61,14 @@ class Campaign < ApplicationRecord
     execute_campaign
   end
 
+  def total_contacts
+    return 0 if audience.blank?
+
+    audience_label_ids = audience.select { |a| a['type'] == 'Label' }.pluck('id')
+    audience_labels = account.labels.where(id: audience_label_ids).pluck(:title)
+    account.contacts.tagged_with(audience_labels, any: true).count
+  end
+
   private
 
   def execute_campaign
@@ -69,7 +77,7 @@ class Campaign < ApplicationRecord
       Twilio::OneoffSmsCampaignService.new(campaign: self).perform
     when 'Sms'
       Sms::OneoffSmsCampaignService.new(campaign: self).perform
-    when 'Whatsapp'
+    when 'Whatsapp', 'API'
       Whatsapp::OneoffCampaignService.new(campaign: self).perform if account.feature_enabled?(:whatsapp_campaign)
     end
   end
@@ -81,14 +89,14 @@ class Campaign < ApplicationRecord
   def validate_campaign_inbox
     return unless inbox
 
-    errors.add :inbox, 'Unsupported Inbox type' unless ['Website', 'Twilio SMS', 'Sms', 'Whatsapp'].include? inbox.inbox_type
+    errors.add :inbox, 'Unsupported Inbox type' unless ['Website', 'Twilio SMS', 'Sms', 'Whatsapp', 'API'].include? inbox.inbox_type
   end
 
   # TO-DO we clean up with better validations when campaigns evolve into more inboxes
   def ensure_correct_campaign_attributes
     return if inbox.blank?
 
-    if ['Twilio SMS', 'Sms', 'Whatsapp'].include?(inbox.inbox_type)
+    if ['Twilio SMS', 'Sms', 'Whatsapp', 'API'].include?(inbox.inbox_type)
       self.campaign_type = 'one_off'
       self.scheduled_at ||= Time.now.utc
     else

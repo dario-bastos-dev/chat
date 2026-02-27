@@ -11,6 +11,7 @@ import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 import AccordionItem from 'dashboard/components/Accordion/AccordionItem.vue';
 import ContactConversations from './ContactConversations.vue';
+import ContactDeals from './contact/ContactDeals.vue';
 import ConversationAction from './ConversationAction.vue';
 import ConversationParticipant from './ConversationParticipant.vue';
 import ContactInfo from './contact/ContactInfo.vue';
@@ -19,6 +20,8 @@ import ConversationInfo from './ConversationInfo.vue';
 import CustomAttributes from './customAttributes/CustomAttributes.vue';
 import Draggable from 'vuedraggable';
 import MacrosList from './Macros/List.vue';
+import ScheduledMessagesList from './ScheduledMessages/List.vue';
+import ConversationSequencesList from './ConversationSequences/List.vue';
 import ShopifyOrdersList from 'dashboard/components/widgets/conversation/ShopifyOrdersList.vue';
 import SidebarActionsHeader from 'dashboard/components-next/SidebarActionsHeader.vue';
 import LinearIssuesList from 'dashboard/components/widgets/conversation/linear/IssuesList.vue';
@@ -250,6 +253,34 @@ onMounted(() => {
               <MacrosList :conversation-id="conversationId" />
             </AccordionItem>
           </woot-feature-toggle>
+          <div v-else-if="element.name === 'scheduled_messages'">
+            <AccordionItem
+              :title="$t('SCHEDULED_MESSAGES.TITLE')"
+              :is-open="isContactSidebarItemOpen('is_scheduled_messages_open')"
+              compact
+              @toggle="
+                value =>
+                  toggleSidebarUIState('is_scheduled_messages_open', value)
+              "
+            >
+              <ScheduledMessagesList :conversation-id="conversationId" />
+            </AccordionItem>
+          </div>
+          <div v-else-if="element.name === 'conversation_sequences'">
+            <AccordionItem
+              :title="$t('CONVERSATION_SEQUENCES.TITLE')"
+              :is-open="
+                isContactSidebarItemOpen('is_conversation_sequences_open')
+              "
+              compact
+              @toggle="
+                value =>
+                  toggleSidebarUIState('is_conversation_sequences_open', value)
+              "
+            >
+              <ConversationSequencesList :conversation-id="conversationId" />
+            </AccordionItem>
+          </div>
           <div
             v-else-if="
               element.name === 'linear_issues' &&
@@ -295,6 +326,22 @@ onMounted(() => {
               "
             >
               <ContactNotes :contact-id="contactId" />
+            </AccordionItem>
+          </div>
+          <div v-else-if="element.name === 'contact_deals'">
+            <AccordionItem
+              v-if="contactId"
+              :title="$t('CONVERSATION_SIDEBAR.ACCORDION.CONTACT_DEALS')"
+              :is-open="isContactSidebarItemOpen('is_contact_deals_open')"
+              compact
+              @toggle="
+                value => toggleSidebarUIState('is_contact_deals_open', value)
+              "
+            >
+              <ContactDeals
+                :contact-id="contactId"
+                :conversation-id="conversationId"
+              />
             </AccordionItem>
           </div>
         </template>

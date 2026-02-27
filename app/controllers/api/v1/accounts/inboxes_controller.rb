@@ -4,7 +4,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   before_action :fetch_agent_bot, only: [:set_agent_bot]
   before_action :validate_limit, only: [:create]
   # we are already handling the authorization in fetch inbox
-  before_action :check_authorization, except: [:show, :health]
+  before_action :check_authorization, except: [:show, :health, :evolution_qrcode, :evolution_status, :evolution_create_instance, :evolution_disconnect, :evolution_diagnostics]
   before_action :validate_whatsapp_cloud_channel, only: [:health]
 
   def index
@@ -85,6 +85,101 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   rescue StandardError => e
     Rails.logger.error "[INBOX HEALTH] Error fetching health data: #{e.message}"
     render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def evolution_qrcode
+    Rails.logger.info "[EVOLUTION CONTROLLER] === QR CODE REQUEST ==="
+    Rails.logger.info "[EVOLUTION CONTROLLER] Inbox ID: #{params[:id]}, Account ID: #{params[:account_id]}"
+    
+    unless evolution_channel?
+      Rails.logger.warn "[EVOLUTION CONTROLLER] Not an Evolution channel"
+      return render json: { error: 'Not an Evolution channel', success: false }, status: :bad_request
+    end
+    
+    Rails.logger.info "[EVOLUTION CONTROLLER] Phone number param: #{params[:number]}"
+    Rails.logger.info "[EVOLUTION CONTROLLER] Channel: #{@inbox.channel.class.name}, Provider: #{@inbox.channel&.provider}"
+    
+    result = @inbox.channel.provider_service.get_qr_code(phone_number: params[:number])
+    
+    Rails.logger.info "[EVOLUTION CONTROLLER] Result: success=#{result[:success]}, has_qr=#{result[:qr_code].present?}, has_pairing=#{result[:pairing_code].present?}"
+    
+    render json: result
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION CONTROLLER] ❌ Exception: #{e.class} - #{e.message}"
+    Rails.logger.error "[EVOLUTION CONTROLLER] Backtrace:\n#{e.backtrace[0..5].join("\n")}"
+    render json: { error: e.message, success: false }, status: :internal_server_error
+  end
+
+  def evolution_status
+    return render json: { error: 'Not an Evolution channel' }, status: :bad_request unless evolution_channel?
+
+    result = @inbox.channel.provider_service.get_connection_status
+    render json: result
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION] Error fetching status: #{e.message}"
+    render json: { error: e.message, success: false, connected: false }, status: :unprocessable_entity
+  end
+
+  def evolution_create_instance
+    return render json: { error: 'Not an Evolution channel' }, status: :bad_request unless evolution_channel?
+
+    result = @inbox.channel.provider_service.create_instance
+    render json: result
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION] Error creating instance: #{e.message}"
+    render json: { error: e.message, success: false }, status: :unprocessable_entity
+  end
+
+  def evolution_disconnect
+    return render json: { error: 'Not an Evolution channel', success: false }, status: :bad_request unless evolution_channel?
+
+    Rails.logger.info "[EVOLUTION CONTROLLER] Disconnecting instance for inbox #{@inbox.id}"
+    
+    result = @inbox.channel.provider_service.logout
+    
+    Rails.logger.info "[EVOLUTION CONTROLLER] Disconnect result: #{result.inspect}"
+    render json: result
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION CONTROLLER] Error disconnecting: #{e.class} - #{e.message}"
+    render json: { error: e.message, success: false }, status: :internal_server_error
+  end
+
+  def evolution_diagnostics
+    return render json: { error: 'Not an Evolution channel' }, status: :bad_request unless evolution_channel?
+
+    service = @inbox.channel.provider_service
+    
+    diagnostics = {
+      inbox_id: @inbox.id,
+      inbox_name: @inbox.name,
+      phone_number: @inbox.phone_number,
+      provider: @inbox.channel.provider,
+      
+      api_configured: service.evolution_configured?,
+      api_url: service.api_base_url,
+      api_token_present: service.api_token.present?,
+      
+      instance_name: service.instance_name,
+      
+      evolution_api_urls: {
+        qr_code: "#{service.api_base_url}/instance/connect/#{service.instance_name}",
+        pairing_code_example: "#{service.api_base_url}/instance/connect/#{service.instance_name}?number=5527997774194",
+        status: "#{service.api_base_url}/instance/connectionState/#{service.instance_name}",
+        create_instance: "#{service.api_base_url}/instance/create",
+        update_settings: "#{service.api_base_url}/settings/set/#{service.instance_name}"
+      },
+      
+      chatwoot_api_urls: {
+        qr_code_endpoint: "GET #{request.base_url}/api/v1/accounts/#{Current.account.id}/inboxes/#{@inbox.id}/evolution_qrcode",
+        pairing_code_endpoint: "GET #{request.base_url}/api/v1/accounts/#{Current.account.id}/inboxes/#{@inbox.id}/evolution_qrcode?number=5527997774194",
+        status_endpoint: "GET #{request.base_url}/api/v1/accounts/#{Current.account.id}/inboxes/#{@inbox.id}/evolution_status"
+      }
+    }
+    
+    render json: diagnostics
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION DIAGNOSTICS] Error: #{e.class} - #{e.message}"
+    render json: { error: e.message }, status: :internal_server_error
   end
 
   private
@@ -203,6 +298,10 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
 
   def whatsapp_channel?
     @inbox.whatsapp? || (@inbox.twilio? && @inbox.channel.whatsapp?)
+  end
+
+  def evolution_channel?
+    @inbox&.channel.is_a?(Channel::Whatsapp) && @inbox.channel&.provider == 'evolution'
   end
 
   def trigger_template_sync

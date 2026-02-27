@@ -50,6 +50,16 @@ module Redis::RedisKeys
   ASSIGNMENT_KEY = 'ASSIGNMENT::%<inbox_id>d::AGENT::%<agent_id>d::CONVERSATION::%<conversation_id>d'.freeze
   ASSIGNMENT_KEY_PATTERN = 'ASSIGNMENT::%<inbox_id>d::AGENT::%<agent_id>d::*'.freeze
 
+  ## CRM Keys
+  # Cache of deal count per stage
+  DEALS_COUNT_BY_STAGE = 'DEALS_COUNT::%<account_id>d::%<stage_id>d'.freeze
+  # Cache of total pipeline value
+  PIPELINE_TOTAL_VALUE = 'PIPELINE_VALUE::%<account_id>d::%<pipeline_id>d'.freeze
+  # Cache of deals for a contact
+  CONTACT_DEALS_CACHE = 'CONTACT_DEALS::%<contact_id>d'.freeze
+  # Cache of kanban view data
+  KANBAN_CACHE = 'KANBAN::%<account_id>d::%<pipeline_id>d::%<page>d'.freeze
+
   ## Account Email Rate Limiting
   ACCOUNT_OUTBOUND_EMAIL_COUNT_KEY = 'OUTBOUND_EMAIL_COUNT::%<account_id>d::%<date>s'.freeze
 end

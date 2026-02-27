@@ -1,0 +1,10 @@
+json.id stage.id
+json.pipeline_id stage.pipeline_id
+json.name stage.name
+json.position stage.position
+json.win_probability stage.win_probability
+json.rotting_days stage.rotting_days
+json.deals_count stage.deals_count
+json.total_value stage.total_value
+json.created_at stage.created_at
+json.updated_at stage.updated_at

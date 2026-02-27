@@ -22,3 +22,15 @@ json.messages do
   end
 end
 json.account_id conversation.account_id
+
+# CRM: linked deals
+if conversation.respond_to?(:deals) && conversation.deals.any?
+  json.linked_deals do
+    json.array! conversation.deals do |deal|
+      json.id deal.id
+      json.title deal.title
+      json.value deal.value.to_f
+      json.status deal.status
+    end
+  end
+end

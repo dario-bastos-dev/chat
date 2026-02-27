@@ -144,3 +144,9 @@ shopify:
   enabled: true
   icon: 'icon-shopify'
   config_key: 'shopify'
+evolution:
+  name: 'Evolution API'
+  description: 'Configuration for WhatsApp Lite using Evolution API'
+  enabled: true
+  icon: 'icon-whatsapp-line'
+  config_key: 'evolution'

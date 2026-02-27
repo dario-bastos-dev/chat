@@ -38,7 +38,8 @@ const emit = defineEmits([
   'closeMobileSidebar',
 ]);
 
-const { accountScopedRoute, isOnChatwootCloud } = useAccount();
+const { accountScopedRoute, isOnChatwootCloud, isCloudFeatureEnabled } =
+  useAccount();
 const store = useStore();
 const searchShortcut = useKbd([`$mod`, 'k']);
 const { t } = useI18n();
@@ -315,6 +316,23 @@ const menuItems = computed(() => {
         },
       ],
     },
+    ...(isCloudFeatureEnabled('crm')
+      ? [
+          {
+            name: 'CRM',
+            label: t('SIDEBAR.CRM'),
+            icon: 'i-lucide-kanban',
+            children: [
+              {
+                name: 'Deals',
+                label: t('SIDEBAR.CRM_DEALS'),
+                to: accountScopedRoute('deals_index'),
+                activeOn: ['deals_index', 'deals_kanban'],
+              },
+            ],
+          },
+        ]
+      : []),
     {
       name: 'Captain',
       icon: 'i-woot-captain',
@@ -519,6 +537,11 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.WHATSAPP'),
           to: accountScopedRoute('campaigns_whatsapp_index'),
         },
+        {
+          name: 'WhatsApp Lite',
+          label: t('SIDEBAR.WHATSAPP_LITE'),
+          to: accountScopedRoute('campaigns_whatsapp_lite_index'),
+        },
       ],
     },
     {
@@ -671,6 +694,12 @@ const menuItems = computed(() => {
           to: accountScopedRoute('macros_wrapper'),
         },
         {
+          name: 'Settings Message Sequences',
+          label: t('MESSAGE_SEQUENCES.SIDEBAR_TITLE'),
+          icon: 'i-lucide-list-ordered',
+          to: accountScopedRoute('message_sequences_wrapper'),
+        },
+        {
           name: 'Settings Canned Responses',
           label: t('SIDEBAR.CANNED_RESPONSES'),
           icon: 'i-lucide-message-square-quote',
@@ -682,6 +711,16 @@ const menuItems = computed(() => {
           icon: 'i-lucide-blocks',
           to: accountScopedRoute('settings_applications'),
         },
+        ...(isCloudFeatureEnabled('crm')
+          ? [
+              {
+                name: 'Settings Pipelines',
+                label: t('SIDEBAR.PIPELINES'),
+                icon: 'i-lucide-kanban',
+                to: accountScopedRoute('pipelines_settings_index'),
+              },
+            ]
+          : []),
         {
           name: 'Settings Audit Logs',
           label: t('SIDEBAR.AUDIT_LOGS'),

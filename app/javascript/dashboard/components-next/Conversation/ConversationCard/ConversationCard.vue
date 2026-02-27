@@ -48,8 +48,8 @@ const inbox = computed(() => props.stateInbox);
 const inboxName = computed(() => inbox.value?.name);
 
 const inboxIcon = computed(() => {
-  const { channelType, medium } = inbox.value;
-  return getInboxIconByType(channelType, medium);
+  const { channelType, medium, provider } = inbox.value;
+  return getInboxIconByType(channelType, medium, 'fill', provider);
 });
 
 const lastActivityAt = computed(() => {
