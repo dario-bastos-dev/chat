@@ -106,6 +106,7 @@ class Account < ApplicationRecord
   has_many :pipelines, dependent: :destroy_async
   has_many :deals, dependent: :destroy_async
   has_many :deal_activities, dependent: :destroy_async
+  has_many :message_sequences, dependent: :destroy_async
 
   has_one_attached :contacts_export
 

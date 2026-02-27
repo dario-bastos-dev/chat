@@ -571,6 +571,12 @@ const menuItems = computed(() => {
           to: accountScopedRoute('macros_wrapper'),
         },
         {
+          name: 'Settings Message Sequences',
+          label: t('MESSAGE_SEQUENCES.SIDEBAR_TITLE'),
+          icon: 'i-lucide-list-ordered',
+          to: accountScopedRoute('message_sequences_wrapper'),
+        },
+        {
           name: 'Settings Canned Responses',
           label: t('SIDEBAR.CANNED_RESPONSES'),
           icon: 'i-lucide-message-square-quote',

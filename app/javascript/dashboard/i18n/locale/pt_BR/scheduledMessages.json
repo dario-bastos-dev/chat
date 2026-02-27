@@ -1,0 +1,21 @@
+{
+  "SCHEDULED_MESSAGES": {
+    "TITLE": "Mensagens Programadas",
+    "NEW": "Nova mensagem",
+    "ADD_NEW": "Adicionar nova mensagem",
+    "LOADING": "Carregando mensagens programadas...",
+    "EMPTY": "Nenhuma mensagem programada para essa conversa.",
+    "FORM": {
+      "DATE": "Data",
+      "TIME": "Horário",
+      "TITLE": "Título",
+      "CONTENT": "Conteúdo da mensagem",
+      "CANCEL": "Cancelar",
+      "CONFIRM": "Confirmar",
+      "TEMPLATE": "Template do WhatsApp",
+      "TEMPLATE_REQUIRED": "Um template é obrigatório para mensagens programadas com mais de 24 horas de antecedência.",
+      "SELECT_TEMPLATE": "Selecione um template",
+      "TEMPLATE_SELECTED": "Template selecionado: {name}"
+    }
+  }
+}

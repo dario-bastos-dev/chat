@@ -1,0 +1,21 @@
+{
+  "SCHEDULED_MESSAGES": {
+    "TITLE": "Scheduled Messages",
+    "NEW": "New message",
+    "ADD_NEW": "Add new message",
+    "LOADING": "Loading scheduled messages...",
+    "EMPTY": "No scheduled messages for this conversation.",
+    "FORM": {
+      "DATE": "Date",
+      "TIME": "Time",
+      "TITLE": "Title",
+      "CONTENT": "Message Content",
+      "CANCEL": "Cancel",
+      "CONFIRM": "Confirm",
+      "TEMPLATE": "WhatsApp Template",
+      "TEMPLATE_REQUIRED": "A template is required for messages scheduled beyond 24 hours.",
+      "SELECT_TEMPLATE": "Select a template",
+      "TEMPLATE_SELECTED": "Template selected: {name}"
+    }
+  }
+}

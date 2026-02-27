@@ -115,6 +115,9 @@ class Conversation < ApplicationRecord
   has_many :reporting_events, dependent: :destroy_async
   has_many :conversation_deals, dependent: :destroy_async
   has_many :deals, through: :conversation_deals
+  has_many :scheduled_messages, dependent: :destroy_async
+  has_many :conversation_message_sequences, dependent: :destroy_async
+  has_many :active_message_sequences, through: :conversation_message_sequences, source: :message_sequence
 
   before_save :ensure_snooze_until_reset
   before_create :determine_conversation_status
@@ -123,6 +126,7 @@ class Conversation < ApplicationRecord
   after_update_commit :execute_after_update_commit_callbacks
   after_create_commit :notify_conversation_creation
   after_create_commit :load_attributes_created_by_db_triggers
+  after_create_commit :attach_always_active_sequences
 
   delegate :auto_resolve_after, to: :account
 
@@ -332,6 +336,16 @@ class Conversation < ApplicationRecord
     return unless additional_attributes['referer']
 
     self['additional_attributes']['referer'] = nil unless url_valid?(additional_attributes['referer'])
+  end
+
+  def attach_always_active_sequences
+    account.message_sequences.active.always_active.find_each do |sequence|
+      conversation_message_sequences.find_or_create_by!(message_sequence_id: sequence.id) do |cms|
+        cms.active = true
+      end
+    end
+  rescue StandardError => e
+    Rails.logger.error("[ConversationMessageSequence] Failed to auto-attach sequences: #{e.message}")
   end
 
   # creating db triggers

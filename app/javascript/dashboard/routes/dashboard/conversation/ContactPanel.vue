@@ -20,6 +20,8 @@ import ConversationInfo from './ConversationInfo.vue';
 import CustomAttributes from './customAttributes/CustomAttributes.vue';
 import Draggable from 'vuedraggable';
 import MacrosList from './Macros/List.vue';
+import ScheduledMessagesList from './ScheduledMessages/List.vue';
+import ConversationSequencesList from './ConversationSequences/List.vue';
 import ShopifyOrdersList from 'dashboard/components/widgets/conversation/ShopifyOrdersList.vue';
 import SidebarActionsHeader from 'dashboard/components-next/SidebarActionsHeader.vue';
 import LinearIssuesList from 'dashboard/components/widgets/conversation/linear/IssuesList.vue';
@@ -251,6 +253,34 @@ onMounted(() => {
               <MacrosList :conversation-id="conversationId" />
             </AccordionItem>
           </woot-feature-toggle>
+          <div v-else-if="element.name === 'scheduled_messages'">
+            <AccordionItem
+              :title="$t('SCHEDULED_MESSAGES.TITLE')"
+              :is-open="isContactSidebarItemOpen('is_scheduled_messages_open')"
+              compact
+              @toggle="
+                value =>
+                  toggleSidebarUIState('is_scheduled_messages_open', value)
+              "
+            >
+              <ScheduledMessagesList :conversation-id="conversationId" />
+            </AccordionItem>
+          </div>
+          <div v-else-if="element.name === 'conversation_sequences'">
+            <AccordionItem
+              :title="$t('CONVERSATION_SEQUENCES.TITLE')"
+              :is-open="
+                isContactSidebarItemOpen('is_conversation_sequences_open')
+              "
+              compact
+              @toggle="
+                value =>
+                  toggleSidebarUIState('is_conversation_sequences_open', value)
+              "
+            >
+              <ConversationSequencesList :conversation-id="conversationId" />
+            </AccordionItem>
+          </div>
           <div
             v-else-if="
               element.name === 'linear_issues' &&
