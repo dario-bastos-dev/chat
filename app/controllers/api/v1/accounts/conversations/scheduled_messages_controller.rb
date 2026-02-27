@@ -3,7 +3,7 @@ class Api::V1::Accounts::Conversations::ScheduledMessagesController < Api::V1::A
   before_action :authorize_action
 
   def index
-    @scheduled_messages = @conversation.scheduled_messages.pending.order(scheduled_at: :asc)
+    @scheduled_messages = @conversation.scheduled_messages.order(scheduled_at: :desc)
   end
 
   def create
@@ -24,7 +24,7 @@ class Api::V1::Accounts::Conversations::ScheduledMessagesController < Api::V1::A
   end
 
   def destroy
-    @scheduled_message.cancelled!
+    @scheduled_message.destroy!
     head :ok
   end
 
@@ -35,7 +35,7 @@ class Api::V1::Accounts::Conversations::ScheduledMessagesController < Api::V1::A
   end
 
   def fetch_scheduled_message
-    @scheduled_message = @conversation.scheduled_messages.pending.find(params[:id])
+    @scheduled_message = @conversation.scheduled_messages.find(params[:id])
   end
 
   def authorize_action

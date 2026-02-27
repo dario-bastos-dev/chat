@@ -332,9 +332,44 @@ class Conversation < ApplicationRecord
 
     previous_labels, current_labels = previous_changes[:label_list]
     return unless (previous_labels.is_a? Array) && (current_labels.is_a? Array)
+    
+    added_labels = current_labels - previous_labels
 
-    create_label_added(user_name, current_labels - previous_labels)
+    create_label_added(user_name, added_labels)
     create_label_removed(user_name, previous_labels - current_labels)
+
+    attach_tag_sequences(added_labels) if added_labels.any?
+  end
+
+  def attach_tag_sequences(added_labels)
+    # Ignora eventos se a conversa nao puder receber funil 
+    return if resolved?
+    
+    downcased_added = added_labels.map(&:downcase)
+
+    account.message_sequences.active.tag.find_each do |sequence|
+      # Validar inboxes
+      valid_inboxes = sequence.selected_inboxes? ? sequence.inbox_ids : account.inboxes.pluck(:id)
+      next unless valid_inboxes.include?(inbox_id)
+
+      # Pegar a lista de tags configuradas para o disparo da sequência
+      seq_tags = sequence.activation_tag.to_s.split(',').compact_blank.map { |t| t.strip.downcase }
+      
+      # Verifica se alguma tag que acabou de ser adicionada bate com os gatilhos esperados
+      next unless (seq_tags & downcased_added).any?
+
+      # Encontrar ou atrelar e resetar (como na nova regra definida de recomeçar a sequência)
+      conv_seq = conversation_message_sequences.find_or_initialize_by(message_sequence_id: sequence.id)
+      
+      # Se estava inativa ou é a primeira vez, bota no passo zero e ativa pro Cronjob passar listando!
+      if !conv_seq.active?
+        conv_seq.active = true
+        conv_seq.current_step = 0
+        conv_seq.last_step_executed_at = nil
+      end
+
+      conv_seq.save! if conv_seq.changed? || conv_seq.new_record?
+    end
   end
 
   def validate_referer_url

@@ -61,8 +61,8 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
       message_id ||= response if response.present?
     end
 
-    # If there's also text content (caption), send it separately if not sent with media
-    if message.content.present? && message.attachments.none? { |a| a.file_type == 'image' || a.file_type == 'video' }
+    # Se há texto e nenhuma das mídias suporta legenda (ex: audio não suporta), envia a mensagem de texto em separado
+    if message.content.present? && message.attachments.none? { |a| %w[image video file].include?(a.file_type.to_s) }
       text_response = send_text_message(phone_number, message)
       message_id ||= text_response
     end

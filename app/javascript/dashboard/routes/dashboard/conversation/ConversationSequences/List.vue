@@ -29,11 +29,11 @@
         </div>
         <button
           v-if="sequence.attached"
-          class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded border transition-colors"
-          :class="
+          class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded transition-colors text-white"
+          :style="
             sequence.conversation_active
-              ? 'text-n-red-11 border-n-red-7 hover:bg-n-red-3'
-              : 'text-n-green-11 border-n-green-7 hover:bg-n-green-3'
+              ? 'background-color: #e53e3e;'
+              : 'background-color: #1f93ff;'
           "
           :disabled="uiFlags.isUpdating"
           @click="
@@ -50,7 +50,8 @@
         </button>
         <button
           v-else
-          class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded border text-n-blue-11 border-n-blue-7 hover:bg-n-blue-3 transition-colors"
+          class="flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded text-white transition-colors"
+          style="background-color: #1f93ff"
           :disabled="uiFlags.isUpdating"
           @click="attachSequence(sequence)"
         >

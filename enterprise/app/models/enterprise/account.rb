@@ -4,9 +4,10 @@ module Enterprise::Account
   def manually_managed_features; end
 
   # Auto-sync advanced_assignment with assignment_v2 when features are bulk-updated via admin UI
+  # Skip sync if advanced_assignment was explicitly set by the admin to avoid overriding manual changes
   def selected_feature_flags=(features)
     super
-    sync_assignment_features
+    sync_assignment_features unless features.map(&:to_s).include?('advanced_assignment')
   end
 
   def mark_for_deletion(reason = 'manual_deletion')

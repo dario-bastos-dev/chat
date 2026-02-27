@@ -15,7 +15,6 @@
           <span class="i-lucide-pencil" />
         </button>
         <button
-          v-if="message.status === 'pending'"
           @click="$emit('delete', message.id)"
           class="p-1 hover:bg-n-blue-10 rounded text-n-slate-10"
         >
@@ -33,8 +32,8 @@
       <span
         class="text-xs px-2 py-0.5 rounded-full"
         :class="{
-          'bg-n-orange-3 text-n-orange-11': message.status === 'pending',
-          'bg-n-green-3 text-n-green-11': message.status === 'sent',
+          'bg-[#eab308] text-white': message.status === 'pending',
+          'bg-[#22c55e] text-white': message.status === 'sent',
           'bg-n-red-3 text-n-red-11': message.status === 'cancelled',
         }"
       >

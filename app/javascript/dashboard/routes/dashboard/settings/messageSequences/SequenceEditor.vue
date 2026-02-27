@@ -158,31 +158,35 @@
             </select>
             <div v-if="form.activation_type === 'tag'">
               <label class="block mb-1 text-xs text-n-slate-11">
-                Nome da Tag
+                Tags de Ativação (Qualquer uma delas ativará)
               </label>
               <div
-                v-if="form.activation_tag"
-                class="flex items-center gap-2 mb-2 p-2 rounded-md border border-n-weak bg-white dark:bg-n-solid-1"
+                v-if="activationTagsList.length > 0"
+                class="flex flex-wrap items-center gap-2 mb-2 p-2 rounded-md border border-n-weak bg-white dark:bg-n-solid-1"
               >
-                <span class="text-sm text-n-slate-12">{{
-                  form.activation_tag
-                }}</span>
-                <button
-                  @click="form.activation_tag = ''"
-                  class="ml-auto text-xs text-n-ruby-9 hover:text-n-ruby-10"
+                <div
+                  v-for="tag in activationTagsList"
+                  :key="tag"
+                  class="flex items-center gap-1 px-2 py-1 text-xs border rounded-md border-n-weak bg-n-alpha-1"
                 >
-                  ✕
-                </button>
+                  <span class="text-n-slate-12">{{ tag }}</span>
+                  <button
+                    @click="removeTag(tag)"
+                    class="text-n-ruby-9 hover:text-n-ruby-10 font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
               <div
-                v-else
                 class="relative w-full rounded-md border border-n-weak bg-white dark:bg-n-solid-1 p-2"
               >
                 <LabelDropdown
                   :account-labels="accountLabels"
-                  :selected-labels="[]"
+                  :selected-labels="activationTagsList"
                   :allow-creation="true"
                   @add="onAddLabel"
+                  @remove="removeTag"
                 />
               </div>
             </div>
@@ -366,6 +370,10 @@ export default {
     visibleSteps() {
       return this.form.steps_attributes.filter(s => !s._destroy);
     },
+    activationTagsList() {
+      if (!this.form.activation_tag) return [];
+      return this.form.activation_tag.split(',').filter(t => t.trim());
+    },
   },
   mounted() {
     this.$store.dispatch('labels/get');
@@ -377,7 +385,24 @@ export default {
   },
   methods: {
     onAddLabel(label) {
-      this.form.activation_tag = label.title || label;
+      const tag = label.title || label;
+      const currentTags = this.form.activation_tag
+        ? this.form.activation_tag.split(',').filter(Boolean)
+        : [];
+      if (!currentTags.includes(tag)) {
+        currentTags.push(tag);
+        this.form.activation_tag = currentTags.join(',');
+      }
+    },
+    removeTag(tagToRemove) {
+      const tag =
+        typeof tagToRemove === 'string'
+          ? tagToRemove
+          : tagToRemove.title || tagToRemove;
+      const currentTags = this.form.activation_tag
+        ? this.form.activation_tag.split(',').filter(Boolean)
+        : [];
+      this.form.activation_tag = currentTags.filter(t => t !== tag).join(',');
     },
     getActualIndex(step) {
       return this.form.steps_attributes.indexOf(step);

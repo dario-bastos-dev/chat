@@ -315,6 +315,20 @@ class Message < ApplicationRecord
     send_reply
     execute_message_template_hooks
     update_contact_activity
+    restart_attached_active_sequences
+  end
+
+  def restart_attached_active_sequences
+    return unless incoming? && !private?
+    
+    active_sequences = conversation.conversation_message_sequences.active
+
+    active_sequences.find_each do |conv_seq|
+      conv_seq.update!(
+        current_step: 0,
+        last_step_executed_at: Time.current
+      )
+    end
   end
 
   def update_contact_activity

@@ -2,45 +2,70 @@ class MessageSequences::ProcessJob < ApplicationJob
   queue_as :scheduled_jobs
 
   def perform
-    MessageSequence.active.find_each do |sequence|
-      # Here we apply the logic to find conversations that might need a sequence message
-      conversations = find_applicable_conversations(sequence)
-      
-      conversations.find_each do |conversation|
-        # Process what step of the sequence should be fired next based on inactivity duration
-        last_contact_message = conversation.messages.incoming.last
-        next unless last_contact_message
+    # 1. Processa todos os vínculos ativos e envia as mensagens programadas
+    ConversationMessageSequence.active.includes(:conversation, :message_sequence).find_each do |conv_seq|
+      conversation = conv_seq.conversation
+      sequence = conv_seq.message_sequence
+
+      # Desativa se a sequência ou a conversa mudaram para um estado onde não devem mais receber do funil
+      unless sequence.active? && (conversation.open? || conversation.pending?)
+        conv_seq.update!(active: false)
+        next
+      end
+
+      # Identifica qual o próximo passo a executar (current_step começa em 0)
+      next_step = sequence.steps.order(:position).offset(conv_seq.current_step).first
+
+      if next_step.nil?
+        conv_seq.update!(active: false)
         
-        inactivity_duration = Time.current - last_contact_message.created_at
-        
-        # Example pseudo-logic to trigger step based on wait_time (HH:MM format)
-        sequence.steps.order(:position).each do |step|
-          hours, minutes = step.wait_time.split(':').map(&:to_i)
-          step_wait_duration = hours.hours + minutes.minutes
-          
-          # We need to ensure we only send this step once per conversation
-          # (A tracking mechanism should be implemented, e.g., a join table `conversation_message_sequence_steps_logs`)
-          # For brevity in the MVP, we assume basic execution logic.
+        # Executa a macro se houver uma vinculada
+        if sequence.macro_id.present?
+          user = sequence.created_by || sequence.account.users.first
+          Macros::ExecutionService.new(sequence.macro, conversation, user).perform
         end
+
+        next
+      end
+
+      hours, minutes = next_step.wait_time.split(':').map(&:to_i)
+      step_wait_duration = hours.hours + minutes.minutes
+      reference_time = conv_seq.last_step_executed_at || conv_seq.created_at
+
+      # Se já deu o tempo, envia a mensagem
+      if Time.current >= (reference_time + step_wait_duration)
+        execute_step(conversation, next_step)
+
+        conv_seq.update!(
+          current_step: conv_seq.current_step + 1,
+          last_step_executed_at: Time.current
+        )
       end
     end
   end
 
   private
 
-  def find_applicable_conversations(sequence)
-    # Filter by Inbox Scope
-    inboxes = sequence.selected_inboxes? ? sequence.inboxes : sequence.account.inboxes
-    conversations = Conversation.where(inbox: inboxes).resolved.invert # Active conversations
+  def execute_step(conversation, step)
+    message_params = {
+      account_id: conversation.account_id,
+      inbox_id: conversation.inbox_id,
+      message_type: :outgoing,
+      content: step.content,
+      private: false
+    }
 
-    # Filter by Activation Type
-    if sequence.tag?
-      # Return conversations that have the tag
-      label = sequence.account.labels.find_by(title: sequence.activation_tag)
-      conversations.joins(:taggings).where(taggings: { tag_id: label.id }) if label
-    else
-      # Always active
-      conversations
+    message = conversation.messages.build(message_params)
+
+    if step.send_attachment? && step.file.attached?
+      # Copia o blob do arquivo para a nova mensagem
+      attachment = message.attachments.new(
+        account_id: conversation.account_id,
+        file_type: 'file'
+      )
+      attachment.file.attach(step.file.blob)
     end
+
+    message.save!
   end
 end
