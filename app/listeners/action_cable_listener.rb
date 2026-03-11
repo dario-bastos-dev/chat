@@ -44,6 +44,14 @@ class ActionCableListener < BaseListener
     tokens = user_tokens(account, conversation.inbox.members) + contact_tokens(conversation.contact_inbox, message)
 
     broadcast(account, tokens, MESSAGE_CREATED, message.push_event_data)
+
+    # When the inbox is configured to reset unread counts on agent reply,
+    # update agent_last_seen_at when an agent sends an outgoing message.
+    return unless message.outgoing? && conversation.inbox.on_reply?
+
+    # rubocop:disable Rails/SkipsModelValidations
+    conversation.update_columns(agent_last_seen_at: DateTime.now.utc, assignee_last_seen_at: DateTime.now.utc)
+    # rubocop:enable Rails/SkipsModelValidations
   end
 
   def message_updated(event)

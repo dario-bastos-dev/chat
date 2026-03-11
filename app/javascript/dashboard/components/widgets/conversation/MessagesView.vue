@@ -430,6 +430,7 @@ export default {
     },
 
     makeMessagesRead() {
+      if (this.inbox.unread_reset_mode === 'on_reply') return;
       this.$store.dispatch('markMessagesRead', { id: this.currentChat.id });
     },
     async handleMessageRetry(message) {

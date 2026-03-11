@@ -84,6 +84,7 @@ export default {
       businessName: '',
       locktoSingleConversation: false,
       allowMessagesAfterResolved: true,
+      unreadResetMode: 'on_open',
       continuityViaEmail: true,
       selectedInboxName: '',
       channelWebsiteUrl: '',
@@ -380,6 +381,7 @@ export default {
       this.businessName = this.inbox.business_name;
       this.allowMessagesAfterResolved =
         this.inbox.allow_messages_after_resolved;
+      this.unreadResetMode = this.inbox.unread_reset_mode || 'on_open';
       this.continuityViaEmail = this.inbox.continuity_via_email;
       this.channelWebsiteUrl = this.inbox.website_url;
       this.channelWelcomeTitle = this.inbox.welcome_title;
@@ -476,6 +478,7 @@ export default {
           name: this.selectedInboxName?.trim(),
           enable_email_collect: this.emailCollectEnabled,
           allow_messages_after_resolved: this.allowMessagesAfterResolved,
+          unread_reset_mode: this.unreadResetMode,
           greeting_enabled: this.greetingEnabled,
           greeting_message: this.greetingMessage || '',
           portal_id: this.selectedPortalSlug
@@ -719,6 +722,45 @@ export default {
                 {{
                   $t(
                     'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_GREETING_TOGGLE.DISABLED'
+                  )
+                }}
+              </option>
+            </select>
+          </label>
+
+          <GreetingsEditor
+            v-if="greetingEnabled"
+            v-model="greetingMessage"
+            :label="
+              $t(
+                'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_GREETING_MESSAGE.LABEL'
+              )
+            "
+            :placeholder="
+              $t(
+                'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_GREETING_MESSAGE.PLACEHOLDER'
+              )
+            "
+            :richtext="!textAreaChannels"
+          />
+
+          <label class="pb-4">
+            {{ $t('INBOX_MGMT.SETTINGS_POPUP.UNREAD_RESET_MODE') }}
+            <p class="text-sm text-n-slate-11 mb-2">
+              {{ $t('INBOX_MGMT.SETTINGS_POPUP.UNREAD_RESET_MODE_SUB_TEXT') }}
+            </p>
+            <select v-model="unreadResetMode" @change="updateInbox">
+              <option value="on_open">
+                {{
+                  $t(
+                    'INBOX_MGMT.SETTINGS_POPUP.UNREAD_RESET_MODE_OPTIONS.ON_OPEN'
+                  )
+                }}
+              </option>
+              <option value="on_reply">
+                {{
+                  $t(
+                    'INBOX_MGMT.SETTINGS_POPUP.UNREAD_RESET_MODE_OPTIONS.ON_REPLY'
                   )
                 }}
               </option>

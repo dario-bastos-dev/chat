@@ -113,6 +113,10 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def update_last_seen
+    # If the inbox is configured to reset unread counts only when an agent replies,
+    # skip updating last_seen when the conversation is merely opened.
+    return head :ok if @conversation.inbox.on_reply?
+
     # High-traffic accounts generate excessive DB writes when agents frequently switch between conversations.
     # Throttle last_seen updates to once per hour when there are no unread messages to reduce DB load.
     # Always update immediately if there are unread messages to maintain accurate read/unread state.

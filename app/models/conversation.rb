@@ -115,8 +115,8 @@ class Conversation < ApplicationRecord
   has_many :reporting_events, dependent: :destroy_async
   has_many :conversation_deals, dependent: :destroy_async
   has_many :deals, through: :conversation_deals
-  has_many :scheduled_messages, dependent: :destroy_async
-  has_many :conversation_message_sequences, dependent: :destroy_async
+  has_many :scheduled_messages, dependent: :destroy
+  has_many :conversation_message_sequences, dependent: :destroy
   has_many :active_message_sequences, through: :conversation_message_sequences, source: :message_sequence
 
   before_save :ensure_snooze_until_reset

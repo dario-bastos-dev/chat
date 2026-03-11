@@ -366,6 +366,12 @@
           "SYNC_HISTORY": {
             "TITLE": "Sincronizar Histórico Completo",
             "DESC": "Sincronizar o histórico completo ao ler o QR Code"
+          },
+          "DELAY": {
+            "TITLE": "Delay de Mensagens",
+            "DESC": "Adicionar um delay antes de enviar mensagens (simula digitação)",
+            "TIME_LABEL": "Tempo de delay (ms)",
+            "TIME_PLACEHOLDER": "2000"
           }
         }
       },
@@ -849,6 +855,12 @@
       "FORWARD_EMAIL_NOT_CONFIGURED": "O encaminhamento de e-mails para sua caixa de entrada está desativado nesta instalação. Para utilizar esse recurso, ele deve ser habilitado pelo administrador. Entre em contato com um para prosseguir.",
       "ALLOW_MESSAGES_AFTER_RESOLVED": "Permitir mensagens após a resolução da conversa",
       "ALLOW_MESSAGES_AFTER_RESOLVED_SUB_TEXT": "Permite que os usuários finais enviem mensagens mesmo depois que a conversa for resolvida.",
+      "UNREAD_RESET_MODE": "Visualização de notificações",
+      "UNREAD_RESET_MODE_SUB_TEXT": "Escolha quando a contagem de mensagens não lidas é redefinida: quando a conversa é aberta ou quando um agente responde.",
+      "UNREAD_RESET_MODE_OPTIONS": {
+        "ON_OPEN": "Ao abrir a conversa",
+        "ON_REPLY": "Ao responder"
+      },
       "WHATSAPP_SECTION_SUBHEADER": "Esta chave de API é usada para a integração com as APIs do WhatsApp.",
       "WHATSAPP_SECTION_UPDATE_SUBHEADER": "Insira a nova chave API a ser utilizada para integração com as APIs do WhatsApp.",
       "WHATSAPP_SECTION_TITLE": "Chave API",

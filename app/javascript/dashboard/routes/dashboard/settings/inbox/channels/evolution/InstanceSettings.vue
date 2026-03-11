@@ -43,14 +43,13 @@ export default {
         read_messages: false,
         read_status: false,
         sync_full_history: false,
+        delay_enabled: true,
+        delay_time: 2000,
       },
       settingsList: [
-        { key: 'reject_calls', i18n: 'REJECT_CALLS' },
         { key: 'ignore_groups', i18n: 'IGNORE_GROUPS' },
         { key: 'always_online', i18n: 'ALWAYS_ONLINE' },
         { key: 'read_messages', i18n: 'READ_MESSAGES' },
-        { key: 'read_status', i18n: 'READ_STATUS' },
-        { key: 'sync_full_history', i18n: 'SYNC_HISTORY' },
       ],
     };
   },
@@ -82,13 +81,15 @@ export default {
     initializeSettings() {
       const config = this.inbox.provider_config || {};
       this.settings = {
-        reject_calls: config.reject_calls || false,
-        msg_call: config.msg_call || '',
+        reject_calls: false,
+        msg_call: '',
         ignore_groups: config.ignore_groups || false,
         always_online: config.always_online || false,
         read_messages: config.read_messages || false,
-        read_status: config.read_status || false,
-        sync_full_history: config.sync_full_history || false,
+        read_status: false,
+        sync_full_history: false,
+        delay_enabled: config.delay_enabled !== false,
+        delay_time: config.delay_time || 2000,
       };
     },
     async checkStatus() {
@@ -626,6 +627,48 @@ export default {
               />
             </div>
           </template>
+
+          <!-- Delay Setting -->
+          <div class="flex items-center justify-between">
+            <div class="flex flex-col">
+              <span
+                class="text-sm font-medium text-slate-700 dark:text-slate-200"
+              >
+                {{
+                  $t(
+                    'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TITLE'
+                  )
+                }}
+              </span>
+              <span class="text-xs text-slate-500 dark:text-slate-400">
+                {{
+                  $t(
+                    'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.DESC'
+                  )
+                }}
+              </span>
+            </div>
+            <WootSwitch v-model="settings.delay_enabled" />
+          </div>
+          <div
+            v-if="settings.delay_enabled"
+            class="ml-0 mt-2 p-2"
+          >
+            <NextInput
+              v-model="settings.delay_time"
+              type="number"
+              :label="
+                $t(
+                  'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TIME_LABEL'
+                )
+              "
+              :placeholder="
+                $t(
+                  'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TIME_PLACEHOLDER'
+                )
+              "
+            />
+          </div>
         </div>
         <div class="mt-4">
           <NextButton

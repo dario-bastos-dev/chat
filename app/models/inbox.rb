@@ -76,6 +76,7 @@ class Inbox < ApplicationRecord
   has_many :hooks, dependent: :destroy_async, class_name: 'Integrations::Hook'
 
   enum sender_name_type: { friendly: 0, professional: 1 }
+  enum unread_reset_mode: { on_open: 0, on_reply: 1 }
 
   after_destroy :delete_round_robin_agents
 

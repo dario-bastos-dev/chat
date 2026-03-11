@@ -220,6 +220,19 @@ class Whatsapp::IncomingMessageEvolutionService
     ts.present? ? Time.at(ts.to_i) : Time.current
   end
 
+  # Extract the stanzaId from contextInfo (quoted/reply message reference)
+  # Evolution sends contextInfo at the data level when a message is a reply
+  def in_reply_to_external_id
+    @in_reply_to_external_id ||= data_params.dig('contextInfo', 'stanzaId')
+  end
+
+  # Build content_attributes hash, including in_reply_to if present
+  def message_content_attributes
+    attrs = {}
+    attrs[:in_reply_to_external_id] = in_reply_to_external_id if in_reply_to_external_id.present?
+    attrs
+  end
+
   # Extract text content from different message types
   def text_content
     content = extract_raw_content
@@ -395,6 +408,7 @@ class Whatsapp::IncomingMessageEvolutionService
         message_type: :outgoing,
         source_id: message_id,
         created_at: message_timestamp,
+        content_attributes: message_content_attributes,
         # Assign to the conversation assignee (agent) if available, otherwise nil (system/bot)
         sender: @conversation.assignee
       )
@@ -407,7 +421,8 @@ class Whatsapp::IncomingMessageEvolutionService
         message_type: :incoming,
         sender: @contact,
         source_id: message_id,
-        created_at: message_timestamp
+        created_at: message_timestamp,
+        content_attributes: message_content_attributes
       )
     end
 

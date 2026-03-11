@@ -369,6 +369,12 @@
           "SYNC_HISTORY": {
             "TITLE": "Sync Full History",
             "DESC": "Sync full history upon scanning QR Code"
+          },
+          "DELAY": {
+            "TITLE": "Message Delay",
+            "DESC": "Add a delay before sending messages (simulates typing)",
+            "TIME_LABEL": "Delay time (ms)",
+            "TIME_PLACEHOLDER": "2000"
           }
         }
       },
@@ -829,6 +835,12 @@
       "FORWARD_EMAIL_NOT_CONFIGURED": "Forwarding emails to your inbox is currently disabled on this installation. To use this feature, it must be enabled by your administrator. Please get in touch with them to proceed.",
       "ALLOW_MESSAGES_AFTER_RESOLVED": "Allow messages after conversation resolved",
       "ALLOW_MESSAGES_AFTER_RESOLVED_SUB_TEXT": "Allow the end-users to send messages even after the conversation is resolved.",
+      "UNREAD_RESET_MODE": "Notification view mode",
+      "UNREAD_RESET_MODE_SUB_TEXT": "Choose when the unread message count is reset: when the conversation is opened or when an agent replies.",
+      "UNREAD_RESET_MODE_OPTIONS": {
+        "ON_OPEN": "When conversation is opened",
+        "ON_REPLY": "When agent replies"
+      },
       "WHATSAPP_SECTION_SUBHEADER": "This API Key is used for the integration with the WhatsApp APIs.",
       "WHATSAPP_SECTION_UPDATE_SUBHEADER": "Enter the new API key to be used for the integration with the WhatsApp APIs.",
       "WHATSAPP_SECTION_TITLE": "API Key",

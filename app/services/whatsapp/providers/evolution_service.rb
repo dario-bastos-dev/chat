@@ -35,13 +35,18 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
   end
 
   def send_text_message(phone_number, message)
+    body = {
+      number: phone_number,
+      text: message.content,
+      delay: message_delay
+    }
+    quoted = quoted_context(message)
+    body[:quoted] = quoted if quoted.present?
+
     response = HTTParty.post(
       "#{api_base_url}/message/sendText/#{instance_name}",
       headers: api_headers,
-      body: {
-        number: phone_number,
-        text: message.content
-      }.to_json,
+      body: body.to_json,
       timeout: 10  # Add timeout for better performance
     )
 
@@ -113,7 +118,8 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     if endpoint == 'sendWhatsAppAudio'
       body = {
         number: phone_number,
-        audio: file_url
+        audio: file_url,
+        delay: message_delay
       }
     else
       body = {
@@ -121,7 +127,8 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
         mediatype: evolution_media_type,
         media: file_url,
         caption: caption.presence || '',
-        fileName: attachment.file.filename.to_s
+        fileName: attachment.file.filename.to_s,
+        delay: message_delay
       }
       
       # For audio files sent via sendMedia, add mimetype
@@ -132,6 +139,9 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
         body[:mimetype] = real_mime if real_mime.present?
       end
     end
+
+    quoted = quoted_context(message)
+    body[:quoted] = quoted if quoted.present?
 
     Rails.logger.info "[EVOLUTION DEBUG] Body: #{body.to_json}"
 
@@ -499,15 +509,20 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
                  else 'sendMedia'
                  end
 
+    body = {
+      number: formatted_number,
+      mediatype: attachment.file_type,
+      media: attachment.file_url,
+      caption: message.content,
+      delay: message_delay
+    }
+    quoted = quoted_context(message)
+    body[:quoted] = quoted if quoted.present?
+
     response = HTTParty.post(
       "#{api_base_url}/message/#{media_type}/#{instance_name}",
       headers: api_headers,
-      body: {
-        number: formatted_number,
-        mediatype: attachment.file_type,
-        media: attachment.file_url,
-        caption: message.content
-      }.to_json,
+      body: body.to_json,
       timeout: 30
     )
 
@@ -526,5 +541,25 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     # Remove + from phone number for clean URL
     phone = whatsapp_channel.phone_number.to_s.gsub(/^\+/, '')
     "#{base_url}/webhooks/evolution/#{phone}"
+  end
+
+  def message_delay
+    config = whatsapp_channel.provider_config || {}
+    return 0 if [false, 'false'].include?(config['delay_enabled'])
+
+    (config['delay_time'] || 2000).to_i
+  end
+
+  # Build quoted context for reply messages
+  # Evolution API uses the 'quoted' field with key.id and message.conversation
+  def quoted_context(message)
+    reply_to_id = message.content_attributes&.dig('in_reply_to_external_id') ||
+                  message.content_attributes&.dig(:in_reply_to_external_id)
+    return nil if reply_to_id.blank?
+
+    original_message = message.conversation&.messages&.find_by(source_id: reply_to_id)
+    return nil unless original_message
+
+    { key: { id: reply_to_id } }
   end
 end
