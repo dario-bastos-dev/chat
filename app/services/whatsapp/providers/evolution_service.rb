@@ -37,7 +37,7 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
   def send_text_message(phone_number, message)
     body = {
       number: phone_number,
-      text: message.content,
+      text: message.outgoing_content,
       delay: message_delay
     }
     quoted = quoted_context(message)
@@ -94,7 +94,7 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     end
                
     file_type = attachment.file_type
-    caption = message.content
+    caption = message.outgoing_content
 
     Rails.logger.info "[EVOLUTION] Sending #{file_type} attachment to #{phone_number}"
     Rails.logger.debug "[EVOLUTION] Media URL: #{file_url}"
@@ -513,7 +513,7 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
       number: formatted_number,
       mediatype: attachment.file_type,
       media: attachment.file_url,
-      caption: message.content,
+      caption: message.outgoing_content,
       delay: message_delay
     }
     quoted = quoted_context(message)

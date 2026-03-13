@@ -24,7 +24,7 @@ class Channel::Whatsapp < ApplicationRecord
   self.table_name = 'channel_whatsapp'
   EDITABLE_ATTRS = [:phone_number, :provider, { provider_config: [:api_key, :phone_number_id, :business_account_id, :webhook_verify_token,
                                                                   :reject_calls, :msg_call, :ignore_groups, :always_online, :read_messages,
-                                                                  :read_status, :sync_full_history] }].freeze
+                                                                  :read_status, :sync_full_history, :delay_enabled, :delay_time] }].freeze
 
   # default at the moment is 360dialog lets change later.
   PROVIDERS = %w[default whatsapp_cloud evolution].freeze
