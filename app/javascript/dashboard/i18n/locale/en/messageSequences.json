@@ -6,20 +6,21 @@
     "NEW_BUTTON": "Add a sequence",
     "LOADING": "Loading sequences...",
     "EMPTY": "No sequences configured.",
+    "SEARCH_PLACEHOLDER": "Search sequences...",
+    "COUNT": "{n} sequence | {n} sequences",
+    "NO_RESULTS": "No sequences found.",
+    "LEARN_MORE": "Learn more about sequences",
     "TABLE": {
       "NAME": "Name",
       "ACTIVATION": "Activation",
-      "STATUS": "Status"
+      "STATUS": "Status",
+      "ACTIONS": "Actions"
     },
     "NEW": {
       "HEADER": "New Sequence",
       "SUCCESS": "Message sequence created successfully!"
     },
-    "EDIT": {
-      "HEADER": "Edit Sequence",
-      "FETCH_ERROR": "Error fetching sequence.",
-      "SUCCESS": "Sequence updated successfully!"
-    },
+
     "SAVE": "Save sequence",
     "FORM": {
       "NAME": "Sequence name",
@@ -47,7 +48,14 @@
       "CONFIRM": "Yes, delete",
       "CANCEL": "Cancel",
       "SUCCESS": "Sequence deleted.",
-      "ERROR": "Could not delete sequence."
+      "ERROR": "Could not delete sequence.",
+      "TOOLTIP": "Delete"
+    },
+    "EDIT": {
+      "HEADER": "Edit Sequence",
+      "FETCH_ERROR": "Error fetching sequence.",
+      "SUCCESS": "Sequence updated successfully!",
+      "TOOLTIP": "Edit"
     }
   }
 }

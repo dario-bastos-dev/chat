@@ -34,6 +34,7 @@ export default {
       isLoadingQRCode: false,
       isDisconnecting: false,
       qrRefreshInterval: null,
+      statusPollingInterval: null,
       isUpdatingSettings: false,
       settings: {
         reject_calls: false,
@@ -282,7 +283,22 @@ export default {
       }
     },
     startPolling() {
-      if (this.qrRefreshInterval) return;
+      if (this.qrRefreshInterval || this.statusPollingInterval) return;
+
+      // Polling para verificar status a cada 5 segundos
+      this.statusPollingInterval = setInterval(async () => {
+        if (!this.evolutionConnected) {
+          await this.checkStatus();
+          // Se na checagem descobrir que conectou, removemos o modal
+          if (this.evolutionConnected && this.showQRCodeModal) {
+            this.showQRCodeModal = false;
+            this.evolutionQRCode = '';
+            this.pairingCode = '';
+            this.stopPolling();
+            useAlert(this.$t('INBOX_MGMT.EVOLUTION_INSTANCE.STATUS.CONNECTED'));
+          }
+        }
+      }, 5000);
 
       // Refresh do QR code a cada 40 segundos (somente se modal estiver aberto)
       this.qrRefreshInterval = setInterval(async () => {
@@ -322,6 +338,10 @@ export default {
       if (this.qrRefreshInterval) {
         clearInterval(this.qrRefreshInterval);
         this.qrRefreshInterval = null;
+      }
+      if (this.statusPollingInterval) {
+        clearInterval(this.statusPollingInterval);
+        this.statusPollingInterval = null;
       }
     },
     async updateSettings() {

@@ -34,6 +34,16 @@
           "PLACEHOLDER": "Please write the message you want to save as a template to use later.",
           "ERROR": "Message is required."
         },
+        "FILE": {
+          "LABEL": "Attachment",
+          "ATTACH": "Attach File"
+        },
+        "AUDIO": {
+          "RECORD": "Record Audio",
+          "RECORDING": "Recording...",
+          "STOP": "Stop",
+          "PERMISSION_ERROR": "Could not access microphone array. Please allow microphone permissions."
+        },
         "SUBMIT": "Submit"
       },
       "API": {

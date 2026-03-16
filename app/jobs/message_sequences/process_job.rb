@@ -28,8 +28,8 @@ class MessageSequences::ProcessJob < ApplicationJob
         next
       end
 
-      hours, minutes = next_step.wait_time.split(':').map(&:to_i)
-      step_wait_duration = hours.hours + minutes.minutes
+      days, hours, minutes, seconds = next_step.wait_time.split(':').map(&:to_i)
+      step_wait_duration = days.days + hours.hours + minutes.minutes + seconds.seconds
       reference_time = conv_seq.last_step_executed_at || conv_seq.created_at
 
       # Se já deu o tempo, envia a mensagem

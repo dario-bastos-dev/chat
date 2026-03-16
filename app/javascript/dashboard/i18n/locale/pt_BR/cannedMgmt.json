@@ -31,6 +31,16 @@
           "PLACEHOLDER": "Por favor, escreva a mensagem que deseja salvar como um modelo para usar posteriormente.",
           "ERROR": "A mensagem é obrigatória."
         },
+        "FILE": {
+          "LABEL": "Anexo",
+          "ATTACH": "Anexar arquivo"
+        },
+        "AUDIO": {
+          "RECORD": "Gravar áudio",
+          "RECORDING": "Gravando...",
+          "STOP": "Parar",
+          "PERMISSION_ERROR": "Não foi possível acessar o microfone. Verifique as permissões de áudio do seu navegador."
+        },
         "SUBMIT": "Enviar"
       },
       "API": {

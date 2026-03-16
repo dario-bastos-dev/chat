@@ -19,6 +19,6 @@ class MessageSequenceStep < ApplicationRecord
   has_one_attached :file
 
   validates :content, presence: true, if: :send_message?
-  validates :wait_time, presence: true, format: { with: /\A\d{2}:\d{2}\z/ }
+  validates :wait_time, presence: true, format: { with: /\A\d+:\d{2}:\d{2}:\d{2}\z/ }
   validates :position, presence: true
 end

@@ -6,10 +6,15 @@
     "NEW_BUTTON": "Adicionar uma sequência de mensagens",
     "LOADING": "Carregando sequências...",
     "EMPTY": "Nenhuma sequência de mensagens configurada.",
+    "SEARCH_PLACEHOLDER": "Pesquisar sequências...",
+    "COUNT": "{n} sequência | {n} sequências",
+    "NO_RESULTS": "Nenhuma sequência encontrada.",
+    "LEARN_MORE": "Saiba mais sobre sequências",
     "TABLE": {
       "NAME": "Nome",
       "ACTIVATION": "Ativação",
-      "STATUS": "Status"
+      "STATUS": "Status",
+      "ACTIONS": "Ações"
     },
     "NEW": {
       "HEADER": "Nova Sequência",
@@ -18,7 +23,8 @@
     "EDIT": {
       "HEADER": "Editar Sequência",
       "FETCH_ERROR": "Erro ao buscar a sequência.",
-      "SUCCESS": "Sequência atualizada e salva com sucesso!"
+      "SUCCESS": "Sequência atualizada e salva com sucesso!",
+      "TOOLTIP": "Editar"
     },
     "SAVE": "Salvar sequência",
     "FORM": {
@@ -47,7 +53,8 @@
       "CONFIRM": "Sim, apagar",
       "CANCEL": "Cancelar",
       "SUCCESS": "Mensagem arquivada/apagada.",
-      "ERROR": "Não foi possível remover."
+      "ERROR": "Não foi possível remover.",
+      "TOOLTIP": "Apagar"
     }
   }
 }

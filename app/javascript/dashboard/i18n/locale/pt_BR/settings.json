@@ -382,7 +382,8 @@
     "DOCS": "Ler documentos",
     "SECURITY": "Segurança",
     "CRM": "CRM",
-    "CRM_DEALS": "Negócios"
+    "CRM_DEALS": "Negócios",
+    "CONVERSATION_WORKFLOW": "Fluxo de Conversas"
   },
   "BILLING_SETTINGS": {
     "TITLE": "Cobrança",

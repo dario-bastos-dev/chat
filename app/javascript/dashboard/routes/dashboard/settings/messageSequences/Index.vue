@@ -1,11 +1,14 @@
 <script setup>
 import { useAlert } from 'dashboard/composables';
+import { picoSearch } from '@scmmishra/pico-search';
+import SequencesTableRow from './SequencesTableRow.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import SettingsLayout from '../SettingsLayout.vue';
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
 import Button from 'dashboard/components-next/button/Button.vue';
+import { BaseTable } from 'dashboard/components-next/table';
 
 const getters = useStoreGetters();
 const store = useStore();
@@ -13,11 +16,18 @@ const { t } = useI18n();
 
 const showDeleteConfirmationPopup = ref(false);
 const selectedSequence = ref({});
+const searchQuery = ref('');
 
 const records = computed(
   () => getters['messageSequences/getMessageSequences'].value
 );
 const uiFlags = computed(() => getters['messageSequences/getUIFlags'].value);
+
+const filteredRecords = computed(() => {
+  const query = searchQuery.value.trim();
+  if (!query) return records.value;
+  return picoSearch(records.value, query, ['name']);
+});
 
 const deleteMessage = computed(() => ` ${selectedSequence.value.name}?`);
 
@@ -53,6 +63,7 @@ const tableHeaders = computed(() => {
     t('MESSAGE_SEQUENCES.TABLE.NAME'),
     t('MESSAGE_SEQUENCES.TABLE.ACTIVATION'),
     t('MESSAGE_SEQUENCES.TABLE.STATUS'),
+    t('MESSAGE_SEQUENCES.TABLE.ACTIONS'),
   ];
 });
 </script>
@@ -67,85 +78,46 @@ const tableHeaders = computed(() => {
   >
     <template #header>
       <BaseSettingsHeader
+        v-model:search-query="searchQuery"
         :title="$t('MESSAGE_SEQUENCES.HEADER')"
         :description="$t('MESSAGE_SEQUENCES.DESCRIPTION')"
+        :search-placeholder="$t('MESSAGE_SEQUENCES.SEARCH_PLACEHOLDER')"
         feature-name="message_sequences"
       >
+        <template v-if="records?.length" #count>
+          <span class="text-body-main text-n-slate-11">
+            {{ $t('MESSAGE_SEQUENCES.COUNT', { n: records.length }) }}
+          </span>
+        </template>
         <template #actions>
           <router-link :to="{ name: 'message_sequences_new' }">
             <Button
-              icon="i-lucide-circle-plus"
               :label="$t('MESSAGE_SEQUENCES.NEW_BUTTON')"
+              size="sm"
             />
           </router-link>
         </template>
       </BaseSettingsHeader>
     </template>
     <template #body>
-      <table class="min-w-full divide-y divide-n-weak">
-        <thead>
-          <th
-            v-for="thHeader in tableHeaders"
-            :key="thHeader"
-            class="py-4 ltr:pr-4 rtl:pl-4 text-left font-semibold text-n-slate-11"
-          >
-            {{ thHeader }}
-          </th>
-        </thead>
-        <tbody class="divide-y divide-n-weak text-n-slate-11">
-          <tr
-            v-for="sequence in records"
+      <BaseTable
+        :headers="tableHeaders"
+        :items="filteredRecords"
+        :no-data-message="
+          searchQuery
+            ? $t('MESSAGE_SEQUENCES.NO_RESULTS')
+            : $t('MESSAGE_SEQUENCES.EMPTY')
+        "
+      >
+        <template #row="{ items }">
+          <SequencesTableRow
+            v-for="sequence in items"
             :key="sequence.id"
-            class="hover:bg-n-alpha-1 transition-colors"
-          >
-            <td class="py-3 ltr:pr-4 rtl:pl-4 font-medium text-n-slate-12">
-              {{ sequence.name }}
-            </td>
-            <td class="py-3 ltr:pr-4 rtl:pl-4">
-              <span
-                class="px-2 py-0.5 rounded text-xs bg-n-blue-3 text-n-blue-11"
-              >
-                {{
-                  sequence.activation_type === 'tag'
-                    ? `Tag: ${sequence.activation_tag}`
-                    : $t('MESSAGE_SEQUENCES.RULES.ALWAYS')
-                }}
-              </span>
-            </td>
-            <td class="py-3 ltr:pr-4 rtl:pl-4">
-              <span
-                class="px-2 py-0.5 rounded text-xs"
-                :class="
-                  sequence.active
-                    ? 'bg-n-green-3 text-n-green-11'
-                    : 'bg-n-slate-3 text-n-slate-11'
-                "
-              >
-                {{ sequence.active ? 'Ativa' : 'Inativa' }}
-              </span>
-            </td>
-            <td class="py-3 ltr:pl-4 rtl:pr-4 text-right">
-              <div class="flex items-center justify-end gap-2">
-                <router-link
-                  :to="{
-                    name: 'message_sequences_edit',
-                    params: { sequenceId: sequence.id },
-                  }"
-                  class="text-n-slate-10 hover:text-n-blue-11"
-                >
-                  <span class="i-lucide-pencil block size-4" />
-                </router-link>
-                <button
-                  class="text-n-slate-10 hover:text-n-red-10 px-1 py-0 clear"
-                  @click="openDeletePopup(sequence)"
-                >
-                  <span class="i-lucide-trash block size-4" />
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            :sequence="sequence"
+            @delete="openDeletePopup(sequence)"
+          />
+        </template>
+      </BaseTable>
       <woot-delete-modal
         v-model:show="showDeleteConfirmationPopup"
         :on-close="closeDeletePopup"

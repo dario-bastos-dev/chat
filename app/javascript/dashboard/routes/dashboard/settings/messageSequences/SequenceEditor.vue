@@ -33,7 +33,7 @@
                 <span class="i-lucide-trash size-4" />
               </button>
               <div class="flex gap-4">
-                <div class="w-1/2">
+                <div class="w-full">
                   <label class="block mb-1 text-xs text-n-slate-11">{{
                     $t('MESSAGE_SEQUENCES.STEPS.TYPE')
                   }}</label>
@@ -45,18 +45,58 @@
                     <option value="send_attachment">Enviar anexo</option>
                   </select>
                 </div>
-                <div class="w-1/2">
-                  <label class="block mb-1 text-xs text-n-slate-11"
-                    >{{
-                      $t('MESSAGE_SEQUENCES.STEPS.WAIT_TIME')
-                    }}
-                    (HH:MM)</label
-                  >
-                  <input
-                    v-model="step.wait_time"
-                    type="time"
-                    class="w-full p-2 text-sm border rounded-md input border-n-weak"
-                  />
+              </div>
+              <div class="mt-3">
+                <label class="block mb-1 text-xs text-n-slate-11">
+                  {{ $t('MESSAGE_SEQUENCES.STEPS.WAIT_TIME') }}
+                </label>
+                <div class="flex items-end gap-2">
+                  <div class="flex flex-col items-center">
+                    <span class="mb-1 text-[10px] text-n-slate-10">Dias</span>
+                    <input
+                      :value="parseWaitTime(step.wait_time).days"
+                      type="number"
+                      min="0"
+                      class="w-16 p-2 text-sm text-center border rounded-md input border-n-weak"
+                      @input="e => updateWaitTimePart(step, 'days', e.target.value)"
+                    />
+                  </div>
+                  <span class="pb-2 text-n-slate-10">:</span>
+                  <div class="flex flex-col items-center">
+                    <span class="mb-1 text-[10px] text-n-slate-10">Horas</span>
+                    <input
+                      :value="parseWaitTime(step.wait_time).hours"
+                      type="number"
+                      min="0"
+                      max="23"
+                      class="w-16 p-2 text-sm text-center border rounded-md input border-n-weak"
+                      @input="e => updateWaitTimePart(step, 'hours', e.target.value)"
+                    />
+                  </div>
+                  <span class="pb-2 text-n-slate-10">:</span>
+                  <div class="flex flex-col items-center">
+                    <span class="mb-1 text-[10px] text-n-slate-10">Min</span>
+                    <input
+                      :value="parseWaitTime(step.wait_time).minutes"
+                      type="number"
+                      min="0"
+                      max="59"
+                      class="w-16 p-2 text-sm text-center border rounded-md input border-n-weak"
+                      @input="e => updateWaitTimePart(step, 'minutes', e.target.value)"
+                    />
+                  </div>
+                  <span class="pb-2 text-n-slate-10">:</span>
+                  <div class="flex flex-col items-center">
+                    <span class="mb-1 text-[10px] text-n-slate-10">Seg</span>
+                    <input
+                      :value="parseWaitTime(step.wait_time).seconds"
+                      type="number"
+                      min="0"
+                      max="59"
+                      class="w-16 p-2 text-sm text-center border rounded-md input border-n-weak"
+                      @input="e => updateWaitTimePart(step, 'seconds', e.target.value)"
+                    />
+                  </div>
                 </div>
               </div>
               <div class="mt-3">
@@ -120,7 +160,7 @@
       </div>
 
       <!-- Right panel: Properties (like MacroProperties) -->
-      <div class="w-full pb-4 md:w-1/3">
+      <div class="w-full pb-4 overflow-y-auto md:w-1/3 max-h-screen">
         <div
           class="flex flex-col h-full p-4 border rounded-lg shadow-sm bg-n-solid-2 border-n-weak"
         >
@@ -349,7 +389,7 @@ export default {
             position: 1,
             step_type: 'send_message',
             content: '',
-            wait_time: '00:00',
+            wait_time: '0:00:00:00',
           },
         ],
         message_sequence_inboxes_attributes: [],
@@ -384,6 +424,32 @@ export default {
     }
   },
   methods: {
+    parseWaitTime(waitTime) {
+      const parts = (waitTime || '0:00:00:00').split(':');
+      return {
+        days: parseInt(parts[0], 10) || 0,
+        hours: parseInt(parts[1], 10) || 0,
+        minutes: parseInt(parts[2], 10) || 0,
+        seconds: parseInt(parts[3], 10) || 0,
+      };
+    },
+    updateWaitTimePart(step, part, value) {
+      const parsed = this.parseWaitTime(step.wait_time);
+      let num = parseInt(value, 10) || 0;
+      if (num < 0) num = 0;
+      if (part === 'hours' && num > 23) num = 23;
+      if ((part === 'minutes' || part === 'seconds') && num > 59) num = 59;
+      parsed[part] = num;
+      step.wait_time = `${parsed.days}:${String(parsed.hours).padStart(2, '0')}:${String(parsed.minutes).padStart(2, '0')}:${String(parsed.seconds).padStart(2, '0')}`;
+    },
+    normalizeWaitTime(waitTime) {
+      if (!waitTime) return '0:00:00:00';
+      const parts = waitTime.split(':');
+      if (parts.length === 2) {
+        return `0:${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:00`;
+      }
+      return waitTime;
+    },
     onAddLabel(label) {
       const tag = label.title || label;
       const currentTags = this.form.activation_tag
@@ -426,7 +492,12 @@ export default {
             enable_macro: !!seq.macro_id,
             macro_id: seq.macro_id || '',
             macro_execution_time: seq.macro_execution_time || 0,
-            steps_attributes: seq.steps ? [...seq.steps] : [],
+            steps_attributes: seq.steps
+              ? seq.steps.map(s => ({
+                  ...s,
+                  wait_time: this.normalizeWaitTime(s.wait_time),
+                }))
+              : [],
             message_sequence_inboxes_attributes: seq.inbox_ids
               ? seq.inbox_ids.map(id => ({ inbox_id: id }))
               : [],
@@ -442,7 +513,7 @@ export default {
         position: this.form.steps_attributes.length + 1,
         step_type: 'send_message',
         content: '',
-        wait_time: '00:00',
+        wait_time: '0:00:00:00',
       });
     },
     removeStep(index) {

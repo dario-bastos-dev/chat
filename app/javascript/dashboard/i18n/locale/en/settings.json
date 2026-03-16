@@ -383,7 +383,8 @@
     "DOCS": "Read docs",
     "SECURITY": "Security",
     "CRM": "CRM",
-    "CRM_DEALS": "Deals"
+    "CRM_DEALS": "Deals",
+    "CONVERSATION_WORKFLOW": "Conversation Workflows"
   },
   "BILLING_SETTINGS": {
     "TITLE": "Billing",

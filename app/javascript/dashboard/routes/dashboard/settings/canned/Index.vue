@@ -218,6 +218,10 @@ const tableHeaders = computed(() => {
                   <p class="text-body-main text-n-slate-11 line-clamp-5">
                     {{ getPlainText(cannedItem.content) }}
                   </p>
+                  <p v-if="cannedItem.file_url" class="text-sm text-n-slate-10 mt-1 flex items-center gap-1">
+                    <span class="i-lucide-paperclip size-3"></span>
+                    <span>{{ cannedItem.file_name }}</span>
+                  </p>
                 </div>
               </BaseTableCell>
 
@@ -256,6 +260,9 @@ const tableHeaders = computed(() => {
         :id="activeResponse.id"
         :edshort-code="activeResponse.short_code"
         :edcontent="activeResponse.content"
+        :ed-file-url="activeResponse.file_url"
+        :ed-file-name="activeResponse.file_name"
+        :ed-file-content-type="activeResponse.file_content_type"
         :on-close="hideEditPopup"
       />
     </woot-modal>
