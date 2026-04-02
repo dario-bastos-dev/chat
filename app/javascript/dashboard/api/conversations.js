@@ -13,6 +13,10 @@ class ConversationApi extends ApiClient {
   updateLabels(conversationID, labels) {
     return axios.post(`${this.url}/${conversationID}/labels`, { labels });
   }
+
+  exportConversations(queryPayload) {
+    return axios.post(`${this.url}/export`, queryPayload);
+  }
 }
 
 export default new ConversationApi();

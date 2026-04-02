@@ -3,8 +3,11 @@ class Account::ContactsExportJob < ApplicationJob
 
   def perform(account_id, user_id, column_names, params)
     @account = Account.find(account_id)
+    Current.account = @account
     @params = params
     @account_user = @account.users.find(user_id)
+    Current.user = @account_user
+    @custom_attribute_keys = @account.custom_attribute_definitions.contact_attribute.pluck(:attribute_key)
 
     headers = valid_headers(column_names)
     generate_csv(headers)
@@ -15,28 +18,45 @@ class Account::ContactsExportJob < ApplicationJob
 
   def generate_csv(headers)
     csv_data = CSV.generate do |csv|
-      csv << headers
-      contacts.each do |contact|
-        csv << headers.map { |header| contact.send(header) }
+      csv << headers.map { |h| I18n.t("contacts.export.#{h}", default: h.humanize) }
+      contacts.find_each do |contact|
+        csv << headers.map { |header| get_value(contact, header) }
       end
     end
 
     attach_export_file(csv_data)
   end
 
-  def contacts
-    if @params.present? && @params[:payload].present? && @params[:payload].any?
-      result = ::Contacts::FilterService.new(@account, @account_user, @params).perform
-      result[:contacts]
-    elsif @params[:label].present?
-      @account.contacts.resolved_contacts(use_crm_v2: @account.feature_enabled?('crm_v2')).tagged_with(@params[:label], any: true)
+  def get_value(contact, header)
+    case header
+    when 'labels'
+      contact.label_list.join(', ')
+    when 'created_at', 'last_activity_at'
+      contact.send(header)&.strftime('%Y-%m-%d %H:%M:%S')
+    when *Contact.column_names
+      contact.send(header)
+    when *@custom_attribute_keys
+      contact.custom_attributes[header]
     else
-      @account.contacts.resolved_contacts(use_crm_v2: @account.feature_enabled?('crm_v2'))
+      contact.additional_attributes[header] || ''
     end
   end
 
+  def contacts
+    scope = if @params.present? && @params.with_indifferent_access[:payload].present? && @params.with_indifferent_access[:payload].any?
+              result = ::Contacts::FilterService.new(@account, @account_user, @params.with_indifferent_access).perform
+              result[:contacts]
+            elsif @params.with_indifferent_access[:label].present?
+              @account.contacts.resolved_contacts(use_crm_v2: @account.feature_enabled?('crm_v2')).tagged_with(@params.with_indifferent_access[:label], any: true)
+            else
+              @account.contacts.resolved_contacts(use_crm_v2: @account.feature_enabled?('crm_v2'))
+            end
+    scope.includes(:taggings, :labels)
+  end
+
   def valid_headers(column_names)
-    (column_names.presence || default_columns) & Contact.column_names
+    available_columns = Contact.column_names + @custom_attribute_keys + ['labels']
+    (column_names.presence || default_columns) & available_columns
   end
 
   def attach_export_file(csv_data)
@@ -60,6 +80,10 @@ class Account::ContactsExportJob < ApplicationJob
   end
 
   def default_columns
-    %w[id name email phone_number]
+    standard_columns + @custom_attribute_keys
+  end
+
+  def standard_columns
+    %w[id name email phone_number identifier created_at last_activity_at location city country_code middle_name last_name blocked company_name lead_score lead_source is_lead labels]
   end
 end

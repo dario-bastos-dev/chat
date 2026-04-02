@@ -219,6 +219,25 @@ en:
     attachment: 'Attachment'
     no_content: 'No content'
   conversations:
+    export:
+      tooltip: Export conversations
+      success: 'We will notify you once conversations export file is ready to view.'
+      id: ID
+      status: Status
+      assignee_id: Assignee ID
+      inbox_id: Inbox ID
+      contact_id: Contact ID
+      display_id: Display ID
+      created_at: Created At
+      last_activity_at: Last Activity At
+      priority: Priority
+      inbox: Inbox
+      contact_name: Contact Name
+      contact_phone_number: Contact Phone Number
+      contact_email: Contact Email
+      agent_name: Agent Name
+      team_name: Team Name
+      labels: Tags
     captain:
       handoff: 'Transferring to another agent for further assistance.'
     messages:
@@ -301,6 +320,25 @@ en:
   contacts:
     online:
       delete: '%{contact_name} is Online, please try again later'
+    export:
+      id: ID
+      name: Name
+      email: Email
+      phone_number: Phone Number
+      identifier: Identifier
+      created_at: Created At
+      last_activity_at: Last Activity At
+      location: Location
+      city: City
+      country_code: Country Code
+      middle_name: Middle Name
+      last_name: Last Name
+      blocked: Blocked
+      company_name: Company Name
+      lead_score: Lead Score
+      lead_source: Lead Source
+      is_lead: Is Lead
+      labels: Tags
   integration_apps:
     # Note: webhooks and dashboard_apps don't need short_description as they use different modal components
     dashboard_apps:

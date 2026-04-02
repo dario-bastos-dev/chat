@@ -46,6 +46,8 @@ import { useEmitter } from 'dashboard/composables/emitter';
 import { useConversationRequiredAttributes } from 'dashboard/composables/useConversationRequiredAttributes';
 
 import { emitter } from 'shared/helpers/mitt';
+import conversationApi from 'dashboard/api/conversations';
+
 
 import wootConstants from 'dashboard/constants/globals';
 import advancedFilterOptions from './widgets/conversation/advancedFilterItems';
@@ -808,6 +810,19 @@ onMounted(() => {
 
 const deleteConversationDialogRef = ref(null);
 const selectedConversationId = ref(null);
+const exportConversationDialogRef = ref(null);
+const isExporting = ref(false);
+
+const confirmExportConversations = () => {
+  exportConversationDialogRef.value.open();
+};
+
+const handleExportDialogConfirm = async () => {
+  isExporting.value = true;
+  await exportConversations();
+  isExporting.value = false;
+  exportConversationDialogRef.value?.close();
+};
 
 async function deleteConversation() {
   try {
@@ -825,6 +840,32 @@ const handleDelete = conversationId => {
   selectedConversationId.value = conversationId;
   deleteConversationDialogRef.value.open();
 };
+
+async function exportConversations() {
+  let query = { payload: [] };
+  if (hasActiveFolders.value) {
+    query = activeFolder.value.query;
+  } else if (hasAppliedFilters.value) {
+    query = filterQueryGenerator(appliedFilters.value);
+  } else {
+    query = {
+       assignee_type: conversationFilters.value.assigneeType,
+       status: Object.values(wootConstants.STATUS_TYPE).includes(conversationFilters.value.status) ? conversationFilters.value.status : undefined,
+       sort_by: conversationFilters.value.sortBy,
+       inbox_id: conversationFilters.value.inboxId,
+       team_id: conversationFilters.value.teamId,
+       labels: conversationFilters.value.labels,
+       conversation_type: conversationFilters.value.conversationType 
+    };
+  }
+  
+  try {
+    await conversationApi.exportConversations(query);
+    useAlert(t('conversations.export.success'));
+  } catch (error) {
+    // Ignore error
+  }
+}
 
 provide('selectConversation', selectConversation);
 provide('deSelectConversation', deSelectConversation);
@@ -895,6 +936,7 @@ watch(conversationFilters, (newVal, oldVal) => {
       @filters-modal="onToggleAdvanceFiltersModal"
       @reset-filters="resetAndFetchData"
       @basic-filter-change="onBasicFilterChange"
+      @export-conversations="confirmExportConversations"
     />
 
     <TeleportWithDirection
@@ -995,6 +1037,15 @@ watch(conversationFilters, (newVal, oldVal) => {
       :confirm-button-label="$t('CONVERSATION.DELETE_CONVERSATION.CONFIRM')"
       @confirm="deleteConversation"
       @close="selectedConversationId = null"
+    />
+    <Dialog
+      ref="exportConversationDialogRef"
+      :title="$t('conversations.export.title')"
+      :description="$t('conversations.export.description')"
+      :confirm-button-label="$t('conversations.export.confirm')"
+      :is-loading="isExporting"
+      :disable-confirm-button="isExporting"
+      @confirm="handleExportDialogConfirm"
     />
     <TeleportWithDirection
       v-if="showAdvancedFilters"

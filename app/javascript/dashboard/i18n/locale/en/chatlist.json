@@ -141,5 +141,14 @@
     "SHOW_QUOTED_TEXT": "Show Quoted Text",
     "MESSAGE_READ": "Read",
     "SENDING": "Sending"
+  },
+  "conversations": {
+    "export": {
+      "tooltip": "Export conversations",
+      "title": "Export conversations",
+      "description": "Quickly export a csv file with comprehensive details of your conversations",
+      "confirm": "Export",
+      "success": "Export is in progress. You will be notified on email when the export file is ready to download."
+    }
   }
 }

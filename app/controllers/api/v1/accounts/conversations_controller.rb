@@ -3,7 +3,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   include DateRangeHelper
   include HmacConcern
 
-  before_action :conversation, except: [:index, :meta, :search, :create, :filter]
+  before_action :conversation, except: [:index, :meta, :search, :create, :filter, :export]
   before_action :inbox, :contact, :contact_inbox, only: [:create]
 
   ATTACHMENT_RESULTS_PER_PAGE = 100
@@ -57,6 +57,12 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
          CustomExceptions::CustomFilter::InvalidValue => e
     render_could_not_create_error(e.message)
   end
+
+  def export
+    Account::ConversationsExportJob.perform_later(Current.account.id, Current.user.id, params.to_unsafe_h)
+    head :ok, message: I18n.t('conversations.export.success')
+  end
+
 
   def mute
     @conversation.mute!
