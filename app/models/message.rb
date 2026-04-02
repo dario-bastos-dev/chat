@@ -319,7 +319,8 @@ class Message < ApplicationRecord
   end
 
   def restart_attached_active_sequences
-    return unless incoming? && !private?
+    return if private?
+    return unless incoming? || human_response?
     
     active_sequences = conversation.conversation_message_sequences.active
 
