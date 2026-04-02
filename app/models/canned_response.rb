@@ -11,12 +11,24 @@
 #
 
 class CannedResponse < ApplicationRecord
-  validates :content, presence: true
+  validates :content, presence: true, unless: :file_attached?
   validates :short_code, presence: true
   validates :account, presence: true
   validates :short_code, uniqueness: { scope: :account_id }
 
   belongs_to :account
+
+  has_one_attached :file
+
+  def file_attached?
+    file.attached?
+  end
+
+  def file_url
+    return unless file.attached?
+
+    Rails.application.routes.url_helpers.rails_blob_path(file, only_path: true)
+  end
 
   scope :order_by_search, lambda { |search|
     short_code_starts_with = sanitize_sql_array(['WHEN short_code ILIKE ? THEN 1', "#{search}%"])

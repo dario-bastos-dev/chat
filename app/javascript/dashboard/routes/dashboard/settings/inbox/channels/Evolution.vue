@@ -25,13 +25,9 @@ export default {
       inboxName: '',
       phoneNumber: '',
 
-      rejectCalls: false,
-      msgCall: '',
       ignoreGroups: false,
       alwaysOnline: false,
       readMessages: false,
-      readStatus: false,
-      syncFullHistory: false,
     };
   },
   computed: {
@@ -58,13 +54,15 @@ export default {
               phone_number: this.phoneNumber,
               provider: 'evolution',
               provider_config: {
-                reject_calls: this.rejectCalls,
-                msg_call: this.msgCall,
+                reject_calls: false,
+                msg_call: '',
                 ignore_groups: this.ignoreGroups,
                 always_online: this.alwaysOnline,
                 read_messages: this.readMessages,
-                read_status: this.readStatus,
-                sync_full_history: this.syncFullHistory,
+                read_status: false,
+                sync_full_history: false,
+                delay_enabled: true,
+                delay_time: 2000,
               },
             },
           }
@@ -136,39 +134,6 @@ export default {
       <div
         class="flex flex-col gap-4 border border-n-slate-3 rounded-lg p-4 bg-n-alpha-1"
       >
-        <!-- Reject Calls -->
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <span class="text-sm font-medium text-n-slate-12">{{
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.REJECT_CALLS.TITLE'
-              )
-            }}</span>
-            <span class="text-xs text-n-slate-10">{{
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.REJECT_CALLS.DESC'
-              )
-            }}</span>
-          </div>
-          <WootSwitch v-model="rejectCalls" />
-        </div>
-        <div v-if="rejectCalls" class="px-0 py-2">
-          <NextInput
-            v-model="msgCall"
-            type="text"
-            :label="
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.REJECT_CALLS.MSG_LABEL'
-              )
-            "
-            :placeholder="
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.REJECT_CALLS.MSG_PLACEHOLDER'
-              )
-            "
-          />
-        </div>
-
         <!-- Ignore Groups -->
         <div class="flex items-center justify-between">
           <div class="flex flex-col">
@@ -218,40 +183,6 @@ export default {
             }}</span>
           </div>
           <WootSwitch v-model="readMessages" />
-        </div>
-
-        <!-- Sync Full History -->
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <span class="text-sm font-medium text-n-slate-12">{{
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.SYNC_HISTORY.TITLE'
-              )
-            }}</span>
-            <span class="text-xs text-n-slate-10">{{
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.SYNC_HISTORY.DESC'
-              )
-            }}</span>
-          </div>
-          <WootSwitch v-model="syncFullHistory" />
-        </div>
-
-        <!-- Read Status -->
-        <div class="flex items-center justify-between">
-          <div class="flex flex-col">
-            <span class="text-sm font-medium text-n-slate-12">{{
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.READ_STATUS.TITLE'
-              )
-            }}</span>
-            <span class="text-xs text-n-slate-10">{{
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.READ_STATUS.DESC'
-              )
-            }}</span>
-          </div>
-          <WootSwitch v-model="readStatus" />
         </div>
       </div>
     </div>

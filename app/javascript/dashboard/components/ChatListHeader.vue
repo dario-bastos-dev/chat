@@ -24,6 +24,7 @@ const emit = defineEmits([
   'resetFilters',
   'basicFilterChange',
   'filtersModal',
+  'exportConversations',
 ]);
 
 const { uiSettings, updateUISettings } = useUISettings();
@@ -57,7 +58,7 @@ const toggleConversationLayout = () => {
 
 <template>
   <div
-    class="flex items-center justify-between gap-2 px-3 h-12"
+    class="flex items-center justify-between gap-2 px-3 h-[3.25rem]"
     :class="{
       'border-b border-n-strong': hasAppliedFiltersOrActiveFolders,
     }"
@@ -154,6 +155,14 @@ const toggleConversationLayout = () => {
           :class="{ 'ltr:right-0 rtl:left-0': isOnExpandedLayout }"
         />
       </div>
+      <NextButton
+        v-tooltip.top-end="$t('conversations.export.tooltip')"
+        icon="i-lucide-download"
+        slate
+        faded
+        xs
+        @click="emit('exportConversations')"
+      />
       <ConversationBasicFilter
         v-if="!hasAppliedFiltersOrActiveFolders"
         :is-on-expanded-layout="isOnExpandedLayout"

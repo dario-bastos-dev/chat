@@ -1,0 +1,12 @@
+{
+  "CONVERSATION_SEQUENCES": {
+    "TITLE": "Active Sequences",
+    "LOADING": "Loading sequences...",
+    "EMPTY": "No sequences configured for this conversation.",
+    "ACTIVATE": "Activate",
+    "DEACTIVATE": "Deactivate",
+    "ACTIVATED_SUCCESS": "Sequence activated for this conversation.",
+    "DEACTIVATED_SUCCESS": "Sequence deactivated for this conversation.",
+    "ERROR": "An error occurred. Please try again."
+  }
+}

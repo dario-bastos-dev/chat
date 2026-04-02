@@ -17,6 +17,7 @@ import inbox from './inbox/inbox.routes';
 import integrations from './integrations/integrations.routes';
 import labels from './labels/labels.routes';
 import macros from './macros/macros.routes';
+import messageSequences from './messageSequences/messageSequences.routes';
 import reports from './reports/reports.routes';
 import store from '../../../store';
 import sla from './sla/sla.routes';
@@ -25,6 +26,8 @@ import customRoles from './customRoles/customRole.routes';
 import profile from './profile/profile.routes';
 import security from './security/security.routes';
 import { routes as pipelinesRoutes } from './pipelines/pipelines.routes';
+import conversationWorkflow from './conversationWorkflow/conversationWorkflow.routes';
+import captain from './captain/captain.routes';
 
 export default {
   routes: [
@@ -58,6 +61,7 @@ export default {
     ...integrations.routes,
     ...labels.routes,
     ...macros.routes,
+    ...messageSequences.routes,
     ...reports.routes,
     ...sla.routes,
     ...teams.routes,
@@ -65,5 +69,7 @@ export default {
     ...profile.routes,
     ...security.routes,
     ...pipelinesRoutes,
+    ...conversationWorkflow.routes,
+    ...captain.routes,
   ],
 };

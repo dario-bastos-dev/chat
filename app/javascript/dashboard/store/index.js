@@ -50,6 +50,9 @@ import teamMembers from './modules/teamMembers';
 import teams from './modules/teams';
 import userNotificationSettings from './modules/userNotificationSettings';
 import webhooks from './modules/webhooks';
+import scheduledMessages from './modules/scheduledMessages';
+import messageSequences from './modules/messageSequences';
+import conversationSequences from './modules/conversationSequences';
 import captainAssistants from './captain/assistant';
 import captainDocuments from './captain/document';
 import captainResponses from './captain/response';
@@ -115,6 +118,9 @@ export default createStore({
     teams,
     userNotificationSettings,
     webhooks,
+    scheduledMessages,
+    messageSequences,
+    conversationSequences,
     captainAssistants,
     captainDocuments,
     captainResponses,

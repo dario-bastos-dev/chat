@@ -24,7 +24,7 @@ class Channel::Whatsapp < ApplicationRecord
   self.table_name = 'channel_whatsapp'
   EDITABLE_ATTRS = [:phone_number, :provider, { provider_config: [:api_key, :phone_number_id, :business_account_id, :webhook_verify_token,
                                                                   :reject_calls, :msg_call, :ignore_groups, :always_online, :read_messages,
-                                                                  :read_status, :sync_full_history] }].freeze
+                                                                  :read_status, :sync_full_history, :delay_enabled, :delay_time] }].freeze
 
   # default at the moment is 360dialog lets change later.
   PROVIDERS = %w[default whatsapp_cloud evolution].freeze
@@ -39,6 +39,7 @@ class Channel::Whatsapp < ApplicationRecord
   after_update :update_evolution_settings, if: :evolution_provider?
   before_destroy :teardown_webhooks, unless: :evolution_provider?
   before_destroy :delete_evolution_instance, if: :evolution_provider?
+  after_commit :setup_webhooks, on: :create, if: :should_auto_setup_webhooks?
 
   def name
     'Whatsapp'
@@ -127,5 +128,11 @@ class Channel::Whatsapp < ApplicationRecord
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION CALLBACK] Error updating settings: #{e.class} - #{e.message}\n#{e.backtrace[0..3].join("\n")}"
     raise
+  end
+
+  def should_auto_setup_webhooks?
+    # Only auto-setup webhooks for whatsapp_cloud provider with manual setup
+    # Embedded signup calls setup_webhooks explicitly in EmbeddedSignupService
+    provider == 'whatsapp_cloud' && provider_config['source'] != 'embedded_signup'
   end
 end

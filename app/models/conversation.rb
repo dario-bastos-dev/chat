@@ -115,6 +115,9 @@ class Conversation < ApplicationRecord
   has_many :reporting_events, dependent: :destroy_async
   has_many :conversation_deals, dependent: :destroy_async
   has_many :deals, through: :conversation_deals
+  has_many :scheduled_messages, dependent: :destroy
+  has_many :conversation_message_sequences, dependent: :destroy
+  has_many :active_message_sequences, through: :conversation_message_sequences, source: :message_sequence
 
   before_save :ensure_snooze_until_reset
   before_create :determine_conversation_status
@@ -123,6 +126,7 @@ class Conversation < ApplicationRecord
   after_update_commit :execute_after_update_commit_callbacks
   after_create_commit :notify_conversation_creation
   after_create_commit :load_attributes_created_by_db_triggers
+  after_create_commit :attach_always_active_sequences
 
   delegate :auto_resolve_after, to: :account
 
@@ -161,12 +165,17 @@ class Conversation < ApplicationRecord
   end
 
   def bot_handoff!
+    update(waiting_since: Time.current) if waiting_since.blank?
     open!
     dispatcher_dispatch(CONVERSATION_BOT_HANDOFF)
   end
 
   def unread_messages
     agent_last_seen_at.present? ? messages.created_since(agent_last_seen_at) : messages
+  end
+
+  def assignee_unread_messages
+    assignee_last_seen_at.present? ? messages.created_since(assignee_last_seen_at) : messages
   end
 
   def unread_incoming_messages
@@ -323,15 +332,60 @@ class Conversation < ApplicationRecord
 
     previous_labels, current_labels = previous_changes[:label_list]
     return unless (previous_labels.is_a? Array) && (current_labels.is_a? Array)
+    
+    added_labels = current_labels - previous_labels
 
-    create_label_added(user_name, current_labels - previous_labels)
+    create_label_added(user_name, added_labels)
     create_label_removed(user_name, previous_labels - current_labels)
+
+    attach_tag_sequences(added_labels) if added_labels.any?
+  end
+
+  def attach_tag_sequences(added_labels)
+    # Ignora eventos se a conversa nao puder receber funil 
+    return if resolved?
+    
+    downcased_added = added_labels.map(&:downcase)
+
+    account.message_sequences.active.tag.find_each do |sequence|
+      # Validar inboxes
+      valid_inboxes = sequence.selected_inboxes? ? sequence.inbox_ids : account.inboxes.pluck(:id)
+      next unless valid_inboxes.include?(inbox_id)
+
+      # Pegar a lista de tags configuradas para o disparo da sequência
+      seq_tags = sequence.activation_tag.to_s.split(',').compact_blank.map { |t| t.strip.downcase }
+      
+      # Verifica se alguma tag que acabou de ser adicionada bate com os gatilhos esperados
+      next unless (seq_tags & downcased_added).any?
+
+      # Encontrar ou atrelar e resetar (como na nova regra definida de recomeçar a sequência)
+      conv_seq = conversation_message_sequences.find_or_initialize_by(message_sequence_id: sequence.id)
+      
+      # Se estava inativa ou é a primeira vez, bota no passo zero e ativa pro Cronjob passar listando!
+      if !conv_seq.active?
+        conv_seq.active = true
+        conv_seq.current_step = 0
+        conv_seq.last_step_executed_at = nil
+      end
+
+      conv_seq.save! if conv_seq.changed? || conv_seq.new_record?
+    end
   end
 
   def validate_referer_url
     return unless additional_attributes['referer']
 
     self['additional_attributes']['referer'] = nil unless url_valid?(additional_attributes['referer'])
+  end
+
+  def attach_always_active_sequences
+    account.message_sequences.active.always_active.find_each do |sequence|
+      conversation_message_sequences.find_or_create_by!(message_sequence_id: sequence.id) do |cms|
+        cms.active = true
+      end
+    end
+  rescue StandardError => e
+    Rails.logger.error("[ConversationMessageSequence] Failed to auto-attach sequences: #{e.message}")
   end
 
   # creating db triggers

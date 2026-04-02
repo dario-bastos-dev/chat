@@ -1,0 +1,12 @@
+{
+  "CONVERSATION_SEQUENCES": {
+    "TITLE": "Sequências ativas",
+    "LOADING": "Carregando sequências...",
+    "EMPTY": "Nenhuma sequência configurada nesta conversa.",
+    "ACTIVATE": "Ativar",
+    "DEACTIVATE": "Desativar",
+    "ACTIVATED_SUCCESS": "Sequência ativada para esta conversa.",
+    "DEACTIVATED_SUCCESS": "Sequência desativada para esta conversa.",
+    "ERROR": "Ocorreu um erro. Tente novamente."
+  }
+}

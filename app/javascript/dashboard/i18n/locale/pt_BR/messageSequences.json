@@ -1,0 +1,60 @@
+{
+  "MESSAGE_SEQUENCES": {
+    "HEADER": "Sequência de Mensagens",
+    "SIDEBAR_TITLE": "Sequência de Mensagens",
+    "DESCRIPTION": "Configure sequências de mensagens automáticas baseadas em inatividade.",
+    "NEW_BUTTON": "Adicionar uma sequência de mensagens",
+    "LOADING": "Carregando sequências...",
+    "EMPTY": "Nenhuma sequência de mensagens configurada.",
+    "SEARCH_PLACEHOLDER": "Pesquisar sequências...",
+    "COUNT": "{n} sequência | {n} sequências",
+    "NO_RESULTS": "Nenhuma sequência encontrada.",
+    "LEARN_MORE": "Saiba mais sobre sequências",
+    "TABLE": {
+      "NAME": "Nome",
+      "ACTIVATION": "Ativação",
+      "STATUS": "Status",
+      "ACTIONS": "Ações"
+    },
+    "NEW": {
+      "HEADER": "Nova Sequência",
+      "SUCCESS": "Sequência de mensagens criada com sucesso!"
+    },
+    "EDIT": {
+      "HEADER": "Editar Sequência",
+      "FETCH_ERROR": "Erro ao buscar a sequência.",
+      "SUCCESS": "Sequência atualizada e salva com sucesso!",
+      "TOOLTIP": "Editar"
+    },
+    "SAVE": "Salvar sequência",
+    "FORM": {
+      "NAME": "Nome da sequência",
+      "NAME_REQUIRED": "Você deve informar um nome para a sequência.",
+      "ERROR": "Houve um erro ao processar o formulário. Verifique os campos."
+    },
+    "STEPS": {
+      "TITLE": "Passos da Sequência",
+      "TYPE": "Ação",
+      "WAIT_TIME": "Tempo de Inatividade",
+      "CONTENT": "Conteúdo",
+      "ADD": "Adicionar nova mensagem"
+    },
+    "RULES": {
+      "ACTIVATION": "Modo de Ativação",
+      "TAG": "Quando a conversa receber a tag definina",
+      "ALWAYS": "Sempre ativa",
+      "INBOX": "Limitar Caixas de Entrada (Inboxes)",
+      "ALL_INBOXES": "Todas as Inboxes",
+      "SELECTED_INBOXES": "Somente as Inboxes selecionadas (IDs)"
+    },
+    "DELETE": {
+      "TITLE": "Deletar Sequência",
+      "MESSAGE": "Tem certeza que deseja apagar permanentemente a sequência",
+      "CONFIRM": "Sim, apagar",
+      "CANCEL": "Cancelar",
+      "SUCCESS": "Mensagem arquivada/apagada.",
+      "ERROR": "Não foi possível remover.",
+      "TOOLTIP": "Apagar"
+    }
+  }
+}

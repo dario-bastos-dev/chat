@@ -14,11 +14,19 @@ class ActionCableListener < BaseListener
   end
 
   def notification_deleted(event)
-    return if event.data[:notification].user.blank?
+    notification_data = event.data[:notification_data]
 
-    notification, account, unread_count, count = extract_notification_and_account(event)
-    tokens = [event.data[:notification].user.pubsub_token]
-    broadcast(account, tokens, NOTIFICATION_DELETED, { notification: { id: notification.id }, unread_count: unread_count, count: count })
+    user = User.find_by(id: notification_data[:user_id])
+    account = Account.find_by(id: notification_data[:account_id])
+    return if user.blank? || account.blank?
+
+    notification_finder = NotificationFinder.new(user, account)
+    tokens = [user.pubsub_token]
+    broadcast(account, tokens, NOTIFICATION_DELETED, {
+                notification: { id: notification_data[:id] },
+                unread_count: notification_finder.unread_count,
+                count: notification_finder.count
+              })
   end
 
   def account_cache_invalidated(event)
@@ -36,6 +44,14 @@ class ActionCableListener < BaseListener
     tokens = user_tokens(account, conversation.inbox.members) + contact_tokens(conversation.contact_inbox, message)
 
     broadcast(account, tokens, MESSAGE_CREATED, message.push_event_data)
+
+    # When the inbox is configured to reset unread counts on agent reply,
+    # update agent_last_seen_at when an agent sends an outgoing message.
+    return unless message.outgoing? && conversation.inbox.on_reply?
+
+    # rubocop:disable Rails/SkipsModelValidations
+    conversation.update_columns(agent_last_seen_at: DateTime.now.utc, assignee_last_seen_at: DateTime.now.utc)
+    # rubocop:enable Rails/SkipsModelValidations
   end
 
   def message_updated(event)
@@ -151,8 +167,11 @@ class ActionCableListener < BaseListener
   end
 
   def contact_deleted(event)
-    contact, account = extract_contact_and_account(event)
-    broadcast(account, [account_token(account)], CONTACT_DELETED, contact.push_event_data)
+    contact_data = event.data[:contact_data]
+    account = Account.find_by(id: contact_data[:account_id])
+    return if account.blank?
+
+    broadcast(account, [account_token(account)], CONTACT_DELETED, contact_data)
   end
 
   def conversation_mentioned(event)

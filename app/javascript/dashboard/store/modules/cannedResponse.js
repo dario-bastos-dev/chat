@@ -3,6 +3,20 @@ import * as MutationHelpers from 'shared/helpers/vuex/mutationHelpers';
 import * as types from '../mutation-types';
 import CannedResponseAPI from '../../api/cannedResponse';
 
+function buildPayload(obj) {
+  if (obj.file) {
+    const formData = new FormData();
+    formData.append('canned_response[short_code]', obj.short_code || '');
+    formData.append('canned_response[content]', obj.content || '');
+    formData.append('canned_response[file]', obj.file);
+    return formData;
+  }
+  if (obj.remove_file) {
+    return { canned_response: { short_code: obj.short_code, content: obj.content }, remove_file: true };
+  }
+  return obj;
+}
+
 const state = {
   records: [],
   uiFlags: {
@@ -53,7 +67,7 @@ const actions = {
   ) {
     commit(types.default.SET_CANNED_UI_FLAG, { creatingItem: true });
     try {
-      const response = await CannedResponseAPI.create(cannedObj);
+      const response = await CannedResponseAPI.create(buildPayload(cannedObj));
       commit(types.default.ADD_CANNED, response.data);
       commit(types.default.SET_CANNED_UI_FLAG, { creatingItem: false });
       return response.data;
@@ -69,7 +83,7 @@ const actions = {
   ) {
     commit(types.default.SET_CANNED_UI_FLAG, { updatingItem: true });
     try {
-      const response = await CannedResponseAPI.update(id, updateObj);
+      const response = await CannedResponseAPI.update(id, buildPayload(updateObj));
       commit(types.default.EDIT_CANNED, response.data);
       commit(types.default.SET_CANNED_UI_FLAG, { updatingItem: false });
       return response.data;

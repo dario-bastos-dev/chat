@@ -59,4 +59,7 @@ module Redis::RedisKeys
   CONTACT_DEALS_CACHE = 'CONTACT_DEALS::%<contact_id>d'.freeze
   # Cache of kanban view data
   KANBAN_CACHE = 'KANBAN::%<account_id>d::%<pipeline_id>d::%<page>d'.freeze
+
+  ## Account Email Rate Limiting
+  ACCOUNT_OUTBOUND_EMAIL_COUNT_KEY = 'OUTBOUND_EMAIL_COUNT::%<account_id>d::%<date>s'.freeze
 end

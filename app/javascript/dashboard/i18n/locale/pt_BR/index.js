@@ -4,6 +4,9 @@ import agentMgmt from './agentMgmt.json';
 import attributesMgmt from './attributesMgmt.json';
 import auditLogs from './auditLogs.json';
 import automation from './automation.json';
+import messageSequences from './messageSequences.json';
+import scheduledMessages from './scheduledMessages.json';
+import conversationSequences from './conversationSequences.json';
 import bulkActions from './bulkActions.json';
 import campaign from './campaign.json';
 import cannedMgmt from './cannedMgmt.json';
@@ -76,4 +79,7 @@ export default {
   ...sla,
   ...teamsSettings,
   ...whatsappTemplates,
+  ...messageSequences,
+  ...scheduledMessages,
+  ...conversationSequences,
 };

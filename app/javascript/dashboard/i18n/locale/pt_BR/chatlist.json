@@ -104,7 +104,7 @@
         "CONTENT": "Contato compartilhado"
       },
       "embed": {
-        "CONTENT": "Embedded content"
+        "CONTENT": "Conteúdo incorporado"
       }
     },
     "CHAT_SORT_BY_FILTER": {
@@ -138,5 +138,14 @@
     "SHOW_QUOTED_TEXT": "Mostrar Texto Citado",
     "MESSAGE_READ": "Lida",
     "SENDING": "Enviando"
+  },
+  "conversations": {
+    "export": {
+      "tooltip": "Exportar conversas",
+      "title": "Exportar conversas",
+      "description": "Exporte rapidamente um arquivo CSV com detalhes completos das suas conversas",
+      "confirm": "Exportar",
+      "success": "A exportação está em andamento. Você será notificado por e-mail quando o arquivo de exportação estiver pronto para download."
+    }
   }
 }

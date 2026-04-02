@@ -199,6 +199,13 @@ watch(
       />
     </div>
 
+    <div class="flex items-center gap-3">
+      <Switch v-model="state.isScheduled" />
+      <label class="text-sm font-medium text-n-slate-12">
+        {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.SCHEDULE_CAMPAIGN') }}
+      </label>
+    </div>
+
     <div class="flex flex-col gap-1">
       <label for="template" class="mb-0.5 text-sm font-medium text-n-slate-12">
         {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.TEMPLATE.LABEL') }}
@@ -239,13 +246,6 @@ watch(
       />
     </div>
 
-    <div class="flex items-center gap-3">
-      <Switch v-model="state.isScheduled" />
-      <label class="text-sm font-medium text-n-slate-12">
-        {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.SCHEDULE_CAMPAIGN') }}
-      </label>
-    </div>
-
     <Input
       v-if="state.isScheduled"
       v-model="state.scheduledAt"
@@ -263,7 +263,7 @@ watch(
         color="slate"
         type="button"
         :label="t('CAMPAIGN.WHATSAPP.CREATE.FORM.BUTTONS.CANCEL')"
-        class="w-full bg-n-alpha-2 text-n-blue-text hover:bg-n-alpha-3"
+        class="w-full bg-n-alpha-2 text-n-blue-11 hover:bg-n-alpha-3"
         @click="handleCancel"
       />
       <Button

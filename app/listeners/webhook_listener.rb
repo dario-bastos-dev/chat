@@ -91,31 +91,6 @@ class WebhookListener < BaseListener
     handle_typing_status(__method__.to_s, event)
   end
 
-  # CRM: Deal webhook events
-  def deal_created(event)
-    deliver_deal_webhook(event)
-  end
-
-  def deal_updated(event)
-    deliver_deal_webhook(event)
-  end
-
-  def deal_stage_changed(event)
-    deliver_deal_webhook(event)
-  end
-
-  def deal_won(event)
-    deliver_deal_webhook(event)
-  end
-
-  def deal_lost(event)
-    deliver_deal_webhook(event)
-  end
-
-  def deal_rotting(event)
-    deliver_deal_webhook(event)
-  end
-
   private
 
   def handle_typing_status(event_name, event)
@@ -136,7 +111,9 @@ class WebhookListener < BaseListener
     account.webhooks.account_type.each do |webhook|
       next unless webhook.subscriptions.include?(payload[:event])
 
-      WebhookJob.perform_later(webhook.url, payload)
+      WebhookJob.perform_later(webhook.url, payload, :account_webhook,
+                               secret: webhook.secret,
+                               delivery_id: SecureRandom.uuid)
     end
   end
 
@@ -144,25 +121,12 @@ class WebhookListener < BaseListener
     return unless inbox.channel_type == 'Channel::Api'
     return if inbox.channel.webhook_url.blank?
 
-    WebhookJob.perform_later(inbox.channel.webhook_url, payload, :api_inbox_webhook)
+    WebhookJob.perform_later(inbox.channel.webhook_url, payload, :api_inbox_webhook,
+                             delivery_id: SecureRandom.uuid)
   end
 
   def deliver_webhook_payloads(payload, inbox)
     deliver_account_webhooks(payload, inbox.account)
     deliver_api_inbox_webhooks(payload, inbox)
-  end
-
-  def deliver_deal_webhook(event)
-    deal = event.data[:deal]
-    return unless deal.present?
-
-    account = deal.account
-    payload = deal.webhook_data.merge(event: event.name.to_s.gsub('_', '.'))
-
-    # Include extra event data (e.g. from_stage_id, lost_reason)
-    extra_keys = event.data.except(:deal)
-    payload.merge!(extra_keys) if extra_keys.present?
-
-    deliver_account_webhooks(payload, account)
   end
 end

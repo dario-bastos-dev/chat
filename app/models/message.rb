@@ -114,7 +114,7 @@ class Message < ApplicationRecord
 
   scope :created_since, ->(datetime) { where('created_at > ?', datetime) }
   scope :chat, -> { where.not(message_type: :activity).where(private: false) }
-  scope :non_activity_messages, -> { where.not(message_type: :activity).reorder('id desc') }
+  scope :non_activity_messages, -> { where.not(message_type: :activity).reorder('created_at desc') }
   scope :today, -> { where("date_trunc('day', created_at) = ?", Date.current) }
   scope :voice_calls, -> { where(content_type: :voice_call) }
 
@@ -315,6 +315,20 @@ class Message < ApplicationRecord
     send_reply
     execute_message_template_hooks
     update_contact_activity
+    restart_attached_active_sequences
+  end
+
+  def restart_attached_active_sequences
+    return unless incoming? && !private?
+    
+    active_sequences = conversation.conversation_message_sequences.active
+
+    active_sequences.find_each do |conv_seq|
+      conv_seq.update!(
+        current_step: 0,
+        last_step_executed_at: Time.current
+      )
+    end
   end
 
   def update_contact_activity
@@ -322,12 +336,21 @@ class Message < ApplicationRecord
   end
 
   def update_waiting_since
-    if human_response? && !private && conversation.waiting_since.present?
-      Rails.configuration.dispatcher.dispatch(
-        REPLY_CREATED, Time.zone.now, waiting_since: conversation.waiting_since, message: self
-      )
-      conversation.update(waiting_since: nil)
+    waiting_present = conversation.waiting_since.present?
+
+    if waiting_present && !private
+      if human_response?
+        Rails.configuration.dispatcher.dispatch(
+          REPLY_CREATED, Time.zone.now, waiting_since: conversation.waiting_since, message: self
+        )
+        conversation.update(waiting_since: nil)
+      elsif bot_response?
+        # Bot responses also clear waiting_since (simpler than checking on next customer message)
+        conversation.update(waiting_since: nil)
+      end
     end
+
+    # Set waiting_since when customer sends a message (if currently blank)
     conversation.update(waiting_since: created_at) if incoming? && conversation.waiting_since.blank?
   end
 
@@ -335,10 +358,16 @@ class Message < ApplicationRecord
     # if the sender is not a user, it's not a human response
     # if automation rule id is present, it's not a human response
     # if campaign id is present, it's not a human response
+    # external echo messages are responses sent from the native app (WhatsApp Business, Instagram)
     outgoing? &&
       content_attributes['automation_rule_id'].blank? &&
       additional_attributes['campaign_id'].blank? &&
-      sender.is_a?(User)
+      (sender.is_a?(User) || content_attributes['external_echo'].present?)
+  end
+
+  def bot_response?
+    # Check if this is a response from AgentBot or Captain::Assistant
+    outgoing? && sender_type.in?(['AgentBot', 'Captain::Assistant'])
   end
 
   def dispatch_create_events

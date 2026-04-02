@@ -35,6 +35,7 @@ Rails.application.routes.draw do
     resource :slack_uploads, only: [:show]
   end
 
+  get '/health', to: 'health#show'
   get '/api', to: 'api#index'
   namespace :api, defaults: { format: 'json' } do
     namespace :v1 do
@@ -55,6 +56,7 @@ Rails.application.routes.draw do
             post :bulk_create, on: :collection
           end
           namespace :captain do
+            resource :preferences, only: [:show, :update]
             resources :assistants do
               member do
                 post :playground
@@ -72,6 +74,13 @@ Rails.application.routes.draw do
             end
             resources :custom_tools
             resources :documents, only: [:index, :show, :create, :destroy]
+            resource :tasks, only: [], controller: 'tasks' do
+              post :rewrite
+              post :summarize
+              post :reply_suggestion
+              post :label_suggestion
+              post :follow_up
+            end
           end
           resource :saml_settings, only: [:show, :create, :update, :destroy]
           resources :agent_bots, only: [:index, :create, :show, :update, :destroy] do
@@ -100,6 +109,7 @@ Rails.application.routes.draw do
           resources :macros, only: [:index, :create, :show, :update, :destroy] do
             post :execute, on: :member
           end
+          resources :message_sequences, only: [:index, :create, :show, :update, :destroy]
           resources :sla_policies, only: [:index, :create, :show, :update, :destroy]
           resources :custom_roles, only: [:index, :create, :show, :update, :destroy]
           resources :agent_capacity_policies, only: [:index, :create, :show, :update, :destroy] do
@@ -118,6 +128,7 @@ Rails.application.routes.draw do
               get :meta
               get :search
               post :filter
+              post :export
             end
             scope module: :conversations do
               resources :messages, only: [:index, :create, :destroy, :update] do
@@ -130,7 +141,9 @@ Rails.application.routes.draw do
               resources :labels, only: [:create, :index]
               resource :participants, only: [:show, :create, :update, :destroy]
               resource :direct_uploads, only: [:create]
-              resource :draft_messages, only: [:show, :update, :destroy]
+              resources :draft_messages, only: [:show, :update, :destroy]
+              resources :scheduled_messages, only: [:index, :create, :update, :destroy]
+              resources :conversation_sequences, only: [:index, :create, :destroy]
             end
             member do
               post :mute
@@ -212,6 +225,9 @@ Rails.application.routes.draw do
               get :metrics
               get :download
             end
+            member do
+              patch :update if ChatwootApp.enterprise?
+            end
           end
           resources :applied_slas, only: [:index] do
             collection do
@@ -241,7 +257,9 @@ Rails.application.routes.draw do
               end
             end
 
-            resource :csat_template, only: [:show, :create], controller: 'inbox_csat_templates'
+            resource :csat_template, only: [:show, :create], controller: 'inbox_csat_templates' do
+              post :analyze, on: :collection
+            end
           end
 
           resources :inbox_members, only: [:create, :show], param: :inbox_id do
@@ -446,6 +464,7 @@ Rails.application.routes.draw do
               get :team
               get :inbox
               get :label
+              get :channel
             end
           end
           resources :reports, only: [:index] do
@@ -457,8 +476,12 @@ Rails.application.routes.draw do
               get :labels
               get :teams
               get :conversations
+              get :conversations_summary
               get :conversation_traffic
               get :bot_metrics
+              get :inbox_label_matrix
+              get :first_response_time_distribution
+              get :outgoing_messages_count
             end
           end
           resource :year_in_review, only: [:show]
@@ -577,6 +600,7 @@ Rails.application.routes.draw do
   post 'webhooks/instagram', to: 'webhooks/instagram#events'
   post 'webhooks/tiktok', to: 'webhooks/tiktok#events'
   post 'webhooks/evolution/:phone_number', to: 'webhooks/evolution#process_payload'
+  post 'webhooks/shopify', to: 'webhooks/shopify#events'
 
   namespace :twitter do
     resource :callback, only: [:show]
