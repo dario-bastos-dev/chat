@@ -401,7 +401,7 @@ class Whatsapp::IncomingMessageEvolutionService
     # Determine message type and sender based on fromMe flag
     if from_me?
       # Message sent from WhatsApp directly (outgoing)
-      @message = @conversation.messages.create!(
+      @message = @conversation.messages.build(
         account_id: inbox.account_id,
         inbox_id: inbox.id,
         content: text_content,
@@ -414,7 +414,7 @@ class Whatsapp::IncomingMessageEvolutionService
       )
     else
       # Message received from contact (incoming)
-      @message = @conversation.messages.create!(
+      @message = @conversation.messages.build(
         account_id: inbox.account_id,
         inbox_id: inbox.id,
         content: text_content,
@@ -426,18 +426,18 @@ class Whatsapp::IncomingMessageEvolutionService
       )
     end
 
-    # Process attachments if present
-    process_attachments
+    # Process attachments INLINE before saving
+    # Ensures attachments are present when the message_created webhook fires
+    process_attachments_inline
+
+    @message.save!
   end
 
-  # Handle media attachments - NOW ASYNC FOR PERFORMANCE
-  def process_attachments
-    return unless @message # Ensure message exists
-    
-    Rails.logger.info "[EVOLUTION DEBUG] Message type: #{message_type_from_payload} | fromMe: #{from_me?}"
-    Rails.logger.info "[EVOLUTION DEBUG] Message Params Keys: #{message_params.keys}"
-    Rails.logger.info "[EVOLUTION DEBUG] Top-level mediaUrl present: #{data_params['mediaUrl'].present?}"
-
+  # Process media attachments SYNCHRONOUSLY before message save.
+  # This ensures attachments are present when the message_created webhook fires,
+  # following the same pattern used by Telegram::IncomingMessageService.
+  # If download fails, the message is saved without attachment (fallback safe).
+  def process_attachments_inline
     media_payload = {
       image: image_data,
       video: video_data,
@@ -446,23 +446,47 @@ class Whatsapp::IncomingMessageEvolutionService
       sticker: sticker_data
     }.find { |_, data| data.present? }
 
-    Rails.logger.info "[EVOLUTION DEBUG] Media Payload Found: #{media_payload&.first}"
-
     return unless media_payload
-    
+
     type, data = media_payload
-    
-    # Sanitize media data: remove huge binary blobs (fileSha256, mediaKey, jpegThumbnail, etc.)
-    # that cause Sidekiq serialization failures. Keep only essential fields.
-    sanitized_data = sanitize_media_data(data)
-    
-    Rails.logger.info "[EVOLUTION DEBUG] Sanitized data keys: #{sanitized_data.keys} | url: #{sanitized_data['url'].to_s.truncate(60)} | mediaUrl: #{sanitized_data['mediaUrl'].to_s.truncate(60)}"
-    
-    # Schedule background job for media processing
-    # This releases the main worker immediately to handle other messages
-    Webhooks::EvolutionMediaJob.perform_later(@message.id, sanitized_data, type)
-    
-    Rails.logger.info "[EVOLUTION MSG] Media attachment scheduled for Message #{@message.id} (type: #{type}, fromMe: #{from_me?})"
+    sanitized_data = sanitize_media_data(data).with_indifferent_access
+
+    Rails.logger.info "[EVOLUTION MSG] Processing #{type} attachment inline"
+
+    url = sanitized_data['mediaUrl'].presence || sanitized_data['url']
+    base64 = sanitized_data['base64']
+
+    mimetype = sanitized_data['mimetype'].presence || mime_for_type(type)
+    filename = sanitized_data['fileName'].presence || generate_filename(type, mimetype)
+
+    io = nil
+
+    if url.present?
+      Rails.logger.info "[EVOLUTION MSG] Downloading from URL: #{url.to_s.truncate(80)}"
+      io = URI.open(url, open_timeout: 10, read_timeout: 15)
+    elsif base64.present?
+      Rails.logger.info "[EVOLUTION MSG] Decoding from base64"
+      base64_clean = base64.sub(%r{^data:.*?;base64,}, '')
+      io = StringIO.new(Base64.decode64(base64_clean))
+    end
+
+    return unless io
+
+    @message.attachments.new(
+      account_id: @message.account_id,
+      file_type: map_file_type(type),
+      file: {
+        io: io,
+        filename: filename,
+        content_type: mimetype
+      }
+    )
+
+    Rails.logger.info "[EVOLUTION MSG] ✅ Attachment prepared inline (type: #{type}, mime: #{mimetype})"
+  rescue StandardError => e
+    # Fallback: if download fails, save message without attachment
+    # The media recovery path (DELIVERY_ACK) may still attach it later
+    Rails.logger.error "[EVOLUTION MSG] ⚠️ Inline attachment failed (non-blocking): #{e.message}"
   end
   
   # Called by Background Job (EvolutionMediaJob)
