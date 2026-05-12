@@ -11,7 +11,7 @@ import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
 import TagMultiSelectComboBox from 'dashboard/components-next/combobox/TagMultiSelectComboBox.vue';
 import TextArea from 'dashboard/components-next/textarea/TextArea.vue';
 import Switch from 'dashboard/components-next/switch/Switch.vue';
-import RadioButton from 'dashboard/components/ui/RadioButton.vue';
+
 
 const emit = defineEmits(['submit', 'cancel']);
 
@@ -207,18 +207,26 @@ const handleSubmit = async () => {
         Enviar para:
       </label>
       <div class="flex gap-4">
-        <RadioButton
-          id="target_lite_contacts"
-          v-model="state.targetType"
-          value="contacts"
-          label="Contatos"
-        />
-        <RadioButton
-          id="target_lite_conversations"
-          v-model="state.targetType"
-          value="conversations"
-          label="Conversas"
-        />
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input
+            v-model="state.targetType"
+            type="radio"
+            name="targetLiteType"
+            value="contacts"
+            class="size-4 accent-n-blue-9"
+          />
+          <span class="text-sm text-n-slate-12">Contatos</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+          <input
+            v-model="state.targetType"
+            type="radio"
+            name="targetLiteType"
+            value="conversations"
+            class="size-4 accent-n-blue-9"
+          />
+          <span class="text-sm text-n-slate-12">Conversas</span>
+        </label>
       </div>
     </div>
 

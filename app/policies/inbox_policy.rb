@@ -69,4 +69,44 @@ class InboxPolicy < ApplicationPolicy
   def reset_secret?
     @account_user.administrator?
   end
+
+  def evolution_qrcode?
+    @account_user.administrator?
+  end
+
+  def evolution_status?
+    @account_user.administrator?
+  end
+
+  def evolution_create_instance?
+    @account_user.administrator?
+  end
+
+  def evolution_disconnect?
+    @account_user.administrator?
+  end
+
+  def evolution_diagnostics?
+    @account_user.administrator?
+  end
+
+  def evolution_go_qrcode?
+    @account_user.administrator?
+  end
+
+  def evolution_go_pairing?
+    @account_user.administrator?
+  end
+
+  def evolution_go_status?
+    @account_user.administrator?
+  end
+
+  def evolution_go_create_instance?
+    @account_user.administrator?
+  end
+
+  def evolution_go_disconnect?
+    @account_user.administrator?
+  end
 end

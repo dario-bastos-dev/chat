@@ -3,6 +3,8 @@ class RepurposeTwilioContentTemplatesFlagForCaptainDocumentAutoSync < ActiveReco
     # The twilio_content_templates flag (deprecated) has been renamed to captain_document_auto_sync.
     # Disable it on any accounts that had twilio_content_templates enabled so the repurposed
     # flag starts in its intended default-off state.
+    return unless Account.respond_to?(:feature_captain_document_auto_sync)
+
     Account.feature_captain_document_auto_sync.find_each(batch_size: 100) do |account|
       account.disable_features(:captain_document_auto_sync)
       account.save!(validate: false)

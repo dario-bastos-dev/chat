@@ -671,7 +671,9 @@ Rails.application.routes.draw do
         delete :avatar, on: :member, action: :destroy_avatar
       end
       resources :platform_apps, only: [:index, :new, :create, :show, :edit, :update, :destroy]
+      resources :platform_banners, only: [:index, :new, :create, :show, :edit, :update, :destroy]
       resource :instance_status, only: [:show]
+      resource :push_diagnostics, only: [:show]
 
       resource :settings, only: [:show] do
         get :refresh, on: :collection
@@ -681,7 +683,7 @@ Rails.application.routes.draw do
       resources :account_users, only: [:new, :create, :show, :destroy]
     end
     authenticated :super_admin do
-      mount Sidekiq::Web => '/monitoring/sidekiq'
+      mount Sidekiq::Web => '/monitoring/sidekiq', as: :sidekiq_web
     end
   end
 

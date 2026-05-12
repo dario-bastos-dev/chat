@@ -946,38 +946,38 @@
       "ENABLE_AUTO_ASSIGNMENT": "Ativar atribuição automática de conversas",
       "DEFAULT_RULES_TITLE": "Regras de atribuição padrão",
       "DEFAULT_RULES_DESCRIPTION": "Utilizando o comportamento de atribuição padrão para todas as conversas",
-      "DEFAULT_RULE_1": "Conversas criadas mais antigas primeiro",
-      "DEFAULT_RULE_2": "Distribuição em rodízio",
+      "DEFAULT_RULE_1": "Conversas criadas primeiro, primeiro atendidas",
+      "DEFAULT_RULE_2": "Distribuição por rodízio",
       "CUSTOMIZE_WITH_POLICY": "Personalizar com política de atribuição",
-      "USING_POLICY": "Utilizando política de atribuição personalizada para esta caixa de entrada",
+      "USING_POLICY": "Usando política de atribuição personalizada para esta caixa de entrada",
       "CUSTOMIZE_POLICY": "Personalizar com política de atribuição",
       "DELETE_POLICY": "Excluir política",
       "POLICY_LABEL": "Política de atribuição",
-      "ASSIGNMENT_ORDER_LABEL": "Ordem de Atribuição",
-      "ASSIGNMENT_METHOD_LABEL": "Método de Atribuição",
+      "ASSIGNMENT_ORDER_LABEL": "Ordem de atribuição",
+      "ASSIGNMENT_METHOD_LABEL": "Método de atribuição",
       "POLICY_STATUS": {
         "ACTIVE": "Ativo",
-        "INACTIVE": "Inativa"
+        "INACTIVE": "Inativo"
       },
       "PRIORITY": {
-        "EARLIEST_CREATED": "Criado recentemente",
+        "EARLIEST_CREATED": "Criado mais cedo",
         "LONGEST_WAITING": "Maior tempo de espera"
       },
       "METHOD": {
-        "ROUND_ROBIN": "Rodízio",
+        "ROUND_ROBIN": "Rodízio (Round Robin)",
         "BALANCED": "Atribuição equilibrada"
       },
       "UPGRADE_PROMPT": "Políticas de atribuição personalizadas estão disponíveis no plano Business",
-      "UPGRADE_TO_BUSINESS": "Atualizar para o Business",
+      "UPGRADE_TO_BUSINESS": "Atualizar para o plano Business",
       "DEFAULT_POLICY_LINKED": "Política padrão vinculada",
-      "DEFAULT_POLICY_DESCRIPTION": "Vincule uma política de atribuição personalizada para definir como as conversas serão atribuídas aos agentes nesta caixa de entrada.",
+      "DEFAULT_POLICY_DESCRIPTION": "Vincule uma política de atribuição personalizada para definir como as conversas são atribuídas aos agentes nesta caixa de entrada.",
       "LINK_EXISTING_POLICY": "Vincular política existente",
       "CREATE_NEW_POLICY": "Criar nova política",
       "NO_POLICIES": "Nenhuma política de atribuição encontrada",
       "VIEW_ALL_POLICIES": "Ver todas as políticas",
-      "CURRENT_BEHAVIOR": "Atualmente utilizando o comportamento de atribuição padrão:",
+      "CURRENT_BEHAVIOR": "Atualmente usando o comportamento de atribuição padrão:",
       "LINK_SUCCESS": "Política de atribuição vinculada com sucesso",
-      "LINK_ERROR": "Falha ao vincular a política de atribuição"
+      "LINK_ERROR": "Falha ao vincular política de atribuição"
     },
     "ASSIGNMENT_POLICY": {
       "DELETE_CONFIRM_TITLE": "Excluir política de atribuição?",
@@ -985,7 +985,7 @@
       "CANCEL": "Cancelar",
       "CONFIRM_DELETE": "Excluir",
       "DELETE_SUCCESS": "Política de atribuição removida com sucesso",
-      "DELETE_ERROR": "Falha ao remover a política de atribuição"
+      "DELETE_ERROR": "Falha ao remover política de atribuição"
     },
     "FACEBOOK_REAUTHORIZE": {
       "TITLE": "Reautorizar",
