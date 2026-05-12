@@ -27,7 +27,7 @@
       </label>
     </div>
 
-    <div>
+    <div v-if="!isTemplateRequired && !selectedTemplate">
       <label>
         {{ $t('SCHEDULED_MESSAGES.FORM.CONTENT') }}
         <textarea
@@ -48,28 +48,27 @@
         {{ $t('SCHEDULED_MESSAGES.FORM.TEMPLATE_REQUIRED') }}
       </p>
 
-      <div
-        v-if="selectedTemplate"
-        class="mt-2 p-3 rounded-md border border-n-blue-5 bg-n-blue-2"
-      >
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-n-blue-11">
-            {{
-              $t('SCHEDULED_MESSAGES.FORM.TEMPLATE_SELECTED', {
-                name: selectedTemplate.name,
-              })
-            }}
-          </span>
-          <button
-            @click="clearTemplate"
-            class="text-xs text-n-ruby-9 hover:text-n-ruby-10"
-          >
-            ✕
-          </button>
-        </div>
+      <div v-if="selectedTemplate" class="mt-2 flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-n-slate-12">
+          {{ $t('SCHEDULED_MESSAGES.FORM.TEMPLATE_SELECTED', { name: selectedTemplate.name }) }}
+        </span>
+        <button @click="clearTemplate" class="text-xs text-n-ruby-9 hover:underline">
+          Remover Template
+        </button>
       </div>
 
-      <div v-if="showTemplatePicker" class="mt-2">
+      <WhatsAppTemplateParser
+        v-if="selectedTemplate"
+        ref="templateParser"
+        :template="selectedTemplate"
+        @send-message="onParserSubmit"
+      >
+        <template #actions>
+          <div class="hidden"></div>
+        </template>
+      </WhatsAppTemplateParser>
+
+      <div v-if="showTemplatePicker && !selectedTemplate" class="mt-2">
         <TemplatesPicker :inbox-id="inboxId" @on-select="onTemplateSelect" />
       </div>
       <button
@@ -102,10 +101,12 @@
 <script>
 import { mapGetters } from 'vuex';
 import TemplatesPicker from 'dashboard/components/widgets/conversation/WhatsappTemplates/TemplatesPicker.vue';
+import WhatsAppTemplateParser from 'dashboard/components-next/whatsapp/WhatsAppTemplateParser.vue';
 
 export default {
   components: {
     TemplatesPicker,
+    WhatsAppTemplateParser,
   },
   props: {
     initialData: {
@@ -148,35 +149,51 @@ export default {
     isWhatsAppBusinessCloud() {
       return (
         this.inbox?.channel_type === 'Channel::Whatsapp' &&
-        this.inbox?.provider !== 'evolution'
+        !['evolution', 'evolution_go'].includes(this.inbox?.provider)
       );
     },
     scheduledAt() {
       if (!this.form.date || !this.form.time) return null;
       const date = new Date(`${this.form.date}T${this.form.time}`);
-      return date.toISOString();
+      return isNaN(date.getTime()) ? null : date.toISOString();
+    },
+    lastIncomingMessageAt() {
+      const messages = this.currentChat?.messages || [];
+      if (!messages.length) return null;
+      const incoming = messages.filter(m => m.message_type === 0);
+      if (!incoming.length) return null;
+      
+      const ts = incoming[incoming.length - 1].created_at;
+      // Garante que se for timestamp em segundos (10 digitos), seja convertido para ms
+      return String(ts).length === 10 ? ts * 1000 : ts;
     },
     isMoreThan24Hours() {
-      if (!this.scheduledAt) return false;
-      const scheduledDate = new Date(this.scheduledAt);
-      const now = new Date();
-      const diffMs = scheduledDate - now;
-      const diffHours = diffMs / (1000 * 60 * 60);
-      return diffHours > 24;
+      let windowExpiresAt;
+
+      if (this.lastIncomingMessageAt) {
+        windowExpiresAt = this.lastIncomingMessageAt + (24 * 60 * 60 * 1000);
+      } else {
+        windowExpiresAt = 0; // Assume window is closed se não houver mensagem recebida
+      }
+
+      // Se não temos agendamento completo ainda, validamos em relação ao "agora".
+      // Isso bloqueia o campo de texto imediatamente se a janela já estiver fechada.
+      if (!this.scheduledAt) {
+        return Date.now() > windowExpiresAt;
+      }
+
+      const scheduledDate = new Date(this.scheduledAt).getTime();
+      return scheduledDate > windowExpiresAt;
     },
     isTemplateRequired() {
       return this.isWhatsAppBusinessCloud && this.isMoreThan24Hours;
     },
     isFormValid() {
-      const baseValid =
-        this.form.date &&
-        this.form.time &&
-        this.form.title &&
-        this.form.content;
-      if (this.isTemplateRequired) {
-        return baseValid && this.selectedTemplate;
+      const baseValid = this.form.date && this.form.time && this.form.title;
+      if (this.selectedTemplate) {
+        return baseValid; // Validação do template ocorre no parser ao submeter
       }
-      return baseValid;
+      return baseValid && this.form.content;
     },
   },
   mounted() {
@@ -202,23 +219,28 @@ export default {
       this.selectedTemplate = null;
       this.showTemplatePicker = false;
     },
+    onParserSubmit(parserPayload) {
+      const payload = {
+        title: this.form.title,
+        content: parserPayload.message || '-',
+        scheduled_at: this.scheduledAt,
+        template_params: parserPayload.templateParams,
+      };
+      this.$emit('submit', payload);
+    },
     submit() {
       if (!this.isFormValid) return;
+
+      if (this.selectedTemplate) {
+        this.$refs.templateParser.sendMessage();
+        return;
+      }
+
       const payload = {
         title: this.form.title,
         content: this.form.content,
         scheduled_at: this.scheduledAt,
       };
-
-      if (this.selectedTemplate) {
-        payload.template_params = {
-          name: this.selectedTemplate.name,
-          category: this.selectedTemplate.category,
-          language: this.selectedTemplate.language,
-          namespace: this.selectedTemplate.namespace || '',
-          processed_params: {},
-        };
-      }
 
       this.$emit('submit', payload);
     },

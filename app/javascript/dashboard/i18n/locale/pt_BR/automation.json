@@ -150,7 +150,8 @@
       "ADD_PRIVATE_NOTE": "Adicionar uma Nota Privada",
       "CHANGE_PRIORITY": "Alterar Prioridade",
       "ADD_SLA": "Adicionar SLA",
-      "OPEN_CONVERSATION": "Abrir conversa"
+      "OPEN_CONVERSATION": "Abrir conversa",
+      "CREATE_DEAL": "Criar Negócio"
     },
     "MESSAGE_TYPES": {
       "INCOMING": "Mensagem Recebida",

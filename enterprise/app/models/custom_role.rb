@@ -18,6 +18,7 @@
 
 # Available permissions for custom roles:
 # - 'conversation_manage': Can manage all conversations.
+# - 'conversation_team_manage': Can manage their own, unassigned and their team's conversations.
 # - 'conversation_unassigned_manage': Can manage unassigned conversations and assign to self.
 # - 'conversation_participating_manage': Can manage conversations they are participating in (assigned to or a participant).
 # - 'contact_manage': Can manage contacts.
@@ -30,6 +31,7 @@ class CustomRole < ApplicationRecord
 
   PERMISSIONS = %w[
     conversation_manage
+    conversation_team_manage
     conversation_unassigned_manage
     conversation_participating_manage
     contact_manage

@@ -50,9 +50,13 @@ class Campaign < ApplicationRecord
   enum campaign_status: { active: 0, completed: 1 }
 
   has_many :conversations, dependent: :nullify, autosave: true
+  has_many_attached :attachments
 
   before_validation :ensure_correct_campaign_attributes
   after_commit :set_display_id, unless: :display_id?
+  after_create_commit :dispatch_create_event
+  after_update_commit :dispatch_update_event
+  after_destroy_commit :dispatch_destroy_event
 
   def trigger!
     return unless one_off?
@@ -64,9 +68,35 @@ class Campaign < ApplicationRecord
   def total_contacts
     return 0 if audience.blank?
 
+    target_type = audience.find { |a| a['type'] == 'Target' }&.dig('value') || 'contacts'
     audience_label_ids = audience.select { |a| a['type'] == 'Label' }.pluck('id')
     audience_labels = account.labels.where(id: audience_label_ids).pluck(:title)
-    account.contacts.tagged_with(audience_labels, any: true).count
+
+    if target_type == 'conversations'
+      account.conversations.where(inbox_id: inbox_id, status: :open).tagged_with(audience_labels, any: true).count
+    else
+      account.contacts.tagged_with(audience_labels, any: true).count
+    end
+  end
+
+  def push_event_data
+    {
+      id: id,
+      display_id: display_id,
+      title: title,
+      description: description,
+      message: message,
+      sender_id: sender_id,
+      enabled: enabled,
+      campaign_status: campaign_status,
+      campaign_type: campaign_type,
+      scheduled_at: scheduled_at,
+      trigger_only_during_business_hours: trigger_only_during_business_hours,
+      trigger_rules: trigger_rules,
+      audience: audience,
+      account_id: account_id,
+      inbox_id: inbox_id
+    }
   end
 
   private
@@ -84,6 +114,18 @@ class Campaign < ApplicationRecord
 
   def set_display_id
     reload
+  end
+
+  def dispatch_create_event
+    Dispatcher.dispatch(Events::Types::CAMPAIGN_CREATED, Time.zone.now, campaign: self)
+  end
+
+  def dispatch_update_event
+    Dispatcher.dispatch(Events::Types::CAMPAIGN_UPDATED, Time.zone.now, campaign: self)
+  end
+
+  def dispatch_destroy_event
+    Dispatcher.dispatch(Events::Types::CAMPAIGN_DELETED, Time.zone.now, campaign_data: push_event_data)
   end
 
   def validate_campaign_inbox

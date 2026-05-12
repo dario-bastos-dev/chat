@@ -4,7 +4,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   before_action :fetch_agent_bot, only: [:set_agent_bot]
   before_action :validate_limit, only: [:create]
   # we are already handling the authorization in fetch inbox
-  before_action :check_authorization, except: [:show, :health, :evolution_qrcode, :evolution_status, :evolution_create_instance, :evolution_disconnect, :evolution_diagnostics]
+  before_action :check_authorization, except: [:show, :health, :evolution_qrcode, :evolution_status, :evolution_create_instance, :evolution_disconnect, :evolution_diagnostics, :evolution_go_qrcode, :evolution_go_pairing, :evolution_go_status, :evolution_go_create_instance, :evolution_go_disconnect]
   before_action :validate_whatsapp_cloud_channel, only: [:health]
 
   def index
@@ -182,6 +182,58 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     render json: { error: e.message }, status: :internal_server_error
   end
 
+  # --- Evolution GO Actions ---
+
+  def evolution_go_qrcode
+    return render json: { error: 'Not an Evolution GO channel', success: false }, status: :bad_request unless evolution_go_channel?
+
+    result = @inbox.channel.provider_service.get_qr_code
+    render json: result
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] QR code error: #{e.message}"
+    render json: { error: e.message, success: false }, status: :internal_server_error
+  end
+
+  def evolution_go_pairing
+    return render json: { error: 'Not an Evolution GO channel', success: false }, status: :bad_request unless evolution_go_channel?
+
+    result = @inbox.channel.provider_service.get_pairing_code(phone_number: params[:number])
+    render json: result
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] Pairing code error: #{e.message}"
+    render json: { error: e.message, success: false }, status: :internal_server_error
+  end
+
+  def evolution_go_status
+    return render json: { error: 'Not an Evolution GO channel' }, status: :bad_request unless evolution_go_channel?
+
+    result = @inbox.channel.provider_service.get_connection_status
+    render json: result
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] Status error: #{e.message}"
+    render json: { error: e.message, success: false, connected: false }, status: :unprocessable_entity
+  end
+
+  def evolution_go_create_instance
+    return render json: { error: 'Not an Evolution GO channel' }, status: :bad_request unless evolution_go_channel?
+
+    result = @inbox.channel.provider_service.create_instance
+    render json: result
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] Create instance error: #{e.message}"
+    render json: { error: e.message, success: false }, status: :unprocessable_entity
+  end
+
+  def evolution_go_disconnect
+    return render json: { error: 'Not an Evolution GO channel', success: false }, status: :bad_request unless evolution_go_channel?
+
+    result = @inbox.channel.provider_service.logout
+    render json: result
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] Disconnect error: #{e.message}"
+    render json: { error: e.message, success: false }, status: :internal_server_error
+  end
+
   private
 
   def fetch_inbox
@@ -302,6 +354,10 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
 
   def evolution_channel?
     @inbox&.channel.is_a?(Channel::Whatsapp) && @inbox.channel&.provider == 'evolution'
+  end
+
+  def evolution_go_channel?
+    @inbox&.channel.is_a?(Channel::Whatsapp) && @inbox.channel&.provider == 'evolution_go'
   end
 
   def trigger_template_sync

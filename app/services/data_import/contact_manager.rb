@@ -1,6 +1,7 @@
 class DataImport::ContactManager
   def initialize(account)
     @account = account
+    @existing_labels = @account.labels.pluck(:title).to_set
   end
 
   def build_contact(params)
@@ -63,6 +64,26 @@ class DataImport::ContactManager
     contact.additional_attributes ||= {}
     contact.additional_attributes[:company] = params[:company] if params[:company].present?
     contact.additional_attributes[:city] = params[:city] if params[:city].present?
-    contact.assign_attributes(custom_attributes: contact.custom_attributes.merge(params.except(:identifier, :email, :name, :phone_number)))
+    assign_labels(params, contact)
+    contact.assign_attributes(custom_attributes: contact.custom_attributes.merge(params.except(:identifier, :email, :name, :phone_number, :labels, :tags)))
+  end
+
+  def assign_labels(params, contact)
+    raw_labels = params[:labels] || params[:tags]
+    return if raw_labels.blank?
+
+    label_names = raw_labels.to_s.split(',').map(&:strip).map(&:downcase).compact_blank
+
+    new_labels = label_names.reject { |name| @existing_labels.include?(name) }
+    new_labels.each do |label_name|
+      begin
+        @account.labels.create!(title: label_name)
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        # Ignorar falhas silenciosas ao criar tags duplicadas concorrentemente
+      end
+      @existing_labels << label_name
+    end
+
+    contact.label_list = label_names
   end
 end

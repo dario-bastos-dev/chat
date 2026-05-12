@@ -38,6 +38,8 @@ class Api::V1::Accounts::CannedResponsesController < Api::V1::Accounts::BaseCont
       json['file_url'] = url_for(cr.file)
       json['file_name'] = cr.file.filename.to_s
       json['file_content_type'] = cr.file.content_type
+      json['file_signed_id'] = cr.file.blob.signed_id
+      json['file_size'] = cr.file.blob.byte_size
     end
     json
   end

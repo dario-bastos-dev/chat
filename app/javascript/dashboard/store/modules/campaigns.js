@@ -47,7 +47,7 @@ export const getters = {
         return (
           record.campaign_type === CAMPAIGN_TYPES.ONE_OFF &&
           record.inbox?.channel_type === INBOX_TYPES.WHATSAPP &&
-          record.inbox?.provider !== 'evolution'
+          !['evolution', 'evolution_go'].includes(record.inbox?.provider)
         );
       })
       .sort((a1, a2) => a1.id - a2.id);
@@ -59,7 +59,7 @@ export const getters = {
         return (
           record.campaign_type === CAMPAIGN_TYPES.ONE_OFF &&
           record.inbox?.channel_type === INBOX_TYPES.WHATSAPP &&
-          record.inbox?.provider === 'evolution'
+          ['evolution', 'evolution_go'].includes(record.inbox?.provider)
         );
       })
       .sort((a1, a2) => a1.id - a2.id);

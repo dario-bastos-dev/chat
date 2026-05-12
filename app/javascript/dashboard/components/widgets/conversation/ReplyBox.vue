@@ -166,6 +166,8 @@ export default {
       );
     },
     showWhatsappTemplates() {
+      if (this.isUnofficialWhatsApp) return false;
+
       // We support templates for API channels if someone updates templates manually via API
       // That's why we don't explicitly check for channel type here
       const templates = this.$store.getters['inboxes/getWhatsAppTemplates'](
@@ -517,6 +519,10 @@ export default {
     );
     emitter.on(BUS_EVENTS.INSERT_INTO_NORMAL_EDITOR, this.addIntoEditor);
     emitter.on(CMD_AI_ASSIST, this.executeCopilotAction);
+    emitter.on(
+      BUS_EVENTS.INSERT_CANNED_ATTACHMENT,
+      this.onCannedAttachmentFromBus
+    );
   },
   unmounted() {
     document.removeEventListener('paste', this.onPaste);
@@ -528,6 +534,10 @@ export default {
       this.onNewConversationModalActive
     );
     emitter.off(CMD_AI_ASSIST, this.executeCopilotAction);
+    emitter.off(
+      BUS_EVENTS.INSERT_CANNED_ATTACHMENT,
+      this.onCannedAttachmentFromBus
+    );
   },
   methods: {
     getDraftKey(
@@ -1043,21 +1053,37 @@ export default {
       });
     },
     attachFile({ blob, file }) {
-      const reader = new FileReader();
-      reader.readAsDataURL(file.file);
-      reader.onloadend = () => {
-        this.attachedFiles.push({
-          currentChatId: this.currentChat.id,
-          resource: blob || file,
-          isPrivate: this.isPrivate,
-          thumb: reader.result,
-          blobSignedId: blob ? blob.signed_id : undefined,
-          isRecordedAudio: file?.isRecordedAudio || false,
-        });
-      };
+      this.attachedFiles.push({
+        currentChatId: this.currentChat.id,
+        resource: blob || file,
+        isPrivate: this.isPrivate,
+        thumb: URL.createObjectURL(file.file),
+        blobSignedId: blob ? blob.signed_id : undefined,
+        isRecordedAudio: file?.isRecordedAudio || false,
+      });
     },
     removeAttachment(attachments) {
       this.attachedFiles = attachments;
+    },
+    onCannedAttachmentFromBus({ conversationId, file }) {
+      if (this.currentChat.id === conversationId) {
+        this.onInsertCannedAttachment(file);
+      }
+    },
+    onInsertCannedAttachment(fileData) {
+      if (!fileData || !fileData.signed_id) return;
+      this.attachedFiles.push({
+        currentChatId: this.currentChat.id,
+        blobSignedId: fileData.signed_id,
+        thumb: fileData.url,
+        resource: {
+          name: fileData.name,
+          type: fileData.type,
+          size: fileData.size,
+        },
+        isPrivate: this.isPrivate,
+        isRecordedAudio: false,
+      });
     },
     setReplyToInPayload(payload) {
       if (this.inReplyTo?.id) {
@@ -1079,9 +1105,7 @@ export default {
         let caption =
           this.isAnInstagramChannel || this.isATiktokChannel ? '' : message;
         this.attachedFiles.forEach(attachment => {
-          const attachedFile = this.globalConfig.directUploadsEnabled
-            ? attachment.blobSignedId
-            : attachment.resource.file;
+          const attachedFile = attachment.blobSignedId || attachment.resource.file;
           let attachmentPayload = {
             conversationId: this.currentChat.id,
             files: [attachedFile],
@@ -1135,7 +1159,7 @@ export default {
       if (this.attachedFiles && this.attachedFiles.length) {
         messagePayload.files = [];
         this.attachedFiles.forEach(attachment => {
-          if (this.globalConfig.directUploadsEnabled) {
+          if (attachment.blobSignedId) {
             messagePayload.files.push(attachment.blobSignedId);
           } else {
             messagePayload.files.push(attachment.resource.file);
@@ -1335,6 +1359,7 @@ export default {
           @toggle-variables-menu="toggleVariablesMenu"
           @clear-selection="clearEditorSelection"
           @execute-copilot-action="executeCopilotAction"
+          @canned-response-attachment="onInsertCannedAttachment"
         />
 
         <QuotedEmailPreview

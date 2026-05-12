@@ -64,4 +64,38 @@ class AutomationRules::ActionService < ActionService
       @account.increment_email_sent_count
     end
   end
+
+  def create_deal(params)
+    action_param = params[0]
+    if action_param.to_s.include?(':')
+      pipeline_id, stage_id = action_param.split(':')
+    else
+      pipeline_id = action_param
+      stage_id = nil
+    end
+
+    pipeline = @account.pipelines.find_by(id: pipeline_id)
+    return unless pipeline
+
+    stage = if stage_id
+              pipeline.stages.find_by(id: stage_id)
+            else
+              pipeline.stages.order(position: :asc).first
+            end
+    return unless stage
+
+    contact = @conversation.contact
+    return unless contact
+
+    Deals::Creator.new(
+      account: @account,
+      params: {
+        title: "#{contact.name} - #{@conversation.display_id}",
+        pipeline_id: pipeline.id,
+        stage_id: stage.id,
+        contact_id: contact.id,
+        conversation_id: @conversation.id
+      }
+    ).perform
+  end
 end

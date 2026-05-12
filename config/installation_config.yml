@@ -184,6 +184,20 @@
   type: secret
 # ------- End of Evolution API Related Config ------- #
 
+# ------- Evolution GO API Related Config (WhatsApp Lite) ------- #
+- name: EVOLUTIONGO_API_URL
+  display_title: 'Evolution GO API URL'
+  description: 'The base URL of your Evolution GO API instance (e.g. https://evogo.example.com)'
+  value: ''
+  locked: false
+- name: EVOLUTIONGO_API_TOKEN
+  display_title: 'Evolution GO API Token'
+  description: 'The global API token for authenticating with Evolution GO API'
+  value: ''
+  locked: false
+  type: secret
+# ------- End of Evolution GO API Related Config ------- #
+
 # MARK: Microsoft Email Channel Config
 - name: AZURE_APP_ID
   display_title: 'Azure App ID'

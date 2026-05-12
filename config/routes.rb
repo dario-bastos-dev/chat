@@ -251,6 +251,11 @@ Rails.application.routes.draw do
             post :evolution_create_instance, on: :member
             post :evolution_disconnect, on: :member
             get :evolution_diagnostics, on: :member
+            get :evolution_go_qrcode, on: :member
+            get :evolution_go_pairing, on: :member
+            get :evolution_go_status, on: :member
+            post :evolution_go_create_instance, on: :member
+            post :evolution_go_disconnect, on: :member
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member
@@ -600,6 +605,7 @@ Rails.application.routes.draw do
   post 'webhooks/instagram', to: 'webhooks/instagram#events'
   post 'webhooks/tiktok', to: 'webhooks/tiktok#events'
   post 'webhooks/evolution/:phone_number', to: 'webhooks/evolution#process_payload'
+  post 'webhooks/evolution_go/:phone_number', to: 'webhooks/evolution_go#process_payload'
   post 'webhooks/shopify', to: 'webhooks/shopify#events'
 
   namespace :twitter do

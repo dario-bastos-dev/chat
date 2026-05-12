@@ -56,10 +56,10 @@ class Conversations::MessageWindowService
     meta_messaging_window('ENABLE_INSTAGRAM_CHANNEL_HUMAN_AGENT')
   end
 
-  # Evolution API (WhatsApp Lite) does not have 24-hour window restriction
+  # Evolution API and Evolution GO (WhatsApp Lite) do not have 24-hour window restriction
   # Only WhatsApp Cloud API and 360Dialog have the restriction
   def whatsapp_messaging_window
-    return nil if @conversation.inbox.channel.provider == 'evolution'
+    return nil if %w[evolution evolution_go].include?(@conversation.inbox.channel.provider)
 
     MESSAGING_WINDOW_24_HOURS
   end

@@ -31,55 +31,69 @@ const onRemoveAttachment = itemIndex => {
 };
 
 const formatFileSize = file => {
-  const size = file.byte_size || file.size;
+  const f = file.file || file;
+  const size = f.byte_size || f.size;
   return formatBytes(size, 0);
 };
 
 const isTypeImage = file => {
-  const type = file.content_type || file.type;
-  return type.includes('image');
+  const f = file.file || file;
+  const type = f.content_type || f.type;
+  return type?.includes('image');
+};
+
+const isTypeVideo = file => {
+  const f = file.file || file;
+  const type = f.content_type || f.type;
+  return type?.includes('video');
 };
 
 const fileName = file => {
-  return file.filename || file.name;
+  const f = file.file || file;
+  return f.filename || f.name;
 };
 </script>
 
 <template>
-  <div class="flex flex-wrap gap-y-1 gap-x-2 overflow-auto max-h-[12.5rem]">
+  <div class="flex flex-wrap gap-y-2 gap-x-2 overflow-auto max-h-[12.5rem]">
     <div
       v-for="(attachment, index) in nonRecordedAudioAttachments"
       :key="attachment.id"
-      class="flex items-center p-1 bg-n-slate-3 gap-1 rounded-md w-[15rem]"
+      class="flex items-center p-2 bg-n-slate-3 dark:bg-n-slate-4 gap-2 rounded-lg w-auto min-w-[12rem] max-w-[18rem] border border-n-slate-6 shadow-sm group hover:border-n-slate-8 transition-colors"
     >
-      <div class="max-w-[4rem] flex-shrink-0 w-6 flex items-center">
+      <div class="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-n-slate-6 dark:bg-n-slate-5 rounded-md overflow-hidden">
         <img
           v-if="isTypeImage(attachment.resource)"
-          class="object-cover w-6 h-6 rounded-sm"
+          class="object-cover w-full h-full"
           :src="attachment.thumb"
         />
-        <span v-else class="relative w-6 h-6 text-lg text-left -top-px">
+        <video
+          v-else-if="isTypeVideo(attachment.resource)"
+          class="object-cover w-full h-full"
+          :src="attachment.thumb"
+        />
+        <span v-else class="text-xl">
           📄
         </span>
       </div>
-      <div class="max-w-3/5 min-w-[50%] overflow-hidden text-ellipsis">
-        <span
-          class="h-4 overflow-hidden text-sm font-medium text-ellipsis whitespace-nowrap"
+      <div class="flex-1 min-w-0 flex flex-col justify-center leading-tight">
+        <div
+          class="text-sm font-semibold text-n-slate-12 text-ellipsis whitespace-nowrap overflow-hidden"
+          :title="fileName(attachment.resource)"
         >
           {{ fileName(attachment.resource) }}
-        </span>
-      </div>
-      <div class="w-[30%] justify-center">
-        <span class="overflow-hidden text-xs text-ellipsis whitespace-nowrap">
+        </div>
+        <div class="text-[11px] font-medium text-n-slate-11 uppercase tracking-wider">
           {{ formatFileSize(attachment.resource) }}
-        </span>
+        </div>
       </div>
-      <div class="flex items-center justify-center">
+      <div class="flex items-center justify-center ml-1">
         <Button
           ghost
           slate
           xs
           icon="i-lucide-x"
+          class="opacity-60 hover:opacity-100"
           @click="onRemoveAttachment(index)"
         />
       </div>

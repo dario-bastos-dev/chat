@@ -31,7 +31,9 @@ class Api::V1::Accounts::Conversations::ScheduledMessagesController < Api::V1::A
   private
 
   def scheduled_message_params
-    params.permit(:title, :content, :scheduled_at, template_params: {})
+    params.permit(:title, :content, :scheduled_at).tap do |whitelisted|
+      whitelisted[:template_params] = params[:template_params].permit! if params[:template_params].present?
+    end
   end
 
   def fetch_scheduled_message

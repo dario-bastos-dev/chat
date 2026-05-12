@@ -547,7 +547,10 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     config = whatsapp_channel.provider_config || {}
     return 0 if [false, 'false'].include?(config['delay_enabled'])
 
-    (config['delay_time'] || 2000).to_i
+    val = (config['delay_time'] || 2).to_i
+    # If the value is > 100, it's likely already in milliseconds (legacy)
+    # Otherwise, convert from seconds to ms
+    val > 100 ? val : val * 1000
   end
 
   # Build quoted context for reply messages

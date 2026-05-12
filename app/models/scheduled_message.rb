@@ -30,14 +30,31 @@ class ScheduledMessage < ApplicationRecord
   validate :scheduled_at_must_be_in_future, on: :create
   validate :template_required_for_whatsapp_cloud, on: :create
 
+  after_commit :broadcast_status_change
+
   scope :dispatchable, -> { pending.where(scheduled_at: ..Time.current) }
 
   private
 
+  def broadcast_status_change
+    tokens = (conversation.inbox.members.pluck(:pubsub_token) + account.administrators.pluck(:pubsub_token)).uniq
+    payload = as_json.merge(account_id: account_id)
+    
+    event_name = if previously_new_record?
+                   'scheduled_message.created'
+                 elsif destroyed?
+                   'scheduled_message.deleted'
+                 else
+                   'scheduled_message.updated'
+                 end
+
+    ::ActionCableBroadcastJob.perform_later(tokens, event_name, payload)
+  end
+
   def scheduled_at_must_be_in_future
     return if scheduled_at.blank?
 
-    errors.add(:scheduled_at, 'must be in the future') if scheduled_at < Time.current
+    errors.add(:scheduled_at, 'must be in the future') if scheduled_at < 5.minutes.ago
   end
 
   def template_required_for_whatsapp_cloud
@@ -46,7 +63,11 @@ class ScheduledMessage < ApplicationRecord
     inbox = conversation.inbox
     return unless inbox&.channel_type == 'Channel::Whatsapp'
     return unless inbox.channel&.provider == 'whatsapp_cloud'
-    return if scheduled_at <= 24.hours.from_now
+
+    last_incoming = conversation.last_incoming_message
+    if last_incoming.present?
+      return if scheduled_at <= (last_incoming.created_at + 24.hours)
+    end
 
     errors.add(:template_params, 'is required for WhatsApp Business when scheduling beyond 24 hours') if template_params.blank?
   end

@@ -11,6 +11,7 @@ import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
 import TagMultiSelectComboBox from 'dashboard/components-next/combobox/TagMultiSelectComboBox.vue';
 import WhatsAppTemplateParser from 'dashboard/components-next/whatsapp/WhatsAppTemplateParser.vue';
 import Switch from 'dashboard/components-next/switch/Switch.vue';
+import RadioButton from 'dashboard/components/ui/RadioButton.vue';
 
 const emit = defineEmits(['submit', 'cancel']);
 
@@ -31,6 +32,7 @@ const initialState = {
   templateId: null,
   scheduledAt: null,
   selectedAudience: [],
+  targetType: 'contacts',
   isScheduled: false,
 };
 
@@ -149,10 +151,13 @@ const prepareCampaignDetails = () => {
     scheduled_at: state.isScheduled
       ? formatToUTCString(state.scheduledAt)
       : null,
-    audience: state.selectedAudience?.map(id => ({
-      id,
-      type: 'Label',
-    })),
+    audience: [
+      { type: 'Target', value: state.targetType },
+      ...state.selectedAudience?.map(id => ({
+        id,
+        type: 'Label',
+      }))
+    ],
   };
 };
 
@@ -244,6 +249,26 @@ watch(
         :message="formErrors.audience"
         class="[&>div>button]:bg-n-alpha-black2"
       />
+    </div>
+
+    <div class="flex flex-col gap-2 mt-2 mb-2">
+      <label class="text-sm font-medium text-n-slate-12">
+        Enviar para:
+      </label>
+      <div class="flex gap-4">
+        <RadioButton
+          id="target_contacts"
+          v-model="state.targetType"
+          value="contacts"
+          label="Contatos"
+        />
+        <RadioButton
+          id="target_conversations"
+          v-model="state.targetType"
+          value="conversations"
+          label="Conversas"
+        />
+      </div>
     </div>
 
     <Input

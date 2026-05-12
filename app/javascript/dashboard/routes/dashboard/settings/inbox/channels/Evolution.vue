@@ -28,6 +28,8 @@ export default {
       ignoreGroups: false,
       alwaysOnline: false,
       readMessages: false,
+      delayEnabled: true,
+      delayTime: 2,
     };
   },
   computed: {
@@ -61,8 +63,8 @@ export default {
                 read_messages: this.readMessages,
                 read_status: false,
                 sync_full_history: false,
-                delay_enabled: true,
-                delay_time: 2000,
+                delay_enabled: this.delayEnabled,
+                delay_time: this.delayTime,
               },
             },
           }
@@ -183,6 +185,28 @@ export default {
             }}</span>
           </div>
           <WootSwitch v-model="readMessages" />
+        </div>
+
+        <!-- Delay Setting -->
+        <div class="flex items-center justify-between">
+          <div class="flex flex-col">
+            <span class="text-sm font-medium text-n-slate-12">{{
+              $t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TITLE')
+            }}</span>
+            <span class="text-xs text-n-slate-10">{{
+              $t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.DESC')
+            }}</span>
+          </div>
+          <WootSwitch v-model="delayEnabled" />
+        </div>
+
+        <div v-if="delayEnabled" class="ml-0 mt-2 p-2">
+          <NextInput
+            v-model="delayTime"
+            type="number"
+            :label="$t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TIME_LABEL')"
+            :placeholder="$t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TIME_PLACEHOLDER')"
+          />
         </div>
       </div>
     </div>

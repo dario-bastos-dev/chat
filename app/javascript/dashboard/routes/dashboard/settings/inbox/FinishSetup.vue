@@ -32,6 +32,16 @@ const evolutionError = ref('');
 const evolutionPollingInterval = ref(null);
 const evolutionQRRefreshInterval = ref(null);
 
+// Evolution GO state
+const evoGoQRCode = ref('');
+const evoGoPairingCode = ref('');
+const showEvoGoConnectOptions = ref(false);
+const evoGoConnected = ref(false);
+const evoGoLoading = ref(false);
+const evoGoError = ref('');
+const evoGoPollingInterval = ref(null);
+const evoGoQRRefreshInterval = ref(null);
+
 const currentInbox = computed(() =>
   store.getters['inboxes/getInbox'](route.params.inbox_id)
 );
@@ -76,6 +86,12 @@ const isWhatsAppEmbeddedSignup = computed(() => {
 const isEvolutionChannel = computed(() => {
   return (
     isAWhatsAppChannel.value && currentInbox.value.provider === 'evolution'
+  );
+});
+
+const isEvolutionGoChannel = computed(() => {
+  return (
+    isAWhatsAppChannel.value && currentInbox.value.provider === 'evolution_go'
   );
 });
 
@@ -328,15 +344,128 @@ async function connectEvolution() {
   await createEvolutionInstance();
 }
 
+// --- Evolution GO connection functions ---
+
+async function fetchEvoGoQRCode() {
+  if (!isEvolutionGoChannel.value) return;
+
+  evoGoLoading.value = true;
+  evoGoQRCode.value = '';
+  evoGoPairingCode.value = '';
+
+  try {
+    const { data } = await InboxesAPI.getEvolutionGoQRCode(route.params.inbox_id);
+
+    if (!data.success) {
+      evoGoError.value = data.error || 'Erro ao buscar QR Code';
+      return;
+    }
+
+    if (data.qr_code) {
+      evoGoQRCode.value = data.qr_code;
+      startEvoGoPolling();
+    }
+  } catch (error) {
+    evoGoError.value = error.message || 'Erro ao conectar';
+  } finally {
+    evoGoLoading.value = false;
+  }
+}
+
+async function fetchEvoGoPairingCode() {
+  if (!isEvolutionGoChannel.value) return;
+
+  evoGoLoading.value = true;
+  evoGoQRCode.value = '';
+  evoGoPairingCode.value = '';
+
+  try {
+    const number = currentInbox.value.phone_number.replace(/^\+/, '');
+    const { data } = await InboxesAPI.getEvolutionGoPairingCode(
+      route.params.inbox_id,
+      { number }
+    );
+
+    if (!data.success) {
+      evoGoError.value = data.error || 'Erro ao buscar código';
+      return;
+    }
+
+    if (data.pairing_code) {
+      evoGoPairingCode.value = data.pairing_code;
+      startEvoGoPolling();
+    } else if (data.qr_code) {
+      evoGoQRCode.value = data.qr_code;
+      startEvoGoPolling();
+    }
+  } catch (error) {
+    evoGoError.value = error.message || 'Erro ao conectar';
+  } finally {
+    evoGoLoading.value = false;
+  }
+}
+
+async function checkEvoGoStatus() {
+  if (!isEvolutionGoChannel.value) return;
+
+  try {
+    const { data } = await InboxesAPI.getEvolutionGoStatus(route.params.inbox_id);
+    if (data.connected) {
+      evoGoConnected.value = true;
+      stopEvoGoPolling();
+    }
+  } catch (error) {
+    // silent
+  }
+}
+
+function startEvoGoPolling() {
+  if (evoGoPollingInterval.value) return;
+
+  evoGoPollingInterval.value = setInterval(() => {
+    if (!evoGoConnected.value) {
+      checkEvoGoStatus();
+    }
+  }, 5000);
+
+  evoGoQRRefreshInterval.value = setInterval(async () => {
+    if (evoGoQRCode.value && !evoGoConnected.value) {
+      try {
+        const { data } = await InboxesAPI.getEvolutionGoQRCode(
+          route.params.inbox_id
+        );
+        if (data.success && data.qr_code) {
+          evoGoQRCode.value = data.qr_code;
+        }
+      } catch (error) {
+        // silent refresh error
+      }
+    }
+  }, 40000);
+}
+
+function stopEvoGoPolling() {
+  if (evoGoPollingInterval.value) {
+    clearInterval(evoGoPollingInterval.value);
+    evoGoPollingInterval.value = null;
+  }
+  if (evoGoQRRefreshInterval.value) {
+    clearInterval(evoGoQRRefreshInterval.value);
+    evoGoQRRefreshInterval.value = null;
+  }
+}
+
 // Watch for currentInbox changes and regenerate QR codes when available
 watch(
   currentInbox,
   newInbox => {
     if (newInbox) {
       generateQRCodes();
-      // Check Evolution connection status on load
       if (isEvolutionChannel.value) {
         checkEvolutionStatus();
+      }
+      if (isEvolutionGoChannel.value) {
+        checkEvoGoStatus();
       }
     }
   },
@@ -348,10 +477,14 @@ onMounted(() => {
   if (isEvolutionChannel.value) {
     checkEvolutionStatus();
   }
+  if (isEvolutionGoChannel.value) {
+    checkEvoGoStatus();
+  }
 });
 
 onUnmounted(() => {
   stopEvolutionPolling();
+  stopEvoGoPolling();
 });
 </script>
 
@@ -538,8 +671,127 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+        <!-- Evolution GO Connection Section -->
         <div
-          v-if="isAWhatsAppChannel && qrCodes.whatsapp && !isEvolutionChannel"
+          v-if="isEvolutionGoChannel"
+          class="flex flex-col gap-4 items-center mt-8 p-6 rounded-xl border border-n-weak bg-n-alpha-1"
+        >
+          <h3 class="text-lg font-medium text-n-slate-12">
+            {{ $t('INBOX_MGMT.FINISH.EVOLUTION.TITLE') }}
+          </h3>
+
+          <!-- Connected State -->
+          <div
+            v-if="evoGoConnected"
+            class="flex flex-col gap-2 items-center"
+          >
+            <div class="flex items-center gap-2 text-n-teal-11">
+              <span class="i-lucide-check-circle size-6" />
+              <span class="text-base font-medium">
+                {{ $t('INBOX_MGMT.FINISH.EVOLUTION.CONNECTED') }}
+              </span>
+            </div>
+            <p class="text-sm text-n-slate-10">
+              {{ $t('INBOX_MGMT.FINISH.EVOLUTION.CONNECTED_DESC') }}
+            </p>
+          </div>
+
+          <!-- Not Connected State -->
+          <div v-else class="flex flex-col gap-4 items-center">
+            <!-- Error Message -->
+            <div
+              v-if="evoGoError"
+              class="text-sm text-n-ruby-10 bg-n-ruby-3 px-4 py-2 rounded-lg"
+            >
+              {{ evoGoError }}
+            </div>
+
+            <!-- QR Code Display -->
+            <div
+              v-if="evoGoQRCode && !evoGoPairingCode"
+              class="flex flex-col gap-2 items-center"
+            >
+              <p class="text-sm text-n-slate-11">
+                {{ $t('INBOX_MGMT.FINISH.EVOLUTION.SCAN_QR') }}
+              </p>
+              <div
+                class="rounded-lg shadow outline-1 outline-n-strong outline bg-white p-2"
+              >
+                <img
+                  :src="evoGoQRCode"
+                  alt="Evolution GO WhatsApp QR Code"
+                  class="rounded-lg size-48"
+                />
+              </div>
+              <p class="text-xs text-n-slate-9 mt-2">
+                {{ $t('INBOX_MGMT.FINISH.EVOLUTION.WAITING') }}
+              </p>
+            </div>
+
+            <!-- Pairing Code Display -->
+            <div
+              v-if="evoGoPairingCode && !evoGoQRCode"
+              class="flex flex-col gap-2 items-center"
+            >
+              <p class="text-sm text-n-slate-11 mb-2">
+                {{ $t('INBOX_MGMT.EVOLUTION_INSTANCE.PAIRING_CODE') }}
+              </p>
+              <h4
+                class="text-2xl font-bold tracking-widest text-center text-slate-800 bg-white p-4 rounded border"
+              >
+                {{ evoGoPairingCode }}
+              </h4>
+              <p class="text-xs text-n-slate-9 mt-2">
+                {{ $t('INBOX_MGMT.FINISH.EVOLUTION.WAITING') }}
+              </p>
+            </div>
+
+            <!-- Loading State -->
+            <div
+              v-if="evoGoLoading"
+              class="flex flex-col gap-2 items-center"
+            >
+              <span
+                class="i-lucide-loader-2 size-8 animate-spin text-n-blue-11"
+              />
+              <p class="text-sm text-n-slate-10">
+                {{ $t('INBOX_MGMT.FINISH.EVOLUTION.LOADING') }}
+              </p>
+            </div>
+
+            <!-- Connection Options -->
+            <div
+              v-if="
+                !evoGoQRCode && !evoGoPairingCode && !evoGoLoading
+              "
+              class="flex flex-col gap-4 items-center"
+            >
+              <p class="text-sm text-n-slate-10 text-center">
+                {{ $t('INBOX_MGMT.FINISH.EVOLUTION.DESCRIPTION') }}
+              </p>
+              <div class="flex gap-3">
+                <NextButton
+                  :label="$t('INBOX_MGMT.EVOLUTION_INSTANCE.CONNECT_WITH_QR')"
+                  @click="fetchEvoGoQRCode"
+                  solid
+                  blue
+                  icon="i-lucide-qr-code"
+                />
+                <NextButton
+                  :label="
+                    $t('INBOX_MGMT.EVOLUTION_INSTANCE.CONNECT_WITH_PAIRING')
+                  "
+                  @click="fetchEvoGoPairingCode"
+                  solid
+                  blue
+                  icon="i-lucide-smartphone"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div
+          v-if="isAWhatsAppChannel && qrCodes.whatsapp && !isEvolutionChannel && !isEvolutionGoChannel"
           class="flex flex-col gap-3 items-center mt-8"
         >
           <p class="mt-2 text-sm text-n-slate-9">

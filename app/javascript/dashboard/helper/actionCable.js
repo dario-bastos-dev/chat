@@ -34,6 +34,12 @@ class ActionCableConnector extends BaseActionCableConnector {
       'conversation.updated': this.onConversationUpdated,
       'account.cache_invalidated': this.onCacheInvalidate,
       'copilot.message.created': this.onCopilotMessageCreated,
+      'scheduled_message.created': this.onScheduledMessageCreated,
+      'scheduled_message.updated': this.onScheduledMessageUpdated,
+      'scheduled_message.deleted': this.onScheduledMessageDeleted,
+      'campaign.created': this.onCampaignCreated,
+      'campaign.updated': this.onCampaignUpdated,
+      'campaign.deleted': this.onCampaignDeleted,
     };
   }
 
@@ -199,6 +205,30 @@ class ActionCableConnector extends BaseActionCableConnector {
     this.app.$store.dispatch('labels/revalidate', { newKey: keys.label });
     this.app.$store.dispatch('inboxes/revalidate', { newKey: keys.inbox });
     this.app.$store.dispatch('teams/revalidate', { newKey: keys.team });
+  };
+
+  onScheduledMessageCreated = data => {
+    this.app.$store.commit('scheduledMessages/ADD_SCHEDULED_MESSAGE', data);
+  };
+
+  onScheduledMessageUpdated = data => {
+    this.app.$store.commit('scheduledMessages/EDIT_SCHEDULED_MESSAGE', data);
+  };
+
+  onScheduledMessageDeleted = data => {
+    this.app.$store.commit('scheduledMessages/DELETE_SCHEDULED_MESSAGE', data.id);
+  };
+
+  onCampaignCreated = data => {
+    this.app.$store.commit('campaigns/ADD_CAMPAIGN', data);
+  };
+
+  onCampaignUpdated = data => {
+    this.app.$store.commit('campaigns/EDIT_CAMPAIGN', data);
+  };
+
+  onCampaignDeleted = data => {
+    this.app.$store.commit('campaigns/DELETE_CAMPAIGN', data.id);
   };
 }
 

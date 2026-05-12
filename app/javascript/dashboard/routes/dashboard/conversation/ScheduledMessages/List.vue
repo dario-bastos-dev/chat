@@ -12,6 +12,7 @@
     <div v-if="showForm" class="p-4 border-b border-n-weak">
       <ScheduledMessageForm
         :initial-data="editingMessage"
+        :conversation-id="conversationId"
         @submit="save"
         @cancel="cancelForm"
       />

@@ -111,7 +111,10 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
         messaging_product: 'whatsapp',
         context: whatsapp_reply_context(message),
         to: phone_number,
-        text: { body: message.outgoing_content },
+        text: { 
+          body: message.outgoing_content,
+          preview_url: true
+        },
         type: 'text'
       }.to_json
     )

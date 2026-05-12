@@ -12,10 +12,15 @@
     "TOTAL_VALUE": "Total Value",
     "PIPELINES": {
       "TITLE": "Pipelines",
+      "SUBTITLE": "Manage your pipelines and deals",
       "CREATE": "New Pipeline",
       "CREATE_DESCRIPTION": "Create a new pipeline to organize your deals",
       "CREATE_ERROR": "Error creating pipeline",
       "DEFAULT": "Default",
+      "YOUR_PIPELINES": "Your Pipelines",
+      "PIPELINE_COUNT": "pipeline(s)",
+      "FUNNEL_STAGES": "Funnel stages",
+      "MORE": "more",
       "EMPTY": {
         "TITLE": "No pipelines found",
         "DESCRIPTION": "Create your first pipeline to start managing your deals"
@@ -23,12 +28,22 @@
       "FORM": {
         "NAME": "Pipeline Name",
         "NAME_PLACEHOLDER": "E.g.: Sales Pipeline",
-        "IS_DEFAULT": "Set as default pipeline"
+        "IS_DEFAULT": "Set as default pipeline",
+        "LOST_REASONS_TITLE": "Lost Reasons",
+        "LOST_REASONS_HELP": "Define the reasons for losing deals. These will appear as options when marking a deal as lost.",
+        "LOST_REASON_PLACEHOLDER": "E.g.: Price too high",
+        "ADD_LOST_REASON": "Add Reason",
+        "VISIBILITY_TITLE": "Pipeline Visibility",
+        "VISIBILITY_HELP": "Control which agents can see this pipeline and its deals.",
+        "VISIBILITY_PUBLIC": "Public — All agents",
+        "VISIBILITY_RESTRICTED": "Restricted — Selected teams only",
+        "ALLOWED_TEAMS": "Allowed Teams"
       }
     },
     "STAGES": {
       "TITLE": "Stages",
       "CREATE": "New Stage",
+      "HELP_TEXT": "Drag to reorder stages. Set win probability and stagnation days for each stage.",
       "FORM": {
         "NAME": "Stage Name",
         "WIN_PROBABILITY": "Win Probability (%)",
