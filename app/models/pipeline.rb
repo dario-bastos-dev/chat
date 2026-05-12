@@ -24,6 +24,7 @@ class Pipeline < ApplicationRecord
 
   validates :name, presence: true
   validates :account_id, presence: true
+  validates :visibility, inclusion: { in: %w[public restricted] }
 
   before_save :ensure_single_default
 

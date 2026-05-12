@@ -322,11 +322,13 @@
         "PROVIDERS": {
           "LABEL": "API Provider",
           "EVOLUTION": "Evolution",
-          "EVOLUTION_DESC": "Connect via Evolution API"
+          "EVOLUTION_DESC": "Connect via Evolution API",
+          "EVOLUTION_GO": "Evolution GO",
+          "EVOLUTION_GO_DESC": "Connect via Evolution GO API"
         },
         "SELECT_PROVIDER": {
           "TITLE": "Select your API provider",
-          "DESCRIPTION": "Choose your WhatsApp Lite provider. Currently, Evolution API is available for connection."
+          "DESCRIPTION": "Choose your WhatsApp Lite provider. Evolution API and Evolution GO are available for connection."
         },
         "INBOX_NAME": {
           "LABEL": "Inbox Name",
@@ -373,8 +375,8 @@
           "DELAY": {
             "TITLE": "Message Delay",
             "DESC": "Add a delay before sending messages (simulates typing)",
-            "TIME_LABEL": "Delay time (ms)",
-            "TIME_PLACEHOLDER": "2000"
+            "TIME_LABEL": "Delay time (seconds)",
+            "TIME_PLACEHOLDER": "2"
           }
         }
       },
@@ -732,6 +734,25 @@
       "CONNECT_WITH_PAIRING": "Code",
       "PAIRING_CODE": "Pairing Code:",
       "SETTINGS_AUTO_SAVE": "Note: Changes to these settings are saved automatically."
+    },
+    "EVOLUTION_GO_INSTANCE": {
+      "TITLE": "Evolution GO Instance Configuration",
+      "SUB_TITLE": "Manage your Evolution GO API instance connection and behavior.",
+      "STATUS": {
+        "TITLE": "Connection Status",
+        "CONNECTED": "Connected",
+        "CONNECTING": "Connecting...",
+        "DISCONNECTED": "Disconnected"
+      },
+      "CONNECT_BUTTON": "Connect WhatsApp",
+      "DISCONNECT_BUTTON": "Disconnect",
+      "DISCONNECT_SUCCESS": "WhatsApp disconnected successfully",
+      "CLOSE_BUTTON": "Close",
+      "SELECT_CONNECTION_METHOD": "Select a connection method",
+      "QR_ERROR": "Error generating QR Code",
+      "CONNECT_WITH_QR": "QR Code",
+      "CONNECT_WITH_PAIRING": "Code",
+      "PAIRING_CODE": "Pairing Code:"
     },
     "CHANNEL_PREFERENCES": "Channel Preferences",
     "WIDGET_FEATURES": "Widget features",

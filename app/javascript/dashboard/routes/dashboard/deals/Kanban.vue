@@ -1,72 +1,129 @@
 <template>
-  <div class="kanban-page">
-    <div class="kanban-header">
-      <div class="header-left">
-        <woot-button variant="clear" icon="arrow-left" @click="goBack" />
-        <h1 class="pipeline-title">
-          {{ currentPipeline?.name || $t('CRM.LOADING') }}
-        </h1>
-      </div>
-      <div class="header-actions">
-        <woot-button
-          color-scheme="success"
-          icon="add"
-          @click="openCreateDealModal"
-        >
-          {{ $t('CRM.DEALS.CREATE') }}
-        </woot-button>
-        <woot-button variant="smooth" icon="settings" @click="openSettings">
-          {{ $t('CRM.SETTINGS') }}
-        </woot-button>
-      </div>
-    </div>
-
-    <div class="kanban-stats">
-      <div class="stat-item">
-        <span class="stat-label">{{ $t('CRM.TOTAL_DEALS') }}:</span>
-        <span class="stat-value">{{ totalDeals }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">{{ $t('CRM.TOTAL_VALUE') }}:</span>
-        <span class="stat-value">{{ formatCurrency(totalValue) }}</span>
-      </div>
-    </div>
-
-    <KanbanSkeleton v-if="isLoading" />
-
-    <div v-else class="kanban-board">
-      <div v-for="stage in stages" :key="stage.id" class="kanban-column">
-        <div class="column-header">
-          <div class="column-header-left">
-            <h3 class="column-title">{{ stage.name }}</h3>
-            <span class="column-count">{{
-              getDealsForStage(stage.id).length
-            }}</span>
-          </div>
-          <div class="column-value">
-            {{ formatCurrency(stage.total_value || 0) }}
+  <div class="flex flex-col flex-1 h-full">
+    <!-- Header -->
+    <div
+      class="flex items-center justify-between px-4 py-3 border-b border-n-weak bg-n-solid-2"
+    >
+      <div class="flex items-center gap-3">
+        <!-- Pipeline selector dropdown -->
+        <div class="relative" ref="pipelineDropdown">
+          <button
+            class="flex items-center gap-1.5 text-lg font-semibold text-n-slate-12 hover:text-n-brand transition-colors duration-150 cursor-pointer"
+            @click="togglePipelineDropdown"
+          >
+            {{ currentPipeline?.name || $t('CRM.LOADING') }}
+            <fluent-icon
+              icon="chevron-down"
+              size="16"
+              class="transition-transform duration-200"
+              :class="{ 'rotate-180': showPipelineDropdown }"
+            />
+          </button>
+          <div
+            v-if="showPipelineDropdown"
+            class="absolute left-0 top-full mt-1 z-50 min-w-[220px] bg-n-solid-2 border border-n-weak rounded-lg shadow-lg overflow-hidden"
+          >
+            <button
+              v-for="pipeline in allPipelines"
+              :key="pipeline.id"
+              class="flex items-center justify-between w-full px-3 py-2.5 text-sm text-left transition-colors duration-150"
+              :class="
+                pipeline.id === pipelineId
+                  ? 'bg-n-brand/10 text-n-brand font-medium'
+                  : 'text-n-slate-12 hover:bg-n-alpha-1'
+              "
+              @click="switchPipeline(pipeline)"
+            >
+              <span class="truncate">{{ pipeline.name }}</span>
+              <span
+                v-if="pipeline.is_default"
+                class="text-[10px] text-n-amber-11 bg-n-amber-3 px-1.5 py-0.5 rounded-full ml-2 shrink-0"
+              >
+                {{ $t('CRM.PIPELINES.DEFAULT') }}
+              </span>
+            </button>
           </div>
         </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-woot-500 hover:bg-woot-600 active:bg-woot-800 rounded-lg transition-colors duration-200"
+          @click="openCreateDealModal"
+        >
+          <fluent-icon icon="add" size="14" />
+          {{ $t('CRM.DEALS.CREATE') }}
+        </button>
+      </div>
+    </div>
 
-        <div class="column-progress">
+    <!-- Stats bar -->
+    <div
+      class="flex items-center gap-6 px-4 py-2 border-b border-n-weak bg-n-solid-2"
+    >
+      <div class="flex items-center gap-1.5 text-sm">
+        <span class="text-n-slate-11">{{ $t('CRM.TOTAL_DEALS') }}:</span>
+        <span class="font-semibold text-n-slate-12">{{ totalDeals }}</span>
+      </div>
+      <div class="flex items-center gap-1.5 text-sm">
+        <span class="text-n-slate-11">{{ $t('CRM.TOTAL_VALUE') }}:</span>
+        <span class="font-semibold text-n-slate-12">{{
+          formatCurrency(totalValue)
+        }}</span>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <KanbanSkeleton v-if="isLoading" />
+
+    <!-- Kanban Board — fills all remaining space -->
+    <div v-else class="flex flex-1 gap-4 p-4 overflow-x-auto min-h-0">
+      <div
+        v-for="stage in stages"
+        :key="stage.id"
+        class="flex flex-col min-w-[280px] max-w-[320px] flex-1 rounded-xl border border-n-weak bg-n-solid-2"
+      >
+        <!-- Column header -->
+        <div
+          class="flex items-center justify-between px-3 py-2.5 border-b border-n-weak"
+        >
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-medium text-n-slate-12 m-0">
+              {{ stage.name }}
+            </h3>
+            <span
+              class="text-xs font-medium text-n-slate-11 bg-n-alpha-1 px-1.5 py-0.5 rounded-full"
+            >
+              {{ getDealsForStage(stage.id).length }}
+            </span>
+          </div>
+          <span class="text-xs text-n-slate-11">
+            {{ formatCurrency(stage.total_value || 0) }}
+          </span>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="h-0.5 bg-n-alpha-1">
           <div
-            class="progress-bar"
+            class="h-full bg-n-brand transition-all duration-300"
             :style="{ width: `${stage.win_probability || 0}%` }"
           />
         </div>
 
+        <!-- Draggable cards area — stretches to fill column -->
         <draggable
           :list="getDealsForStage(stage.id)"
           :group="{ name: 'deals' }"
           item-key="id"
-          class="column-content"
-          ghost-class="deal-ghost"
+          class="flex-1 p-2 space-y-2 overflow-y-auto"
+          ghost-class="opacity-50"
           @end="onDragEnd($event, stage.id)"
         >
           <template #item="{ element: deal }">
             <div
-              class="deal-card"
-              :class="{ 'is-rotting': deal.is_rotting }"
+              class="bg-n-solid-3 border border-n-weak rounded-lg p-3 cursor-pointer transition-all duration-200 hover:border-n-brand hover:shadow-md"
+              :class="{
+                'border-l-2 !border-l-n-ruby-9': deal.is_rotting,
+              }"
               tabindex="0"
               role="button"
               :aria-label="`${deal.title} - ${formatCurrency(deal.value || 0)}`"
@@ -74,29 +131,40 @@
               @keydown.enter="openDealDrawer(deal)"
               @keydown.space.prevent="openDealDrawer(deal)"
             >
-              <div class="deal-header">
-                <span class="deal-title">{{ deal.title }}</span>
-                <span class="deal-value">{{
-                  formatCurrency(deal.value || 0)
-                }}</span>
+              <div class="flex items-start justify-between mb-1.5">
+                <span
+                  class="text-sm font-medium text-n-slate-12 flex-1 mr-2"
+                >
+                  {{ deal.title }}
+                </span>
+                <span
+                  class="text-xs font-semibold text-n-teal-11 whitespace-nowrap"
+                >
+                  {{ formatCurrency(deal.value || 0) }}
+                </span>
               </div>
-              <div class="deal-contact">
+              <div class="flex items-center gap-1.5 mb-1.5">
                 <Avatar
                   :src="deal.contact?.avatar_url"
                   :name="deal.contact?.name"
                   :size="20"
                 />
-                <span class="contact-name">{{ deal.contact?.name }}</span>
+                <span class="text-xs text-n-slate-11 truncate">
+                  {{ deal.contact?.name }}
+                </span>
               </div>
-              <div class="deal-footer">
-                <span v-if="deal.assignee" class="assignee">
+              <div class="flex items-center justify-between">
+                <span v-if="deal.assignee">
                   <Avatar
                     :src="deal.assignee?.avatar_url"
                     :name="deal.assignee?.name"
                     :size="16"
                   />
                 </span>
-                <span v-if="deal.last_activity_at" class="last-activity">
+                <span
+                  v-if="deal.last_activity_at"
+                  class="text-[10px] text-n-slate-10"
+                >
                   {{ formatDate(deal.last_activity_at) }}
                 </span>
               </div>
@@ -104,12 +172,13 @@
           </template>
         </draggable>
 
+        <!-- Add deal button -->
         <button
-          class="add-deal-btn"
+          class="flex items-center justify-center gap-1.5 w-full py-2.5 text-sm font-medium text-white bg-woot-500 hover:bg-woot-600 active:bg-woot-800 transition-colors duration-200 border-t border-n-weak rounded-b-xl"
           :aria-label="$t('CRM.DEALS.ADD_TO_STAGE', { stage: stage.name })"
           @click="openCreateDealModal(stage.id)"
         >
-          <fluent-icon icon="add" size="16" />
+          <fluent-icon icon="add" size="14" />
           {{ $t('CRM.DEALS.ADD') }}
         </button>
       </div>
@@ -143,7 +212,6 @@
 <script>
 import { mapGetters, mapActions } from 'vuex';
 import draggable from 'vuedraggable';
-import Spinner from 'shared/components/Spinner.vue';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import DealForm from './components/DealForm.vue';
 import DealDrawer from './components/DealDrawer.vue';
@@ -155,8 +223,6 @@ export default {
   name: 'DealsKanban',
   components: {
     draggable,
-    Spinner,
-    Thumbnail,
     DealForm,
     DealDrawer,
     KanbanSkeleton,
@@ -166,6 +232,7 @@ export default {
     return {
       showCreateDealModal: false,
       showDealDrawer: false,
+      showPipelineDropdown: false,
       selectedDeal: null,
       selectedStageId: null,
     };
@@ -173,6 +240,7 @@ export default {
   computed: {
     ...mapGetters({
       currentPipeline: 'pipelines/getCurrentPipeline',
+      allPipelines: 'pipelines/getPipelines',
       pipelineUIFlags: 'pipelines/getUIFlags',
       deals: 'deals/getDeals',
       dealsUIFlags: 'deals/getUIFlags',
@@ -197,16 +265,23 @@ export default {
   },
   mounted() {
     this.loadData();
+    document.addEventListener('click', this.handleClickOutside);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleClickOutside);
   },
   methods: {
     ...mapActions({
       fetchPipeline: 'pipelines/show',
+      fetchPipelines: 'pipelines/get',
       fetchDeals: 'deals/get',
       moveDeal: 'deals/move',
-      setCurrentDeal: 'deals/setCurrentDeal',
     }),
     async loadData() {
-      await this.fetchPipeline(this.pipelineId);
+      await Promise.all([
+        this.fetchPipeline(this.pipelineId),
+        this.fetchPipelines(),
+      ]);
       await this.fetchDeals({ pipelineId: this.pipelineId, status: 'open' });
     },
     goBack() {
@@ -215,10 +290,24 @@ export default {
         params: { accountId: this.$route.params.accountId },
       });
     },
-    openSettings() {
+    togglePipelineDropdown() {
+      this.showPipelineDropdown = !this.showPipelineDropdown;
+    },
+    handleClickOutside(event) {
+      const dropdown = this.$refs.pipelineDropdown;
+      if (dropdown && !dropdown.contains(event.target)) {
+        this.showPipelineDropdown = false;
+      }
+    },
+    switchPipeline(pipeline) {
+      this.showPipelineDropdown = false;
+      if (pipeline.id === this.pipelineId) return;
       this.$router.push({
-        name: 'pipelines_settings_index',
-        params: { accountId: this.$route.params.accountId },
+        name: 'deals_kanban',
+        params: {
+          accountId: this.$route.params.accountId,
+          pipelineId: pipeline.id,
+        },
       });
     },
     getDealsForStage(stageId) {
@@ -238,7 +327,7 @@ export default {
         });
       } catch (error) {
         this.$toast.error(this.$t('CRM.DEALS.MOVE_ERROR'));
-        // Recarregar deals em caso de erro
+        // Reload deals on error
         this.fetchDeals({ pipelineId: this.pipelineId, status: 'open' });
       }
     },
@@ -250,7 +339,7 @@ export default {
       this.showCreateDealModal = false;
       this.selectedStageId = null;
     },
-    onDealCreated(deal) {
+    onDealCreated() {
       this.closeCreateDealModal();
       this.fetchDeals({ pipelineId: this.pipelineId, status: 'open' });
     },
@@ -284,228 +373,3 @@ export default {
   },
 };
 </script>
-
-<style lang="scss" scoped>
-.kanban-page {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background: var(--s-25);
-}
-
-.kanban-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-normal);
-  background: var(--white);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-small);
-}
-
-.pipeline-title {
-  font-size: var(--font-size-large);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-heading);
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: var(--space-small);
-}
-
-.kanban-stats {
-  display: flex;
-  gap: var(--space-large);
-  padding: var(--space-small) var(--space-normal);
-  background: var(--white);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.stat-item {
-  display: flex;
-  gap: var(--space-smaller);
-  font-size: var(--font-size-small);
-}
-
-.stat-label {
-  color: var(--color-body);
-}
-
-.stat-value {
-  font-weight: var(--font-weight-bold);
-  color: var(--color-heading);
-}
-
-.loading-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-}
-
-.kanban-board {
-  display: flex;
-  gap: var(--space-normal);
-  padding: var(--space-normal);
-  overflow-x: auto;
-  flex: 1;
-}
-
-.kanban-column {
-  min-width: 300px;
-  max-width: 300px;
-  background: var(--white);
-  border-radius: var(--border-radius-medium);
-  border: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-}
-
-.column-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--space-small) var(--space-normal);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.column-header-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-smaller);
-}
-
-.column-title {
-  font-size: var(--font-size-small);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-heading);
-  margin: 0;
-}
-
-.column-count {
-  background: var(--s-100);
-  color: var(--s-700);
-  font-size: var(--font-size-mini);
-  padding: 2px 6px;
-  border-radius: 10px;
-}
-
-.column-value {
-  font-size: var(--font-size-mini);
-  color: var(--color-body);
-}
-
-.column-progress {
-  height: 3px;
-  background: var(--s-100);
-}
-
-.progress-bar {
-  height: 100%;
-  background: linear-gradient(90deg, var(--g-400), var(--g-600));
-  transition: width 0.3s ease;
-}
-
-.column-content {
-  flex: 1;
-  padding: var(--space-small);
-  overflow-y: auto;
-  min-height: 200px;
-}
-
-.deal-card {
-  background: var(--white);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-small);
-  padding: var(--space-small);
-  margin-bottom: var(--space-smaller);
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    border-color: var(--w-500);
-    box-shadow: var(--shadow-small);
-  }
-
-  &.is-rotting {
-    border-left: 3px solid var(--r-500);
-  }
-}
-
-.deal-ghost {
-  opacity: 0.5;
-  background: var(--w-100);
-}
-
-.deal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--space-smaller);
-}
-
-.deal-title {
-  font-size: var(--font-size-small);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-heading);
-  flex: 1;
-  margin-right: var(--space-smaller);
-}
-
-.deal-value {
-  font-size: var(--font-size-mini);
-  font-weight: var(--font-weight-bold);
-  color: var(--g-600);
-  white-space: nowrap;
-}
-
-.deal-contact {
-  display: flex;
-  align-items: center;
-  gap: var(--space-smaller);
-  margin-bottom: var(--space-smaller);
-}
-
-.contact-name {
-  font-size: var(--font-size-mini);
-  color: var(--color-body);
-}
-
-.deal-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.last-activity {
-  font-size: var(--font-size-micro);
-  color: var(--s-500);
-}
-
-.add-deal-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-smaller);
-  width: 100%;
-  padding: var(--space-small);
-  border: none;
-  background: transparent;
-  color: var(--color-body);
-  font-size: var(--font-size-small);
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: var(--s-50);
-    color: var(--w-500);
-  }
-}
-</style>

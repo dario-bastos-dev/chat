@@ -154,15 +154,16 @@ export const getters = {
     return $state.records.filter(
       item =>
         item.channel_type === INBOX_TYPES.WHATSAPP &&
-        item.provider !== 'evolution'
+        item.provider !== 'evolution' &&
+        item.provider !== 'evolution_go'
     );
   },
   getWhatsAppLiteInboxes($state) {
-    // WhatsApp Lite inboxes (Evolution API only)
+    // WhatsApp Lite inboxes (Evolution API and Evolution GO)
     return $state.records.filter(
       item =>
         item.channel_type === INBOX_TYPES.WHATSAPP &&
-        item.provider === 'evolution'
+        (item.provider === 'evolution' || item.provider === 'evolution_go')
     );
   },
   dialogFlowEnabledInboxes($state) {

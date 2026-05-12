@@ -44,7 +44,10 @@ export default {
         return this.installationLimit;
       }
 
-      return Math.min(channelLimit, this.installationLimit);
+      // If the installation limit is higher than the channel limit,
+      // we allow it, as modern APIs (like Evolution or WhatsApp Cloud)
+      // often support larger files than the standard 16MB.
+      return Math.max(channelLimit, this.installationLimit);
     },
     alertOverLimit(maxSizeMB) {
       useAlert(

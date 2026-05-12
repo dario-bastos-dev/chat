@@ -9,12 +9,15 @@ services:
         EXECJS_RUNTIME: Disabled
         RAILS_ENV: 'production'
         RAILS_SERVE_STATIC_FILES: 'true'
-    image: dariobastosdev/chatwoot:4.9.1
+    image: dariobastosdev/chatwoot:4.11.1
     env_file: .env ## Change this file for customized env variables
+    volumes:
+      - data:/app/storage
+    pull_policy: always
 
   rails:
     <<: *base
-    image: dariobastosdev/chatwoot:4.9.1
+    image: dariobastosdev/chatwoot:4.11.1
     depends_on:
       - postgres
       - redis
@@ -30,7 +33,7 @@ services:
 
   sidekiq:
     <<: *base
-    image: dariobastosdev/chatwoot:4.9.1
+    image: dariobastosdev/chatwoot:4.11.1
     depends_on:
       - postgres
       - redis
@@ -128,6 +131,7 @@ volumes:
   chatwoot:
   postgres:
   redis:
+  data:
   bundle:
   packs:
   node_modules_rails:

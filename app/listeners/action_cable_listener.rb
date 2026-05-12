@@ -181,6 +181,24 @@ class ActionCableListener < BaseListener
     broadcast(account, [user.pubsub_token], CONVERSATION_MENTIONED, conversation.push_event_data)
   end
 
+  def campaign_created(event)
+    campaign, account = extract_campaign_and_account(event)
+    broadcast(account, [account_token(account)], CAMPAIGN_CREATED, campaign.push_event_data)
+  end
+
+  def campaign_updated(event)
+    campaign, account = extract_campaign_and_account(event)
+    broadcast(account, [account_token(account)], CAMPAIGN_UPDATED, campaign.push_event_data)
+  end
+
+  def campaign_deleted(event)
+    campaign_data = event.data[:campaign_data]
+    account = Account.find_by(id: campaign_data[:account_id])
+    return if account.blank?
+
+    broadcast(account, [account_token(account)], CAMPAIGN_DELETED, campaign_data)
+  end
+
   private
 
   def account_token(account)
@@ -204,6 +222,11 @@ class ActionCableListener < BaseListener
     return [] if contact_inbox.nil?
 
     contact_inbox_tokens(contact_inbox)
+  end
+
+  def extract_campaign_and_account(event)
+    campaign = event.data[:campaign]
+    [campaign, campaign.account]
   end
 
   def contact_inbox_tokens(contact_inbox)

@@ -36,6 +36,7 @@ import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
 import { LocalStorage } from 'shared/helpers/localStorage';
 import Editor from 'dashboard/components-next/Editor/Editor.vue';
 import InstanceSettings from './channels/evolution/InstanceSettings.vue';
+import EvolutionGoInstanceSettings from './channels/evolution_go/InstanceSettings.vue';
 import ColorPicker from 'dashboard/components-next/colorpicker/ColorPicker.vue';
 import SelectInput from 'dashboard/components-next/select/Select.vue';
 export default {
@@ -68,6 +69,7 @@ export default {
     SelectInput,
     AccountHealth,
     InstanceSettings,
+    EvolutionGoInstanceSettings,
   },
   mixins: [inboxMixin],
   setup() {
@@ -120,6 +122,9 @@ export default {
     whatsAppAPIProviderName() {
       if (this.isAEvolutionWhatsAppChannel) {
         return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION');
+      }
+      if (this.isAEvolutionGoWhatsAppChannel) {
+        return this.$t('INBOX_MGMT.ADD.WHATSAPP_LITE.PROVIDERS.EVOLUTION_GO');
       }
       if (this.isAWhatsAppCloudChannel) {
         return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.WHATSAPP_CLOUD');
@@ -211,6 +216,15 @@ export default {
           ...visibleToAllChannelTabs,
           {
             key: 'evolution-instance',
+            name: this.$t('INBOX_MGMT.TABS.INSTANCE'),
+          },
+        ];
+      }
+      if (this.isAEvolutionGoWhatsAppChannel) {
+        visibleToAllChannelTabs = [
+          ...visibleToAllChannelTabs,
+          {
+            key: 'evolution-go-instance',
             name: this.$t('INBOX_MGMT.TABS.INSTANCE'),
           },
         ];
@@ -710,7 +724,7 @@ export default {
             {{
               $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_GREETING_TOGGLE.LABEL')
             }}
-            <select v-model="greetingEnabled">
+            <select v-model="greetingEnabled" @change="updateInbox">
               <option :value="true">
                 {{
                   $t(
@@ -767,6 +781,27 @@ export default {
             </select>
           </label>
         </SettingsSection>
+        <div
+          v-if="!isAWebWidgetInbox"
+          class="w-full flex justify-end items-center py-4 mt-2"
+        >
+          <NextButton
+            v-if="isAPIInbox"
+            type="submit"
+            :disabled="v$.webhookUrl.$invalid"
+            :label="$t('INBOX_MGMT.SETTINGS_POPUP.UPDATE')"
+            :is-loading="uiFlags.isUpdating"
+            @click="updateInbox"
+          />
+          <NextButton
+            v-else
+            type="submit"
+            :disabled="v$.$invalid"
+            :label="$t('INBOX_MGMT.SETTINGS_POPUP.UPDATE')"
+            :is-loading="uiFlags.isUpdating"
+            @click="updateInbox"
+          />
+        </div>
       </div>
 
       <div
@@ -1107,6 +1142,9 @@ export default {
       </div>
       <div v-if="selectedTabKey === 'evolution-instance'">
         <InstanceSettings :inbox="inbox" />
+      </div>
+      <div v-if="selectedTabKey === 'evolution-go-instance'">
+        <EvolutionGoInstanceSettings :inbox="inbox" />
       </div>
     </section>
   </div>

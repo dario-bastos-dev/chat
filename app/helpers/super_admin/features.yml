@@ -150,3 +150,9 @@ evolution:
   enabled: true
   icon: 'icon-whatsapp-line'
   config_key: 'evolution'
+evolution_go:
+  name: 'Evolution GO API'
+  description: 'Configuration for WhatsApp Lite using Evolution GO API'
+  enabled: true
+  icon: 'icon-whatsapp-line'
+  config_key: 'evolution_go'

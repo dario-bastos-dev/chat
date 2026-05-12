@@ -24,21 +24,25 @@ class Channel::Whatsapp < ApplicationRecord
   self.table_name = 'channel_whatsapp'
   EDITABLE_ATTRS = [:phone_number, :provider, { provider_config: [:api_key, :phone_number_id, :business_account_id, :webhook_verify_token,
                                                                   :reject_calls, :msg_call, :ignore_groups, :always_online, :read_messages,
-                                                                  :read_status, :sync_full_history, :delay_enabled, :delay_time] }].freeze
+                                                                  :read_status, :sync_full_history, :delay_enabled, :delay_time,
+                                                                  :instance_id, :instance_token] }].freeze
 
   # default at the moment is 360dialog lets change later.
-  PROVIDERS = %w[default whatsapp_cloud evolution].freeze
+  PROVIDERS = %w[default whatsapp_cloud evolution evolution_go].freeze
   before_validation :ensure_webhook_verify_token
 
   validates :provider, inclusion: { in: PROVIDERS }
   validates :phone_number, presence: true, uniqueness: true
   validate :validate_provider_config
 
-  after_create :sync_templates, unless: :evolution_provider?
+  after_create :sync_templates, unless: -> { evolution_provider? || evolution_go_provider? }
   after_create :create_evolution_instance, if: :evolution_provider?
+  after_create :create_evolution_go_instance, if: :evolution_go_provider?
   after_update :update_evolution_settings, if: :evolution_provider?
-  before_destroy :teardown_webhooks, unless: :evolution_provider?
+  after_update :update_evolution_go_settings, if: :evolution_go_provider?
+  before_destroy :teardown_webhooks, unless: -> { evolution_provider? || evolution_go_provider? }
   before_destroy :delete_evolution_instance, if: :evolution_provider?
+  before_destroy :delete_evolution_go_instance, if: :evolution_go_provider?
   after_commit :setup_webhooks, on: :create, if: :should_auto_setup_webhooks?
 
   def name
@@ -51,6 +55,8 @@ class Channel::Whatsapp < ApplicationRecord
       Whatsapp::Providers::WhatsappCloudService.new(whatsapp_channel: self)
     when 'evolution'
       Whatsapp::Providers::EvolutionService.new(whatsapp_channel: self)
+    when 'evolution_go'
+      Whatsapp::Providers::EvolutionGoService.new(whatsapp_channel: self)
     else
       Whatsapp::Providers::Whatsapp360DialogService.new(whatsapp_channel: self)
     end
@@ -64,6 +70,7 @@ class Channel::Whatsapp < ApplicationRecord
 
   delegate :send_message, to: :provider_service
   delegate :send_template, to: :provider_service
+  delegate :delete_message, to: :provider_service
   delegate :sync_templates, to: :provider_service
   delegate :media_url, to: :provider_service
   delegate :api_headers, to: :provider_service
@@ -87,6 +94,10 @@ class Channel::Whatsapp < ApplicationRecord
 
   def evolution_provider?
     provider == 'evolution'
+  end
+
+  def evolution_go_provider?
+    provider == 'evolution_go'
   end
 
   def perform_webhook_setup
@@ -130,9 +141,32 @@ class Channel::Whatsapp < ApplicationRecord
     raise
   end
 
+  def create_evolution_go_instance
+    result = provider_service.create_instance
+    unless result[:success]
+      errors.add(:base, result[:error])
+      throw :abort
+    end
+  end
+
+  def delete_evolution_go_instance
+    provider_service.delete_instance
+  end
+
+  def update_evolution_go_settings
+    return unless saved_change_to_provider_config?
+
+    Rails.logger.info '[EVOLUTION_GO CALLBACK] Provider config changed, updating settings'
+    provider_service.update_settings
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO CALLBACK] Error updating settings: #{e.class} - #{e.message}"
+    raise
+  end
+
   def should_auto_setup_webhooks?
     # Only auto-setup webhooks for whatsapp_cloud provider with manual setup
     # Embedded signup calls setup_webhooks explicitly in EmbeddedSignupService
+    # Evolution and Evolution GO handle their own webhook setup
     provider == 'whatsapp_cloud' && provider_config['source'] != 'embedded_signup'
   end
 end

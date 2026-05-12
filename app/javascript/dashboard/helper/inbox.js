@@ -171,6 +171,11 @@ export const getInboxIconByType = (
     return variant === 'fill' ? 'i-evolution-fill' : 'i-evolution-line';
   }
 
+  // Evolution GO (WhatsApp Lite) - use custom Evolution icon
+  if (type === INBOX_TYPES.WHATSAPP && provider === 'evolution_go') {
+    return variant === 'fill' ? 'i-evolution-fill' : 'i-evolution-line';
+  }
+
   return iconMap[type] ?? defaultIcon;
 };
 

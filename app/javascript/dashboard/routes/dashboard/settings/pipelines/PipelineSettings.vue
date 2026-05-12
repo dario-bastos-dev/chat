@@ -1,203 +1,266 @@
 <template>
-  <div class="column content-box">
-    <div class="row">
-      <div class="small-8 columns">
-        <ul class="tabs settings-tabs">
-          <li class="tabs-title is-active">
-            <a href="#">{{ $t('CRM.PIPELINES.TITLE') }}</a>
-          </li>
-        </ul>
+  <SettingsLayout
+    :is-loading="isLoading"
+  >
+    <template #header>
+      <BaseSettingsHeader
+        :title="$t('CRM.PIPELINES.TITLE')"
+        :description="$t('CRM.PIPELINES.TITLE')"
+        :link-text="$t('CRM.PIPELINES.TITLE')"
+      >
+        <template v-if="pipelines && pipelines.length" #count>
+          <span class="text-body-main text-n-slate-11 truncate min-w-0">
+            {{ pipelines.length }}
+          </span>
+        </template>
+        <template #actions>
+          <Button
+            :label="$t('CRM.PIPELINES.CREATE')"
+            size="sm"
+            @click="openAddPipelineModal"
+          />
+        </template>
+      </BaseSettingsHeader>
+    </template>
+
+    <template #body>
+      <div v-if="pipelines.length === 0" class="flex-1 flex items-center justify-center py-20 text-center text-body-main text-n-slate-11">
+        {{ $t('CRM.PIPELINES.EMPTY.DESCRIPTION') }}
       </div>
-      <div class="small-4 columns text-right">
-        <woot-button
-          icon="add"
-          color-scheme="success"
-          @click="openAddPipelineModal"
+
+      <div v-else class="flex flex-col divide-y divide-n-weak border-t border-n-weak">
+        <div
+          v-for="pipeline in pipelines"
+          :key="pipeline.id"
+          class="flex flex-row justify-between items-start gap-4 py-4"
         >
-          {{ $t('CRM.PIPELINES.CREATE') }}
-        </woot-button>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="small-12 columns">
-        <div v-if="isLoading" class="text-center p-4">
-          <spinner size="medium" />
-        </div>
-
-        <div v-else-if="pipelines.length === 0" class="empty-state">
-          <p>{{ $t('CRM.PIPELINES.EMPTY.DESCRIPTION') }}</p>
-        </div>
-
-        <div v-else class="pipelines-list">
-          <table class="woot-table">
-            <thead>
-              <tr>
-                <th>{{ $t('CRM.PIPELINES.FORM.NAME') }}</th>
-                <th>{{ $t('CRM.STAGES.TITLE') }}</th>
-                <th>{{ $t('CRM.DEALS.TITLE') }}</th>
-                <th>{{ $t('CRM.PIPELINES.DEFAULT') }}</th>
-                <th>{{ $t('CRM.SETTINGS') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="pipeline in pipelines" :key="pipeline.id">
-                <td>{{ pipeline.name }}</td>
-                <td>{{ pipeline.stages ? pipeline.stages.length : 0 }}</td>
-                <td>{{ pipeline.deals_count || 0 }}</td>
-                <td>
-                  <span v-if="pipeline.is_default" class="label success">
-                    {{ $t('CRM.PIPELINES.DEFAULT') }}
-                  </span>
-                </td>
-                <td>
-                  <div class="button-group">
-                    <woot-button
-                      variant="smooth"
-                      size="small"
-                      icon="edit"
-                      @click="editPipeline(pipeline)"
-                    >
-                      {{ $t('CRM.UPDATE') }}
-                    </woot-button>
-                    <woot-button
-                      v-if="!pipeline.is_default"
-                      variant="smooth"
-                      color-scheme="alert"
-                      size="small"
-                      icon="delete"
-                      @click="deletePipeline(pipeline)"
-                    >
-                      {{ $t('CRM.DELETE') }}
-                    </woot-button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Add/Edit Pipeline Modal -->
-    <woot-modal v-model:show="showModal" :on-close="closeModal">
-      <div class="modal-header">
-        <h3 class="modal-title">
-          {{
-            isEditing
-              ? $t('CRM.PIPELINES.EDIT_TITLE')
-              : $t('CRM.PIPELINES.CREATE')
-          }}
-        </h3>
-      </div>
-
-      <div class="modal-body">
-        <form @submit.prevent="savePipeline">
-          <div class="form-group">
-            <label>
-              {{ $t('CRM.PIPELINES.FORM.NAME') }}
-              <input
-                v-model="currentPipeline.name"
-                type="text"
-                :placeholder="$t('CRM.PIPELINES.FORM.NAME_PLACEHOLDER')"
-                required
-              />
-            </label>
+          <div class="flex items-center gap-4">
+            <div class="flex flex-col items-start gap-1">
+              <div class="flex gap-2 items-center">
+                <span class="block text-heading-3 text-n-slate-12 capitalize">
+                  {{ pipeline.name }}
+                </span>
+                <span v-if="pipeline.is_default" class="text-n-slate-11 text-xs bg-n-alpha-2 px-2 py-0.5 rounded-full">
+                  {{ $t('CRM.PIPELINES.DEFAULT') }}
+                </span>
+              </div>
+              <span class="text-body-main text-n-slate-11">
+                {{ pipeline.stages ? pipeline.stages.length : 0 }} {{ $t('CRM.STAGES.TITLE') }} - {{ pipeline.deals_count || 0 }} {{ $t('CRM.DEALS.TITLE') }}
+              </span>
+            </div>
           </div>
 
-          <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="currentPipeline.is_default" />
-              {{ $t('CRM.PIPELINES.FORM.IS_DEFAULT') }}
-            </label>
+          <div class="flex gap-3 justify-end">
+            <Button
+              v-tooltip.top="$t('CRM.UPDATE')"
+              icon="i-lucide-pencil"
+              slate
+              sm
+              @click="editPipeline(pipeline)"
+            />
+            <Button
+              v-if="!pipeline.is_default"
+              v-tooltip.top="$t('CRM.DELETE')"
+              icon="i-woot-bin"
+              slate
+              sm
+              class="hover:enabled:text-n-ruby-11 hover:enabled:bg-n-ruby-2"
+              @click="deletePipeline(pipeline)"
+            />
           </div>
+        </div>
+      </div>
+    </template>
+  </SettingsLayout>
 
-          <div class="stages-section">
-            <h4>{{ $t('CRM.STAGES.TITLE') }}</h4>
-            <p class="help-text">{{ $t('CRM.STAGES.HELP_TEXT') }}</p>
+  <!-- Add/Edit Pipeline Modal -->
+  <woot-modal v-model:show="showModal" :on-close="closeModal">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        {{ isEditing ? $t('CRM.PIPELINES.EDIT_TITLE') : $t('CRM.PIPELINES.CREATE') }}
+      </h3>
+    </div>
 
-            <draggable
-              v-model="currentPipeline.stages"
-              handle=".drag-handle"
-              item-key="id"
-            >
-              <template #item="{ element: stage, index }">
-                <div class="stage-item">
-                  <span
-                    class="drag-handle i-ph-dots-six-vertical size-4"
-                  ></span>
-                  <div class="stage-inputs">
-                    <input
-                      v-model="stage.name"
-                      type="text"
-                      class="stage-name-input"
-                      :placeholder="$t('CRM.STAGES.FORM.NAME')"
-                      required
-                    />
-                    <div class="stage-meta-inputs">
-                      <label
-                        class="rotting-days-label"
-                        :title="$t('CRM.STAGES.FORM.ROTTING_DAYS')"
-                      >
-                        <span class="i-ph-clock size-4 text-n-slate-10" />
-                        <input
-                          v-model.number="stage.rotting_days"
-                          type="number"
-                          class="rotting-days-input"
-                          min="0"
-                          placeholder="0"
-                        />
-                        <span class="unit">{{ $t('CRM.REPORTS.DAYS') }}</span>
-                      </label>
-                    </div>
-                  </div>
-                  <div class="stage-actions">
-                    <woot-button
-                      variant="clear"
-                      color-scheme="alert"
-                      size="tiny"
-                      icon="dismiss"
-                      @click="removeStage(index)"
-                    />
+    <div class="modal-body">
+      <form @submit.prevent="savePipeline">
+        <div class="form-group">
+          <label>
+            {{ $t('CRM.PIPELINES.FORM.NAME') }}
+            <input
+              v-model="currentPipeline.name"
+              type="text"
+              :placeholder="$t('CRM.PIPELINES.FORM.NAME_PLACEHOLDER')"
+              required
+            />
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" v-model="currentPipeline.is_default" />
+            {{ $t('CRM.PIPELINES.FORM.IS_DEFAULT') }}
+          </label>
+        </div>
+
+        <div class="stages-section">
+          <h4>{{ $t('CRM.STAGES.TITLE') }}</h4>
+          <p class="help-text">{{ $t('CRM.STAGES.HELP_TEXT') }}</p>
+
+          <draggable
+            v-model="currentPipeline.stages"
+            handle=".drag-handle"
+            item-key="id"
+          >
+            <template #item="{ element: stage, index }">
+              <div class="stage-item">
+                <span class="drag-handle i-ph-dots-six-vertical size-4"></span>
+                <div class="stage-inputs">
+                  <input
+                    v-model="stage.name"
+                    type="text"
+                    class="stage-name-input"
+                    :placeholder="$t('CRM.STAGES.FORM.NAME')"
+                    required
+                  />
+                  <div class="stage-meta-inputs">
+                    <label class="stage-meta-label" :title="$t('CRM.STAGES.FORM.WIN_PROBABILITY')">
+                      <span class="i-ph-percent size-4 text-n-slate-10" />
+                      <input
+                        v-model.number="stage.win_probability"
+                        type="number"
+                        class="stage-meta-input"
+                        min="0"
+                        max="100"
+                        placeholder="0"
+                      />
+                    </label>
+                    <label class="stage-meta-label" :title="$t('CRM.STAGES.FORM.ROTTING_DAYS')">
+                      <span class="i-ph-clock size-4 text-n-slate-10" />
+                      <input
+                        v-model.number="stage.rotting_days"
+                        type="number"
+                        class="stage-meta-input"
+                        min="0"
+                        placeholder="0"
+                      />
+                      <span class="unit">{{ $t('CRM.REPORTS.DAYS') }}</span>
+                    </label>
                   </div>
                 </div>
-              </template>
-            </draggable>
+                <div class="stage-actions">
+                  <woot-button
+                    variant="clear"
+                    color-scheme="alert"
+                    size="tiny"
+                    icon="dismiss"
+                    @click="removeStage(index)"
+                  />
+                </div>
+              </div>
+            </template>
+          </draggable>
 
+          <woot-button
+            variant="smooth"
+            size="small"
+            icon="add"
+            class="add-stage-btn"
+            @click="addStage"
+          >
+            {{ $t('CRM.STAGES.CREATE') }}
+          </woot-button>
+        </div>
+
+        <div class="settings-section">
+          <h4>{{ $t('CRM.PIPELINES.FORM.LOST_REASONS_TITLE') }}</h4>
+          <p class="help-text">{{ $t('CRM.PIPELINES.FORM.LOST_REASONS_HELP') }}</p>
+          <div
+            v-for="(reason, idx) in currentPipeline.lost_reasons"
+            :key="idx"
+            class="lost-reason-item"
+          >
+            <input
+              v-model="currentPipeline.lost_reasons[idx]"
+              type="text"
+              class="lost-reason-input"
+              :placeholder="$t('CRM.PIPELINES.FORM.LOST_REASON_PLACEHOLDER')"
+            />
             <woot-button
-              variant="smooth"
-              size="small"
-              icon="add"
-              class="add-stage-btn"
-              @click="addStage"
-            >
-              {{ $t('CRM.STAGES.CREATE') }}
-            </woot-button>
+              variant="clear"
+              color-scheme="alert"
+              size="tiny"
+              icon="dismiss"
+              @click="removeLostReason(idx)"
+            />
           </div>
+          <woot-button
+            variant="smooth"
+            size="small"
+            icon="add"
+            class="add-stage-btn"
+            @click="addLostReason"
+          >
+            {{ $t('CRM.PIPELINES.FORM.ADD_LOST_REASON') }}
+          </woot-button>
+        </div>
 
-          <div class="modal-footer">
-            <woot-button variant="clear" @click.prevent="closeModal">
-              {{ $t('CRM.CANCEL') }}
-            </woot-button>
-            <woot-button type="submit" :is-loading="isSaving">
-              {{ isEditing ? $t('CRM.UPDATE') : $t('CRM.CREATE') }}
-            </woot-button>
+        <div class="settings-section">
+          <h4>{{ $t('CRM.PIPELINES.FORM.VISIBILITY_TITLE') }}</h4>
+          <p class="help-text">{{ $t('CRM.PIPELINES.FORM.VISIBILITY_HELP') }}</p>
+          <div class="form-group">
+            <select v-model="currentPipeline.visibility" class="visibility-select">
+              <option value="public">{{ $t('CRM.PIPELINES.FORM.VISIBILITY_PUBLIC') }}</option>
+              <option value="restricted">{{ $t('CRM.PIPELINES.FORM.VISIBILITY_RESTRICTED') }}</option>
+            </select>
           </div>
-        </form>
-      </div>
-    </woot-modal>
-  </div>
+          <div v-if="currentPipeline.visibility === 'restricted'" class="form-group">
+            <label>{{ $t('CRM.PIPELINES.FORM.ALLOWED_TEAMS') }}</label>
+            <div class="teams-checkboxes">
+              <label
+                v-for="team in teams"
+                :key="team.id"
+                class="checkbox-label"
+              >
+                <input
+                  type="checkbox"
+                  :value="team.id"
+                  :checked="currentPipeline.allowed_team_ids.includes(team.id)"
+                  @change="toggleTeam(team.id)"
+                />
+                {{ team.name }}
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <woot-button variant="clear" @click.prevent="closeModal">
+            {{ $t('CRM.CANCEL') }}
+          </woot-button>
+          <woot-button type="submit" :is-loading="isSaving">
+            {{ isEditing ? $t('CRM.UPDATE') : $t('CRM.CREATE') }}
+          </woot-button>
+        </div>
+      </form>
+    </div>
+  </woot-modal>
 </template>
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
 import Spinner from 'shared/components/Spinner.vue';
 import Draggable from 'vuedraggable';
+import SettingsLayout from '../SettingsLayout.vue';
+import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 
 export default {
   components: {
     Spinner,
     Draggable,
+    SettingsLayout,
+    BaseSettingsHeader,
+    Button,
   },
   data() {
     return {
@@ -208,6 +271,9 @@ export default {
         name: '',
         is_default: false,
         stages: [],
+        lost_reasons: [],
+        visibility: 'public',
+        allowed_team_ids: [],
       },
       isEditing: false,
     };
@@ -215,6 +281,7 @@ export default {
   computed: {
     ...mapGetters({
       pipelines: 'pipelines/getPipelines',
+      teams: 'teams/getTeams',
     }),
   },
   mounted() {
@@ -243,11 +310,14 @@ export default {
         name: '',
         is_default: false,
         stages: [
-          { name: 'New', position: 1 },
-          { name: 'Qualified', position: 2 },
-          { name: 'Won', position: 3 },
-          { name: 'Lost', position: 4 },
+          { name: 'New', position: 1, win_probability: 10 },
+          { name: 'Qualified', position: 2, win_probability: 30 },
+          { name: 'Won', position: 3, win_probability: 100 },
+          { name: 'Lost', position: 4, win_probability: 0 },
         ],
+        lost_reasons: [],
+        visibility: 'public',
+        allowed_team_ids: [],
       };
       this.showModal = true;
     },
@@ -262,7 +332,24 @@ export default {
     },
     closeModal() {
       this.showModal = false;
-      this.currentPipeline = { name: '', is_default: false, stages: [] };
+      this.currentPipeline = {
+        name: '', is_default: false, stages: [],
+        lost_reasons: [], visibility: 'public', allowed_team_ids: [],
+      };
+    },
+    addLostReason() {
+      this.currentPipeline.lost_reasons.push('');
+    },
+    removeLostReason(index) {
+      this.currentPipeline.lost_reasons.splice(index, 1);
+    },
+    toggleTeam(teamId) {
+      const idx = this.currentPipeline.allowed_team_ids.indexOf(teamId);
+      if (idx > -1) {
+        this.currentPipeline.allowed_team_ids.splice(idx, 1);
+      } else {
+        this.currentPipeline.allowed_team_ids.push(teamId);
+      }
     },
     addStage() {
       this.currentPipeline.stages.push({
@@ -318,7 +405,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.stages-section {
+.stages-section,
+.settings-section {
   margin-top: var(--space-normal);
   padding-top: var(--space-normal);
   border-top: 1px solid var(--color-border);
@@ -377,7 +465,7 @@ export default {
     gap: var(--space-small);
   }
 
-  .rotting-days-label {
+  .stage-meta-label {
     display: flex;
     align-items: center;
     gap: var(--space-demi);
@@ -393,7 +481,7 @@ export default {
     }
   }
 
-  .rotting-days-input {
+  .stage-meta-input {
     width: 40px;
     margin: 0;
     border: none;
@@ -411,6 +499,30 @@ export default {
       margin: 0;
     }
   }
+}
+
+.lost-reason-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-small);
+  margin-bottom: var(--space-smaller);
+
+  .lost-reason-input {
+    flex: 1;
+    margin-bottom: 0;
+  }
+}
+
+.visibility-select {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.teams-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-smaller);
+  margin-top: var(--space-smaller);
 }
 
 .add-stage-btn {

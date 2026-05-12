@@ -396,7 +396,7 @@ class Whatsapp::IncomingMessageEvolutionService
   def create_message
     # Check for duplicate message
     # Skip duplicates
-    return if message_id.present? && Message.exists?(source_id: message_id)
+    return if message_id.present? && inbox.messages.exists?(source_id: message_id)
 
     # Determine message type and sender based on fromMe flag
     if from_me?

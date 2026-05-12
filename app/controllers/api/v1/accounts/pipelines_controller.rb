@@ -39,6 +39,6 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
   end
 
   def pipeline_params
-    params.require(:pipeline).permit(:name, :is_default)
+    params.require(:pipeline).permit(:name, :is_default, :visibility, lost_reasons: [], allowed_team_ids: [])
   end
 end

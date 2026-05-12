@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import Evolution from './Evolution.vue';
+import EvolutionGo from './EvolutionGo.vue';
 import ChannelSelector from 'dashboard/components/ChannelSelector.vue';
 
 const route = useRoute();
@@ -11,6 +12,7 @@ const { t } = useI18n();
 
 const PROVIDER_TYPES = {
   EVOLUTION: 'evolution',
+  EVOLUTION_GO: 'evolution_go',
 };
 
 const selectedProvider = computed(() => route.query.provider);
@@ -24,6 +26,12 @@ const availableProviders = computed(() => [
     key: PROVIDER_TYPES.EVOLUTION,
     title: t('INBOX_MGMT.ADD.WHATSAPP_LITE.PROVIDERS.EVOLUTION'),
     description: t('INBOX_MGMT.ADD.WHATSAPP_LITE.PROVIDERS.EVOLUTION_DESC'),
+    icon: 'i-evolution-fill',
+  },
+  {
+    key: PROVIDER_TYPES.EVOLUTION_GO,
+    title: t('INBOX_MGMT.ADD.WHATSAPP_LITE.PROVIDERS.EVOLUTION_GO'),
+    description: t('INBOX_MGMT.ADD.WHATSAPP_LITE.PROVIDERS.EVOLUTION_GO_DESC'),
     icon: 'i-evolution-fill',
   },
 ]);
@@ -64,6 +72,9 @@ const selectProvider = providerValue => {
     <div v-else-if="showConfiguration">
       <div class="px-6 py-5 rounded-2xl border border-n-weak">
         <Evolution v-if="selectedProvider === PROVIDER_TYPES.EVOLUTION" />
+        <EvolutionGo
+          v-else-if="selectedProvider === PROVIDER_TYPES.EVOLUTION_GO"
+        />
       </div>
     </div>
   </div>

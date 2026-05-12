@@ -97,6 +97,17 @@ export default {
         this.whatsAppAPIProvider === 'evolution'
       );
     },
+    isAEvolutionGoWhatsAppChannel() {
+      return (
+        this.channelType === INBOX_TYPES.WHATSAPP &&
+        this.whatsAppAPIProvider === 'evolution_go'
+      );
+    },
+    isUnofficialWhatsApp() {
+      return (
+        this.isAEvolutionWhatsAppChannel || this.isAEvolutionGoWhatsAppChannel
+      );
+    },
     chatAdditionalAttributes() {
       const { additional_attributes: additionalAttributes } = this.chat || {};
       return additionalAttributes || {};

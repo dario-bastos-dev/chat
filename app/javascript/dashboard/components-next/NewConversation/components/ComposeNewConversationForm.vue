@@ -67,17 +67,20 @@ const state = props.formState || {
 };
 
 const inboxTypes = computed(() => {
-  const isEvolution = props.targetInbox?.provider === 'evolution';
   const isWhatsappChannel =
     props.targetInbox?.channelType === INBOX_TYPES.WHATSAPP;
 
   return {
     isEmail: props.targetInbox?.channelType === INBOX_TYPES.EMAIL,
     isTwilio: props.targetInbox?.channelType === INBOX_TYPES.TWILIO,
-    // WhatsApp Cloud API (requires templates) - excludes Evolution
-    isWhatsapp: isWhatsappChannel && !isEvolution,
-    // Evolution WhatsApp (no templates needed, treated like API)
-    isEvolutionWhatsapp: isWhatsappChannel && isEvolution,
+    // WhatsApp Cloud API (requires templates) - excludes Evolution and Evolution GO
+    isWhatsapp:
+      isWhatsappChannel &&
+      !['evolution', 'evolution_go'].includes(props.targetInbox?.provider),
+    // Evolution & Evolution GO WhatsApp (no templates needed, treated like API)
+    isUnofficialWhatsapp:
+      isWhatsappChannel &&
+      ['evolution', 'evolution_go'].includes(props.targetInbox?.provider),
     isWebWidget: props.targetInbox?.channelType === INBOX_TYPES.WEB,
     isApi: props.targetInbox?.channelType === INBOX_TYPES.API,
     isEmailOrWebWidget:

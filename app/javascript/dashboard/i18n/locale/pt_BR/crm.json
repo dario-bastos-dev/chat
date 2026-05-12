@@ -12,10 +12,15 @@
     "TOTAL_VALUE": "Valor Total",
     "PIPELINES": {
       "TITLE": "Pipelines",
+      "SUBTITLE": "Gerencie seus pipelines e negócios",
       "CREATE": "Novo Pipeline",
       "CREATE_DESCRIPTION": "Crie um novo pipeline para organizar seus negócios",
       "CREATE_ERROR": "Erro ao criar pipeline",
       "DEFAULT": "Padrão",
+      "YOUR_PIPELINES": "Seus Pipelines",
+      "PIPELINE_COUNT": "pipeline(s)",
+      "FUNNEL_STAGES": "Etapas do funil",
+      "MORE": "mais",
       "EMPTY": {
         "TITLE": "Nenhum pipeline encontrado",
         "DESCRIPTION": "Crie seu primeiro pipeline para começar a gerenciar seus negócios"
@@ -23,12 +28,22 @@
       "FORM": {
         "NAME": "Nome do Pipeline",
         "NAME_PLACEHOLDER": "Ex: Pipeline de Vendas",
-        "IS_DEFAULT": "Definir como pipeline padrão"
+        "IS_DEFAULT": "Definir como pipeline padrão",
+        "LOST_REASONS_TITLE": "Motivos de Perda",
+        "LOST_REASONS_HELP": "Defina os motivos para a perda de negócios. Eles aparecerão como opções ao marcar um negócio como perdido.",
+        "LOST_REASON_PLACEHOLDER": "Ex: Preço muito alto",
+        "ADD_LOST_REASON": "Adicionar Motivo",
+        "VISIBILITY_TITLE": "Visibilidade do Pipeline",
+        "VISIBILITY_HELP": "Controle quais agentes podem ver este pipeline e seus negócios.",
+        "VISIBILITY_PUBLIC": "Público — Todos os agentes",
+        "VISIBILITY_RESTRICTED": "Restrito — Apenas equipes selecionadas",
+        "ALLOWED_TEAMS": "Equipes Permitidas"
       }
     },
     "STAGES": {
       "TITLE": "Etapas",
       "CREATE": "Nova Etapa",
+      "HELP_TEXT": "Arraste para reordenar. Defina a probabilidade de ganho e dias de estagnação para cada etapa.",
       "FORM": {
         "NAME": "Nome da Etapa",
         "WIN_PROBABILITY": "Probabilidade de Ganho (%)",

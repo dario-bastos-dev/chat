@@ -11,6 +11,7 @@ import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
 import TagMultiSelectComboBox from 'dashboard/components-next/combobox/TagMultiSelectComboBox.vue';
 import TextArea from 'dashboard/components-next/textarea/TextArea.vue';
 import Switch from 'dashboard/components-next/switch/Switch.vue';
+import RadioButton from 'dashboard/components/ui/RadioButton.vue';
 
 const emit = defineEmits(['submit', 'cancel']);
 
@@ -28,7 +29,9 @@ const initialState = {
   message: '',
   scheduledAt: null,
   selectedAudience: [],
+  targetType: 'contacts',
   isScheduled: false,
+  file: null,
 };
 
 const state = reactive({ ...initialState });
@@ -93,7 +96,36 @@ const resetState = () => {
 
 const handleCancel = () => emit('cancel');
 
+const handleFileUpload = event => {
+  const file = event.target.files[0];
+  if (file) {
+    state.file = file;
+  }
+};
+
 const prepareCampaignDetails = () => {
+  if (state.file) {
+    const formData = new FormData();
+    formData.append('campaign[title]', state.title);
+    formData.append('campaign[message]', state.message);
+    formData.append('campaign[inbox_id]', state.inboxId);
+    
+    if (state.isScheduled && state.scheduledAt) {
+      formData.append('campaign[scheduled_at]', formatToUTCString(state.scheduledAt));
+    }
+
+    formData.append('campaign[audience][0][type]', 'Target');
+    formData.append('campaign[audience][0][value]', state.targetType);
+    
+    state.selectedAudience?.forEach((id, index) => {
+      formData.append(`campaign[audience][${index + 1}][id]`, id);
+      formData.append(`campaign[audience][${index + 1}][type]`, 'Label');
+    });
+
+    formData.append('campaign[attachments][]', state.file);
+    return formData;
+  }
+
   return {
     title: state.title,
     message: state.message,
@@ -101,10 +133,13 @@ const prepareCampaignDetails = () => {
     scheduled_at: state.isScheduled
       ? formatToUTCString(state.scheduledAt)
       : null,
-    audience: state.selectedAudience?.map(id => ({
-      id,
-      type: 'Label',
-    })),
+    audience: [
+      { type: 'Target', value: state.targetType },
+      ...state.selectedAudience?.map(id => ({
+        id,
+        type: 'Label',
+      }))
+    ],
   };
 };
 
@@ -165,6 +200,41 @@ const handleSubmit = async () => {
         :message="formErrors.audience"
         class="[&>div>button]:bg-n-alpha-black2"
       />
+    </div>
+
+    <div class="flex flex-col gap-2 mt-2 mb-2">
+      <label class="text-sm font-medium text-n-slate-12">
+        Enviar para:
+      </label>
+      <div class="flex gap-4">
+        <RadioButton
+          id="target_lite_contacts"
+          v-model="state.targetType"
+          value="contacts"
+          label="Contatos"
+        />
+        <RadioButton
+          id="target_lite_conversations"
+          v-model="state.targetType"
+          value="conversations"
+          label="Conversas"
+        />
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <label class="mb-0.5 text-sm font-medium text-n-slate-12">
+        Anexo (Imagem, Áudio ou PDF)
+      </label>
+      <input 
+        type="file" 
+        accept="image/*,audio/*,application/pdf"
+        class="block w-full text-sm text-n-slate-11 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-n-alpha-2 file:text-n-slate-12 hover:file:bg-n-alpha-3"
+        @change="handleFileUpload" 
+      />
+      <p class="text-xs text-n-slate-10 mt-1">
+        Opcional. O arquivo será enviado com a mensagem como legenda.
+      </p>
     </div>
 
     <div class="flex items-center gap-3">

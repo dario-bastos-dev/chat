@@ -370,8 +370,8 @@
           "DELAY": {
             "TITLE": "Delay de Mensagens",
             "DESC": "Adicionar um delay antes de enviar mensagens (simula digitação)",
-            "TIME_LABEL": "Tempo de delay (ms)",
-            "TIME_PLACEHOLDER": "2000"
+            "TIME_LABEL": "Tempo de delay (segundos)",
+            "TIME_PLACEHOLDER": "2"
           }
         }
       },

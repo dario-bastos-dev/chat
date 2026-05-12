@@ -45,7 +45,7 @@ export default {
         read_status: false,
         sync_full_history: false,
         delay_enabled: true,
-        delay_time: 2000,
+        delay_time: 2,
       },
       settingsList: [
         { key: 'ignore_groups', i18n: 'IGNORE_GROUPS' },
@@ -81,6 +81,11 @@ export default {
   methods: {
     initializeSettings() {
       const config = this.inbox.provider_config || {};
+      let delayTime = config.delay_time || 2;
+      // If legacy value is in ms, convert to seconds for display
+      if (delayTime > 100) {
+        delayTime = delayTime / 1000;
+      }
       this.settings = {
         reject_calls: false,
         msg_call: '',
@@ -90,7 +95,7 @@ export default {
         read_status: false,
         sync_full_history: false,
         delay_enabled: config.delay_enabled !== false,
-        delay_time: config.delay_time || 2000,
+        delay_time: delayTime,
       };
     },
     async checkStatus() {

@@ -84,7 +84,8 @@ class DashboardController < ActionController::Base
       AZURE_APP_ID: GlobalConfigService.load('AZURE_APP_ID', ''),
       GIT_SHA: GIT_HASH,
       ALLOWED_LOGIN_METHODS: allowed_login_methods,
-      evolutionApiConfigured: GlobalConfigService.load('EVOLUTION_API_URL', '').present?
+      evolutionApiConfigured: GlobalConfigService.load('EVOLUTION_API_URL', '').present?,
+      evolutionGoApiConfigured: GlobalConfigService.load('EVOLUTIONGO_API_URL', '').present?
     }
   end
 

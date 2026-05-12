@@ -8,6 +8,9 @@ module Events::Types
 
   #### Account Events ###
   # campaign events
+  CAMPAIGN_CREATED = 'campaign.created'
+  CAMPAIGN_UPDATED = 'campaign.updated'
+  CAMPAIGN_DELETED = 'campaign.deleted'
   CAMPAIGN_TRIGGERED = 'campaign.triggered'
 
   # channel events

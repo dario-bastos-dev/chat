@@ -45,6 +45,7 @@
         whatsappConfigurationId: '<%= @global_config['WHATSAPP_CONFIGURATION_ID'] %>',
         whatsappApiVersion: '<%= @global_config['WHATSAPP_API_VERSION'] %>',
         evolutionApiConfigured: <%= (@global_config['EVOLUTION_API_URL'].present? && @global_config['EVOLUTION_API_TOKEN'].present?).to_json %>,
+        evolutionGoApiConfigured: <%= (@global_config['EVOLUTIONGO_API_URL'].present? && @global_config['EVOLUTIONGO_API_TOKEN'].present?).to_json %>,
         signupEnabled: '<%= @global_config['ENABLE_ACCOUNT_SIGNUP'] %>',
         isEnterprise: '<%= @global_config['IS_ENTERPRISE'] %>',
         isMfaEnabled: '<%= Chatwoot.mfa_enabled? %>',

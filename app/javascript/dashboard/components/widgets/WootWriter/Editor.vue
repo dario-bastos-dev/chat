@@ -19,6 +19,7 @@ import TagTools from '../conversation/TagTools.vue';
 import CopilotMenuBar from './CopilotMenuBar.vue';
 
 import { useEmitter } from 'dashboard/composables/emitter';
+import { emitter } from 'shared/helpers/mitt';
 import { useI18n } from 'vue-i18n';
 import { useCaptain } from 'dashboard/composables/useCaptain';
 import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
@@ -108,13 +109,14 @@ const emit = defineEmits([
   'input',
   'update:modelValue',
   'executeCopilotAction',
+  'cannedResponseAttachment',
 ]);
 
 const { t } = useI18n();
 const { captainTasksEnabled } = useCaptain();
 
 const TYPING_INDICATOR_IDLE_TIME = 4000;
-const MAXIMUM_FILE_UPLOAD_SIZE = 4; // in MB
+const MAXIMUM_FILE_UPLOAD_SIZE = 40; // in MB (Matches global default)
 const DEFAULT_FORMATTING = 'Context::Default';
 const PRIVATE_NOTE_FORMATTING = 'Context::PrivateNote';
 
@@ -687,6 +689,16 @@ function insertSpecialContent(type, content) {
   useTrack(event_map[type]);
 }
 
+function insertCannedResponse(content, file) {
+  insertSpecialContent('cannedResponse', content);
+  if (file) {
+    emitter.emit(BUS_EVENTS.INSERT_CANNED_ATTACHMENT, {
+      conversationId: props.conversationId,
+      file,
+    });
+  }
+}
+
 function handleLineBreakWhenCmdAndEnterToSendEnabled(event) {
   if (
     hasPressedCommandAndEnter(event) &&
@@ -845,7 +857,7 @@ useEmitter(BUS_EVENTS.INSERT_INTO_RICH_EDITOR, insertContentIntoEditor);
     <CannedResponse
       v-if="shouldShowCannedResponses"
       :search-key="cannedSearchTerm"
-      @replace="content => insertSpecialContent('cannedResponse', content)"
+      @replace="(content, file) => insertCannedResponse(content, file)"
     />
     <VariableList
       v-if="shouldShowVariables"

@@ -132,6 +132,10 @@ export const AUTOMATIONS = {
         key: 'send_attachment',
         name: 'SEND_ATTACHMENT',
       },
+      {
+        key: 'create_deal',
+        name: 'CREATE_DEAL',
+      },
     ],
   },
   conversation_created: {
@@ -213,10 +217,6 @@ export const AUTOMATIONS = {
         name: 'ASSIGN_TEAM',
       },
       {
-        key: 'assign_agent',
-        name: 'ASSIGN_AGENT',
-      },
-      {
         key: 'send_email_to_team',
         name: 'SEND_EMAIL_TO_TEAM',
       },
@@ -251,6 +251,10 @@ export const AUTOMATIONS = {
       {
         key: 'send_attachment',
         name: 'SEND_ATTACHMENT',
+      },
+      {
+        key: 'create_deal',
+        name: 'CREATE_DEAL',
       },
     ],
   },
@@ -384,6 +388,10 @@ export const AUTOMATIONS = {
         key: 'send_attachment',
         name: 'SEND_ATTACHMENT',
       },
+      {
+        key: 'create_deal',
+        name: 'CREATE_DEAL',
+      },
     ],
   },
   conversation_opened: {
@@ -506,6 +514,10 @@ export const AUTOMATIONS = {
         key: 'send_attachment',
         name: 'SEND_ATTACHMENT',
       },
+      {
+        key: 'create_deal',
+        name: 'CREATE_DEAL',
+      },
     ],
   },
   conversation_resolved: {
@@ -605,6 +617,10 @@ export const AUTOMATIONS = {
       {
         key: 'send_attachment',
         name: 'SEND_ATTACHMENT',
+      },
+      {
+        key: 'create_deal',
+        name: 'CREATE_DEAL',
       },
     ],
   },
@@ -717,6 +733,11 @@ export const AUTOMATION_ACTION_TYPES = [
   {
     key: 'add_sla',
     label: 'ADD_SLA',
+    inputType: 'search_select',
+  },
+  {
+    key: 'create_deal',
+    label: 'CREATE_DEAL',
     inputType: 'search_select',
   },
 ];

@@ -237,6 +237,7 @@ class Conversation < ApplicationRecord
 
     # rubocop:disable Rails/SkipsModelValidations
     update_column(:waiting_since, nil)
+    scheduled_messages.pending.update_all(status: :cancelled)
     # rubocop:enable Rails/SkipsModelValidations
   end
 

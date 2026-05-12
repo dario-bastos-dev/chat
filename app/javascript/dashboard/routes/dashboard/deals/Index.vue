@@ -1,42 +1,22 @@
 <template>
-  <div class="h-full overflow-y-auto bg-n-background p-4 md:p-6">
-    <!-- Header Section -->
-    <header
-      class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 pb-4 border-b border-n-weak"
-    >
-      <div class="flex items-center gap-3">
-        <div
-          class="w-10 h-10 rounded-xl bg-n-brand flex items-center justify-center text-white shadow-md"
-        >
-          <fluent-icon icon="board" size="20" />
-        </div>
-        <div>
-          <h1 class="text-lg font-semibold text-n-slate-12 m-0">
-            {{ $t('CRM.TITLE') }}
-          </h1>
-          <p class="text-sm text-n-slate-11 m-0">
-            Gerencie seus pipelines e negócios
-          </p>
-        </div>
-      </div>
-      <woot-button
-        color-scheme="primary"
-        icon="add"
-        size="small"
-        @click="openCreatePipelineModal"
+  <div class="flex flex-col flex-1 h-full">
+    <!-- Redirecting to default pipeline — show skeleton only -->
+    <div v-if="uiFlags.isFetching || isRedirecting" class="flex flex-1 gap-4 p-4 animate-pulse">
+      <div
+        v-for="i in 5"
+        :key="i"
+        class="flex flex-col min-w-[280px] flex-1 rounded-xl border border-n-weak bg-n-solid-2"
       >
-        {{ $t('CRM.PIPELINES.CREATE') }}
-      </woot-button>
-    </header>
-
-    <!-- Loading State -->
-    <div
-      v-if="uiFlags.isFetching"
-      class="flex items-center justify-center h-[calc(100vh-200px)]"
-    >
-      <div class="flex flex-col items-center gap-3 text-n-slate-11">
-        <spinner size="large" />
-        <p class="m-0 text-sm">Carregando pipelines...</p>
+        <div class="px-3 py-3 border-b border-n-weak">
+          <div class="h-4 w-24 bg-n-alpha-2 rounded" />
+        </div>
+        <div class="flex flex-col gap-3 p-3">
+          <div
+            v-for="j in (3 + i % 2)"
+            :key="j"
+            class="h-20 bg-n-alpha-2 rounded-lg"
+          />
+        </div>
       </div>
     </div>
 
@@ -69,140 +49,7 @@
       </div>
     </div>
 
-    <!-- Pipelines Grid -->
-    <div v-else class="animate-fadeIn">
-      <div class="flex items-center justify-between mb-4">
-        <h2
-          class="flex items-center gap-2 text-sm font-semibold text-n-slate-12 m-0"
-        >
-          <fluent-icon icon="board" size="18" class="text-n-brand" />
-          Seus Pipelines
-        </h2>
-        <span
-          class="text-xs text-n-slate-11 bg-n-solid-2 px-3 py-1 rounded-full"
-        >
-          {{ pipelines.length }} pipeline(s)
-        </span>
-      </div>
 
-      <div class="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-        <div
-          v-for="pipeline in pipelines"
-          :key="pipeline.id"
-          class="group relative bg-n-solid-2 border border-n-weak rounded-xl overflow-hidden cursor-pointer transition-all duration-300 hover:border-n-brand hover:shadow-xl hover:-translate-y-1"
-          @click="openPipeline(pipeline)"
-        >
-          <!-- Card Gradient Accent -->
-          <div
-            class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-n-blue-9 to-n-iris-9 transition-all duration-300 group-hover:h-1.5"
-          ></div>
-
-          <!-- Card Content -->
-          <div class="p-4">
-            <!-- Header -->
-            <div class="flex items-start justify-between mb-4">
-              <div class="flex flex-col gap-1">
-                <h3 class="text-base font-semibold text-n-slate-12 m-0">
-                  {{ pipeline.name }}
-                </h3>
-                <span
-                  v-if="pipeline.is_default"
-                  class="inline-flex items-center gap-1 text-xs font-medium text-n-amber-11 bg-n-amber-3 px-2 py-0.5 rounded-full w-fit"
-                >
-                  <fluent-icon icon="star" size="10" />
-                  Padrão
-                </span>
-              </div>
-              <div
-                class="text-n-slate-9 opacity-50 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-1"
-              >
-                <fluent-icon icon="chevron-right" size="18" />
-              </div>
-            </div>
-
-            <!-- Stats Row -->
-            <div
-              class="grid grid-cols-3 gap-2 mb-4 p-3 bg-n-alpha-1 rounded-lg"
-            >
-              <div class="flex items-center gap-2">
-                <div
-                  class="w-8 h-8 rounded-lg bg-n-blue-3 text-n-blue-11 flex items-center justify-center flex-shrink-0"
-                >
-                  <fluent-icon icon="document" size="14" />
-                </div>
-                <div class="flex flex-col min-w-0">
-                  <span
-                    class="text-sm font-semibold text-n-slate-12 truncate"
-                    >{{ pipeline.total_deals_count || 0 }}</span
-                  >
-                  <span
-                    class="text-[10px] uppercase tracking-wide text-n-slate-10"
-                    >Negócios</span
-                  >
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <div
-                  class="w-8 h-8 rounded-lg bg-n-teal-3 text-n-teal-11 flex items-center justify-center flex-shrink-0"
-                >
-                  <fluent-icon icon="money" size="14" />
-                </div>
-                <div class="flex flex-col min-w-0">
-                  <span
-                    class="text-sm font-semibold text-n-slate-12 truncate"
-                    >{{ formatCurrency(pipeline.total_value || 0) }}</span
-                  >
-                  <span
-                    class="text-[10px] uppercase tracking-wide text-n-slate-10"
-                    >Valor</span
-                  >
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <div
-                  class="w-8 h-8 rounded-lg bg-n-iris-3 text-n-iris-11 flex items-center justify-center flex-shrink-0"
-                >
-                  <fluent-icon icon="list" size="14" />
-                </div>
-                <div class="flex flex-col min-w-0">
-                  <span
-                    class="text-sm font-semibold text-n-slate-12 truncate"
-                    >{{ pipeline.stages?.length || 0 }}</span
-                  >
-                  <span
-                    class="text-[10px] uppercase tracking-wide text-n-slate-10"
-                    >Etapas</span
-                  >
-                </div>
-              </div>
-            </div>
-
-            <!-- Stages Preview -->
-            <div class="flex flex-col gap-2">
-              <span
-                class="text-[10px] uppercase tracking-wider text-n-slate-10 font-medium"
-                >Etapas do funil:</span
-              >
-              <div class="flex flex-wrap gap-1.5">
-                <span
-                  v-for="stage in pipeline.stages?.slice(0, 4)"
-                  :key="stage.id"
-                  class="text-xs font-medium text-n-slate-11 bg-n-solid-3 px-2.5 py-1 rounded-full"
-                >
-                  {{ stage.name }}
-                </span>
-                <span
-                  v-if="pipeline.stages?.length > 4"
-                  class="text-xs font-medium text-n-slate-10 px-2.5 py-1"
-                >
-                  +{{ pipeline.stages.length - 4 }} mais
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Create Pipeline Modal -->
     <woot-modal v-model:show="showCreateModal" :on-close="closeCreateModal">
@@ -258,16 +105,13 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
-import Spinner from 'shared/components/Spinner.vue';
 
 export default {
   name: 'DealsIndex',
-  components: {
-    Spinner,
-  },
   data() {
     return {
       showCreateModal: false,
+      isRedirecting: true,
       newPipeline: {
         name: '',
         is_default: false,
@@ -280,14 +124,25 @@ export default {
       uiFlags: 'pipelines/getUIFlags',
     }),
   },
-  mounted() {
-    this.fetchPipelines();
+  async mounted() {
+    await this.fetchPipelines();
+    this.redirectToDefaultPipeline();
   },
   methods: {
     ...mapActions({
       fetchPipelines: 'pipelines/get',
       createPipelineAction: 'pipelines/create',
     }),
+    redirectToDefaultPipeline() {
+      if (!this.pipelines.length) {
+        this.isRedirecting = false;
+        return;
+      }
+
+      const defaultPipeline =
+        this.pipelines.find(p => p.is_default) || this.pipelines[0];
+      this.openPipeline(defaultPipeline);
+    },
     openPipeline(pipeline) {
       this.$router.push({
         name: 'deals_kanban',
@@ -314,17 +169,6 @@ export default {
           error.message || this.$t('CRM.PIPELINES.CREATE_ERROR')
         );
       }
-    },
-    formatCurrency(value) {
-      if (value >= 1000) {
-        return 'R$ ' + (value / 1000).toFixed(1) + 'k';
-      }
-      return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(value);
     },
   },
 };

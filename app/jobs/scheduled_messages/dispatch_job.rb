@@ -4,6 +4,11 @@ class ScheduledMessages::DispatchJob < ApplicationJob
   def perform
     # Dispatch all pending scheduled messages that have reached their scheduled time
     ScheduledMessage.dispatchable.find_each do |scheduled_message|
+      unless scheduled_message.conversation.open?
+        scheduled_message.cancelled!
+        next
+      end
+
       ActiveRecord::Base.transaction do
         # Build message attributes
         message_attrs = {

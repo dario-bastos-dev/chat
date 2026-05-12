@@ -20,6 +20,15 @@ export default {
         label: cannedMessage.short_code,
         key: cannedMessage.short_code,
         description: cannedMessage.content,
+        file: cannedMessage.file_signed_id
+          ? {
+              signed_id: cannedMessage.file_signed_id,
+              name: cannedMessage.file_name,
+              url: cannedMessage.file_url,
+              type: cannedMessage.file_content_type,
+              size: cannedMessage.file_size,
+            }
+          : null,
       }));
     },
   },
@@ -36,7 +45,7 @@ export default {
       this.$store.dispatch('getCannedResponse', { searchKey: this.searchKey });
     },
     handleMentionClick(item = {}) {
-      this.$emit('replace', item.description);
+      this.$emit('replace', item.description, item.file);
     },
   },
 };

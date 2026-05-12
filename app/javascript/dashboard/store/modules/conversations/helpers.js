@@ -94,6 +94,13 @@ export const applyRoleFilter = (
   const isUnassigned = !conversationAssignee;
   const isAssignedToUser = conversationAssignee?.id === currentUserId;
 
+  // Check team management permission
+  if (permissions.includes('conversation_team_manage')) {
+    // A logica exata do time é aplicada pelo backend (PermissionFilterService).
+    // Para simplificar a interface do JS e por falta das listas exatas de times do usuario no helper, deixamos true.
+    return true;
+  }
+
   // Check unassigned management permission
   if (permissions.includes('conversation_unassigned_manage')) {
     return isUnassigned || isAssignedToUser;

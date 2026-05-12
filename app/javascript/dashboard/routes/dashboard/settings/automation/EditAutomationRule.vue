@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue';
-import { useMapGetter } from 'dashboard/composables/store';
+import { ref, watch, onMounted } from 'vue';
+import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAutomation } from 'dashboard/composables/useAutomation';
 import { useEditableAutomation } from 'dashboard/composables/useEditableAutomation';
 import AutomationRuleForm from './AutomationRuleForm.vue';
@@ -15,8 +15,19 @@ const props = defineProps({
 
 const emit = defineEmits(['saveAutomation']);
 
+const store = useStore();
 const allCustomAttributes = useMapGetter('attributes/getAttributes');
 const formRef = ref(null);
+
+onMounted(() => {
+  store.dispatch('inboxes/get');
+  store.dispatch('agents/get');
+  store.dispatch('contacts/get');
+  store.dispatch('teams/get');
+  store.dispatch('labels/get');
+  store.dispatch('campaigns/get');
+  store.dispatch('pipelines/get');
+});
 
 const {
   automation,

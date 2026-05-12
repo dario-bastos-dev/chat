@@ -154,7 +154,8 @@
       "CHANGE_PRIORITY": "Change Priority",
       "ADD_SLA": "Add SLA",
       "OPEN_CONVERSATION": "Open conversation",
-      "PENDING_CONVERSATION": "Mark conversation as pending"
+      "PENDING_CONVERSATION": "Mark conversation as pending",
+      "CREATE_DEAL": "Create a Deal"
     },
     "MESSAGE_TYPES": {
       "INCOMING": "Incoming Message",

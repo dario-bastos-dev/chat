@@ -97,7 +97,7 @@ yarn-debug.log*
 .codex/
 .claude/
 CLAUDE.local.md
-
+.agent*
 # Histoire deployment
 .netlify
 .histoire

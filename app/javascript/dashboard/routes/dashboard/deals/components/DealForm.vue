@@ -51,32 +51,44 @@
 
         <div class="form-field">
           <label>{{ $t('CRM.DEALS.FORM.CONTACT') }} *</label>
-          <multiselect
-            v-model="selectedContact"
-            :options="contacts"
-            :searchable="true"
-            :loading="isSearchingContacts"
-            track-by="id"
-            label="name"
-            :placeholder="$t('CRM.DEALS.FORM.CONTACT_PLACEHOLDER')"
-            :internal-search="false"
-            :show-no-results="true"
-            @search-change="searchContacts"
-          >
-            <template #option="{ option }">
-              <div class="contact-option">
+          <div class="contact-selector-wrap">
+            <div
+              v-if="selectedContact"
+              class="selected-contact-pill flex items-center justify-between bg-n-alpha-2 p-2 rounded-lg border border-n-weak"
+            >
+              <div class="flex items-center gap-2">
                 <Avatar
-                  :src="option.avatar_url"
-                  :name="option.name"
+                  :src="selectedContact.thumbnail"
+                  :name="selectedContact.name"
                   :size="24"
                 />
-                <div class="contact-info">
-                  <span class="contact-name">{{ option.name }}</span>
-                  <span class="contact-email">{{ option.email }}</span>
-                </div>
+                <span class="text-sm font-medium text-n-slate-12">
+                  {{ selectedContact.name }}
+                  <span v-if="selectedContact.email" class="text-xs text-n-slate-11">
+                    ({{ selectedContact.email }})
+                  </span>
+                </span>
               </div>
-            </template>
-          </multiselect>
+              <woot-button
+                variant="ghost"
+                icon="i-lucide-x"
+                color="slate"
+                size="xs"
+                @click="clearSelectedContact"
+              />
+            </div>
+            <tag-input
+              v-else
+              :placeholder="$t('CRM.DEALS.FORM.CONTACT_PLACEHOLDER')"
+              mode="single"
+              :menu-items="contactMenuItems"
+              :is-loading="isSearchingContacts"
+              :show-dropdown="contacts.length > 0"
+              class="contact-tag-input"
+              @input="searchContacts"
+              @add="setSelectedContact"
+            />
+          </div>
         </div>
 
         <div class="form-field">
@@ -96,12 +108,15 @@
       </div>
 
       <div class="modal-footer">
-        <woot-button variant="clear" @click.prevent="$emit('close')">
+        <woot-button
+          class="!bg-red-500 hover:!bg-red-600 !text-white"
+          @click.prevent="$emit('close')"
+        >
           {{ $t('CRM.CANCEL') }}
         </woot-button>
         <woot-button
           type="submit"
-          color-scheme="primary"
+          class="!bg-woot-500 hover:!bg-woot-600 !text-white"
           :is-loading="isSubmitting"
         >
           {{ isEditing ? $t('CRM.UPDATE') : $t('CRM.CREATE') }}
@@ -115,12 +130,14 @@
 import { mapGetters, mapActions } from 'vuex';
 
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
+import TagInput from 'dashboard/components-next/taginput/TagInput.vue';
 import ContactsAPI from 'dashboard/api/contacts';
 
 export default {
   name: 'DealForm',
   components: {
     Avatar,
+    TagInput,
   },
   props: {
     pipeline: {
@@ -162,6 +179,14 @@ export default {
     isEditing() {
       return !!this.deal;
     },
+    contactMenuItems() {
+      return this.contacts.map(contact => ({
+        ...contact,
+        label: contact.email ? `${contact.name} (${contact.email})` : contact.name,
+        value: contact.id,
+        action: 'contact',
+      }));
+    },
   },
   mounted() {
     this.initForm();
@@ -192,17 +217,33 @@ export default {
       }
     },
     async searchContacts(query) {
-      if (!query || query.length < 2) return;
+      if (!query || query.length < 2) {
+        this.contacts = [];
+        return;
+      }
 
       this.isSearchingContacts = true;
       try {
         const response = await ContactsAPI.search(query);
         this.contacts = response.data.payload || response.data;
       } catch (error) {
-        console.error('Error searching contacts:', error);
+        // Silent error
       } finally {
         this.isSearchingContacts = false;
       }
+    },
+    setSelectedContact(item) {
+      this.selectedContact = {
+        id: item.id,
+        name: item.name,
+        email: item.email,
+        thumbnail: item.thumbnail || item.avatar_url,
+      };
+      this.contacts = [];
+    },
+    clearSelectedContact() {
+      this.selectedContact = null;
+      this.contacts = [];
     },
     async submitForm() {
       if (!this.selectedContact) {
@@ -249,8 +290,8 @@ export default {
   label {
     display: block;
     margin-bottom: var(--space-smaller);
-    font-weight: var(--font-weight-medium);
     font-size: var(--font-size-small);
+    font-weight: var(--font-weight-medium);
     color: var(--color-heading);
   }
 
@@ -261,10 +302,23 @@ export default {
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-small);
     font-size: var(--font-size-small);
+    background: var(--color-background);
+    color: var(--color-body);
 
     &:focus {
       border-color: var(--w-500);
       outline: none;
+    }
+  }
+
+  .contact-selector-wrap {
+    .contact-tag-input {
+      :deep(.inline-input) {
+        @apply h-10 !important;
+        input {
+          @apply h-10 mb-0 !important;
+        }
+      }
     }
   }
 }
@@ -298,7 +352,7 @@ export default {
 .modal-footer {
   display: flex;
   justify-content: flex-end;
-  gap: var(--space-small);
+  gap: var(--space-normal);
   margin-top: var(--space-normal);
   padding-top: var(--space-normal);
   border-top: 1px solid var(--color-border);

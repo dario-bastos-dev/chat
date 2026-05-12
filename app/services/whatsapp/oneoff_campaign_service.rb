@@ -55,8 +55,8 @@ class Whatsapp::OneoffCampaignService
       return
     end
 
-    # Template params only required for WhatsApp Business (not API or Evolution)
-    requires_template = campaign.inbox.inbox_type != 'API' && channel.provider != 'evolution'
+    # Template params only required for WhatsApp Business (not API or Evolution/Evolution GO)
+    requires_template = campaign.inbox.inbox_type != 'API' && !%w[evolution evolution_go].include?(channel.provider)
     if campaign.template_params.blank? && requires_template
       Rails.logger.error "Skipping contact #{contact.name} - no template_params found for WhatsApp Business campaign"
       return
@@ -66,24 +66,49 @@ class Whatsapp::OneoffCampaignService
   end
 
   def process_audience(audience_labels)
-    contacts = campaign.account.contacts.tagged_with(audience_labels, any: true)
-    Rails.logger.info "Processing #{contacts.count} contacts for campaign #{campaign.id}"
+    target_type = campaign.audience.find { |a| a['type'] == 'Target' }&.dig('value') || 'contacts'
 
-    contacts.each { |contact| process_contact(contact) }
+    if target_type == 'conversations'
+      conversations = campaign.account.conversations.where(inbox_id: campaign.inbox_id, status: :open).tagged_with(audience_labels, any: true)
+      Rails.logger.info "Processing #{conversations.count} conversations for campaign #{campaign.id}"
+      conversations.find_each { |conversation| process_conversation(conversation) }
+    else
+      contacts = campaign.account.contacts.tagged_with(audience_labels, any: true)
+      Rails.logger.info "Processing #{contacts.count} contacts for campaign #{campaign.id}"
+      contacts.find_each { |contact| process_contact(contact) }
+    end
 
     Rails.logger.info "Campaign #{campaign.id} processing completed"
   end
 
-  def send_whatsapp_template_message(to:, contact:)
-    # API inbox type uses simple messages
-    if campaign.inbox.inbox_type == 'API'
-      create_api_message(contact)
+  def process_conversation(conversation)
+    contact = conversation.contact
+    Rails.logger.info "Processing conversation: #{conversation.id} for contact: #{contact.name} (#{contact.phone_number})"
+
+    if contact.phone_number.blank?
+      Rails.logger.info "Skipping conversation #{conversation.id} - no phone number"
       return
     end
 
-    # Evolution (WhatsApp Lite) uses simple messages, not templates
-    if channel.provider == 'evolution'
-      send_evolution_message(to: to, contact: contact)
+    requires_template = campaign.inbox.inbox_type != 'API' && !%w[evolution evolution_go].include?(channel.provider)
+    if campaign.template_params.blank? && requires_template
+      Rails.logger.error "Skipping conversation #{conversation.id} - no template_params found for WhatsApp Business campaign"
+      return
+    end
+
+    send_whatsapp_template_message(to: contact.phone_number, contact: contact, conversation: conversation)
+  end
+
+  def send_whatsapp_template_message(to:, contact:, conversation: nil)
+    # API inbox type uses simple messages
+    if campaign.inbox.inbox_type == 'API'
+      create_api_message(contact, conversation)
+      return
+    end
+
+    # Evolution / Evolution GO (WhatsApp Lite) uses simple messages, not templates
+    if %w[evolution evolution_go].include?(channel.provider)
+      send_lite_whatsapp_message(to: to, contact: contact, conversation: conversation)
       return
     end
 
@@ -111,28 +136,29 @@ class Whatsapp::OneoffCampaignService
     nil
   end
 
-  def send_evolution_message(to:, contact:)
-    Rails.logger.info "[EVOLUTION CAMPAIGN] Sending message to #{to}"
+  def send_lite_whatsapp_message(to:, contact:, conversation: nil)
+    Rails.logger.info "[WHATSAPP LITE CAMPAIGN] Sending message to #{to} via #{channel.provider}"
     
-    # Create or find conversation for this contact
-    contact_inbox = ContactInbox.find_or_create_by!(
-      contact: contact,
-      inbox: campaign.inbox,
-      source_id: to.to_s.gsub(/^\+/, '')
-    )
-    
-    conversation = Conversation.where(
-      contact_id: contact.id,
-      inbox_id: campaign.inbox.id
-    ).order(created_at: :desc).first_or_create!(
-      account: campaign.account,
-      contact_inbox: contact_inbox
-    )
+    if conversation.nil?
+      # Create or find conversation for this contact
+      contact_inbox = ContactInbox.find_or_create_by!(
+        contact: contact,
+        inbox: campaign.inbox,
+        source_id: to.to_s.gsub(/^\+/, '')
+      )
+      
+      conversation = Conversation.where(
+        contact_id: contact.id,
+        inbox_id: campaign.inbox.id
+      ).order(created_at: :desc).first_or_create!(
+        account: campaign.account,
+        contact_inbox: contact_inbox
+      )
+    end
     
     conversation.update!(campaign: campaign)
     
-    # Create the message
-    message = Message.create!(
+    message = Message.new(
       conversation: conversation,
       account: campaign.account,
       inbox: campaign.inbox,
@@ -141,26 +167,34 @@ class Whatsapp::OneoffCampaignService
       additional_attributes: { campaign_id: campaign.id }
     )
     
-    # Send via Evolution API
+    if campaign.attachments.attached?
+      campaign.attachments.each do |attachment|
+        message.attachments.attach(attachment.blob)
+      end
+    end
+
+    message.save!
+    
+    # Send via Provider Service (Evolution or Evolution GO)
     phone_number = to.to_s.gsub(/^\+/, '')
     message_id = channel.provider_service.send_message(phone_number, message)
     
     if message_id.present?
       message.update!(source_id: message_id)
-      Rails.logger.info "[EVOLUTION CAMPAIGN] ✅ Message sent to #{to}, ID: #{message_id}"
+      Rails.logger.info "[WHATSAPP LITE CAMPAIGN] ✅ Message sent to #{to}, ID: #{message_id}"
     else
-      Rails.logger.error "[EVOLUTION CAMPAIGN] ❌ Failed to send message to #{to}"
+      Rails.logger.error "[WHATSAPP LITE CAMPAIGN] ❌ Failed to send message to #{to}"
     end
   rescue StandardError => e
-    Rails.logger.error "[EVOLUTION CAMPAIGN] ❌ Error sending to #{to}: #{e.message}"
-    Rails.logger.error "[EVOLUTION CAMPAIGN] Backtrace: #{e.backtrace.first(5).join('\n')}"
+    Rails.logger.error "[WHATSAPP LITE CAMPAIGN] ❌ Error sending to #{to}: #{e.message}"
+    Rails.logger.error "[WHATSAPP LITE CAMPAIGN] Backtrace: #{e.backtrace.first(5).join('\n')}"
     nil
   end
 
-  def create_api_message(contact)
-    conversation = Conversation.where(contact_id: contact.id, inbox_id: campaign.inbox.id).first_or_create!
+  def create_api_message(contact, conversation = nil)
+    conversation ||= Conversation.where(contact_id: contact.id, inbox_id: campaign.inbox.id).first_or_create!
     conversation.update!(campaign: campaign)
-    Message.create!(
+    message = Message.new(
       conversation: conversation,
       account: campaign.account,
       inbox: campaign.inbox,
@@ -168,5 +202,13 @@ class Whatsapp::OneoffCampaignService
       content: campaign.message,
       additional_attributes: { campaign_id: campaign.id }
     )
+
+    if campaign.attachments.attached?
+      campaign.attachments.each do |attachment|
+        message.attachments.attach(attachment.blob)
+      end
+    end
+
+    message.save!
   end
 end

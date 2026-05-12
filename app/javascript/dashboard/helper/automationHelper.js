@@ -99,6 +99,7 @@ export const getActionOptions = ({
   teams,
   labels,
   slaPolicies,
+  pipelines,
   type,
   addNoneToListFn,
   priorityOptions,
@@ -111,6 +112,12 @@ export const getActionOptions = ({
     remove_label: generateConditionOptions(labels, 'title'),
     change_priority: priorityOptions,
     add_sla: slaPolicies,
+    create_deal: (pipelines || []).flatMap(p =>
+      (p.stages || []).map(s => ({
+        id: `${p.id}:${s.id}`,
+        name: `${p.name} > ${s.name}`,
+      }))
+    ),
   };
   return actionsMap[type];
 };
