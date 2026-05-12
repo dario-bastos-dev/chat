@@ -85,8 +85,15 @@ class DashboardController < ActionController::Base
       GIT_SHA: GIT_HASH,
       ALLOWED_LOGIN_METHODS: allowed_login_methods,
       evolutionApiConfigured: GlobalConfigService.load('EVOLUTION_API_URL', '').present?,
-      evolutionGoApiConfigured: GlobalConfigService.load('EVOLUTIONGO_API_URL', '').present?
+      evolutionGoApiConfigured: GlobalConfigService.load('EVOLUTIONGO_API_URL', '').present?,
+      ACTIVE_PLATFORM_BANNERS: active_platform_banners
     }
+  end
+
+  def active_platform_banners
+    return [] unless ChatwootApp.chatwoot_cloud?
+
+    PlatformBanner.active.order(created_at: :desc).as_json(only: %i[id banner_message banner_type updated_at])
   end
 
   def allowed_login_methods

@@ -6,6 +6,9 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   # we are already handling the authorization in fetch inbox
   before_action :check_authorization, except: [:show, :health, :evolution_qrcode, :evolution_status, :evolution_create_instance, :evolution_disconnect, :evolution_diagnostics, :evolution_go_qrcode, :evolution_go_pairing, :evolution_go_status, :evolution_go_create_instance, :evolution_go_disconnect]
   before_action :validate_whatsapp_cloud_channel, only: [:health]
+  before_action :check_authorization, except: [:show]
+
+  include Api::V1::Accounts::Concerns::WhatsappHealthManagement
 
   def index
     @inboxes = policy_scope(Current.account.inboxes.order_by_name.includes(:channel, { avatar_attachment: [:blob] }))
@@ -63,6 +66,12 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
       @inbox.agent_bot_inbox.destroy!
     end
     head :ok
+  end
+
+  def reset_secret
+    return head :not_found unless @inbox.api?
+
+    @inbox.channel.reset_secret!
   end
 
   def destroy
@@ -234,6 +243,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     render json: { error: e.message, success: false }, status: :internal_server_error
   end
 
+>>>>>>> default/develop
   private
 
   def fetch_inbox
@@ -243,12 +253,6 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
 
   def fetch_agent_bot
     @agent_bot = AgentBot.find(params[:agent_bot]) if params[:agent_bot]
-  end
-
-  def validate_whatsapp_cloud_channel
-    return if @inbox.channel.is_a?(Channel::Whatsapp) && @inbox.channel.provider == 'whatsapp_cloud'
-
-    render json: { error: 'Health data only available for WhatsApp Cloud API channels' }, status: :bad_request
   end
 
   def create_channel
@@ -347,6 +351,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   def get_channel_attributes(channel_type)
     channel_type.constantize.const_defined?(:EDITABLE_ATTRS) ? channel_type.constantize::EDITABLE_ATTRS.presence : []
   end
+<<<<<<< HEAD
 
   def whatsapp_channel?
     @inbox.whatsapp? || (@inbox.twilio? && @inbox.channel.whatsapp?)
@@ -367,6 +372,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
       Channels::Twilio::TemplatesSyncJob.perform_later(@inbox.channel)
     end
   end
+=======
 end
 
 Api::V1::Accounts::InboxesController.prepend_mod_with('Api::V1::Accounts::InboxesController')
