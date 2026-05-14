@@ -10,7 +10,15 @@ class Account::ConversationsExportJob < ApplicationJob
     @custom_attribute_keys = @account.custom_attribute_definitions.conversation_attribute.pluck(:attribute_key)
 
     headers = default_columns
-    generate_csv(headers)
+
+    @user_timezone = params[:timezone] || @account_user.ui_settings['timezone'] || @account.reporting_timezone || 'UTC'
+    user_locale = @account_user.ui_settings['locale'] || @account.locale || I18n.default_locale
+
+    Time.use_zone(@user_timezone) do
+      I18n.with_locale(user_locale) do
+        generate_csv(headers)
+      end
+    end
     send_mail
   end
 
@@ -46,7 +54,8 @@ class Account::ConversationsExportJob < ApplicationJob
     when 'labels'
       conversation.label_list.join(', ')
     when 'created_at', 'last_activity_at'
-      conversation.send(header)&.strftime('%Y-%m-%d %H:%M:%S')
+      val = conversation.send(header)
+      val ? I18n.l(val.in_time_zone(@user_timezone), format: :default) : ''
     when *@custom_attribute_keys
       conversation.custom_attributes[header]
     else

@@ -39,6 +39,6 @@ class Deals::AutoAssignmentJob < ApplicationJob
 
     # Otherwise, all agents in the account with access to deals
     # (Assuming all agents have access for now, or filter by role/team)
-    deal.account.users.where(role: ['agent', 'administrator'])
+    deal.account.users.where(account_users: { role: [:agent, :administrator] })
   end
 end

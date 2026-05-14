@@ -38,6 +38,7 @@ const exportContacts = async () => {
   emit('export', {
     ...query,
     label: route.params.label || '',
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
 };
 

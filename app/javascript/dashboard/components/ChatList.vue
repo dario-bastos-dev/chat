@@ -850,7 +850,10 @@ async function exportConversations() {
   }
   
   try {
-    await conversationApi.exportConversations(query);
+    await conversationApi.exportConversations({
+      ...query,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
     useAlert(t('conversations.export.success'));
   } catch (error) {
     // Ignore error

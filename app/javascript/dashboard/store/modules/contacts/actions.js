@@ -172,10 +172,10 @@ export const actions = {
     }
   },
 
-  export: async ({ commit }, { payload, label }) => {
+  export: async ({ commit }, { payload, label, timezone }) => {
     commit(types.SET_CONTACT_UI_FLAG, { isExporting: true });
     try {
-      await ContactAPI.exportContacts({ payload, label });
+      await ContactAPI.exportContacts({ payload, label, timezone });
 
       commit(types.SET_CONTACT_UI_FLAG, { isExporting: false });
     } catch (error) {

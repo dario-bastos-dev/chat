@@ -10,7 +10,15 @@ class Account::ContactsExportJob < ApplicationJob
     @custom_attribute_keys = @account.custom_attribute_definitions.contact_attribute.pluck(:attribute_key)
 
     headers = valid_headers(column_names)
-    generate_csv(headers)
+
+    @user_timezone = params[:timezone] || @account_user.ui_settings['timezone'] || @account.reporting_timezone || 'UTC'
+    user_locale = @account_user.ui_settings['locale'] || @account.locale || I18n.default_locale
+
+    Time.use_zone(@user_timezone) do
+      I18n.with_locale(user_locale) do
+        generate_csv(headers)
+      end
+    end
     send_mail
   end
 
@@ -32,7 +40,8 @@ class Account::ContactsExportJob < ApplicationJob
     when 'labels'
       contact.label_list.join(', ')
     when 'created_at', 'last_activity_at'
-      contact.send(header)&.strftime('%Y-%m-%d %H:%M:%S')
+      val = contact.send(header)
+      val ? I18n.l(val.in_time_zone(@user_timezone), format: :default) : ''
     when *Contact.column_names
       contact.send(header)
     when *@custom_attribute_keys
