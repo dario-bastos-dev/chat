@@ -34,12 +34,18 @@ class Campaign < ApplicationRecord
   validates :account_id, presence: true
   validates :inbox_id, presence: true
   validates :title, presence: true
-  validates :message, presence: true
+  validate :message_or_attachment_present
   validate :validate_campaign_inbox
   validate :validate_url
   validate :prevent_completed_campaign_from_update, on: :update
   validate :sender_must_belong_to_account
   validate :inbox_must_belong_to_account
+
+  def message_or_attachment_present
+    return if message.present? || attachments.attached?
+
+    errors.add(:message, 'must be present if no attachments are provided')
+  end
 
   belongs_to :account
   belongs_to :inbox
@@ -52,6 +58,7 @@ class Campaign < ApplicationRecord
   has_many :conversations, dependent: :nullify, autosave: true
   has_many_attached :attachments
 
+  before_validation :ensure_message_not_nil
   before_validation :ensure_correct_campaign_attributes
   after_commit :set_display_id, unless: :display_id?
   after_create_commit :dispatch_create_event
@@ -65,11 +72,26 @@ class Campaign < ApplicationRecord
     execute_campaign
   end
 
+  def normalized_audience
+    return [] if audience.blank?
+
+    if audience.is_a?(Array)
+      audience
+    elsif audience.is_a?(Hash) && audience.keys.all? { |k| k.to_s =~ /\A\d+\z/ }
+      audience.values
+    else
+      [audience]
+    end
+  end
+
   def total_contacts
     return 0 if audience.blank?
 
-    target_type = audience.find { |a| a['type'] == 'Target' }&.dig('value') || 'contacts'
-    audience_label_ids = audience.select { |a| a['type'] == 'Label' }.pluck('id')
+    # Handle cases where audience might be a single Hash or a Rails-indexed Hash
+    audience_list = normalized_audience
+
+    target_type = audience_list.find { |a| a.is_a?(Hash) && a['type'] == 'Target' }&.dig('value') || 'contacts'
+    audience_label_ids = audience_list.select { |a| a.is_a?(Hash) && a['type'] == 'Label' }.map { |a| a['id'] }
     audience_labels = account.labels.where(id: audience_label_ids).pluck(:title)
 
     if target_type == 'conversations'
@@ -100,6 +122,10 @@ class Campaign < ApplicationRecord
   end
 
   private
+
+  def ensure_message_not_nil
+    self.message ||= ''
+  end
 
   def execute_campaign
     case inbox.inbox_type

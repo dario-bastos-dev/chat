@@ -78,7 +78,7 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
   def send_attachment(phone_number, attachment, message)
     # Get direct URL if possible to avoid 302 Redirect issues with Evolution
     # And strip signatures as requested
-    raw_url = if attachment.file.service_name.to_s.include?('s3') || attachment.file.service_name.to_s.include?('minio')
+    raw_url = if attachment.file.service_name.to_s.include?('s3') || attachment.file.service_name.to_s.include?('minio') || attachment.file.service_name.to_s.include?('amazon')
                  attachment.file.url(expires_in: 10.minutes)
                else
                  attachment.download_url

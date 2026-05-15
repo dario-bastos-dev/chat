@@ -532,7 +532,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     quoted = quoted_context(message)
     body[:quoted] = quoted if quoted.present?
 
-    Rails.logger.info "[EVOLUTION_GO] Sending #{media_type} to #{phone_number}"
+    Rails.logger.info "[EVOLUTION_GO_DEBUG] Sending #{media_type} to #{phone_number} | Filename: #{attachment.file.filename.to_s} | FileType: #{file_type} | URL: #{file_url}"
+    Rails.logger.info "[EVOLUTION_GO_DEBUG] Body: #{body.to_json}"
 
     response = HTTParty.post(
       "#{api_base_url}/send/media",
@@ -555,7 +556,7 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   end
 
   def attachment_url(attachment)
-    if attachment.file.service_name.to_s.match?(/s3|minio/)
+    if attachment.file.service_name.to_s.match?(/s3|minio|amazon/)
       attachment.file.url(expires_in: 10.minutes)
     else
       attachment.download_url

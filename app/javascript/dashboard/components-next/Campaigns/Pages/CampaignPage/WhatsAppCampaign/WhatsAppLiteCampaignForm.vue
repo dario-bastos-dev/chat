@@ -39,7 +39,9 @@ const state = reactive({ ...initialState });
 const rules = {
   title: { required, minLength: minLength(1) },
   inboxId: { required },
-  message: { required, minLength: minLength(1) },
+  message: {
+    required: requiredIf(() => !state.file),
+  },
   scheduledAt: {
     required: requiredIf(() => state.isScheduled),
   },
