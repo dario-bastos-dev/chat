@@ -43,7 +43,8 @@ class Whatsapp::OneoffCampaignService
   end
 
   def extract_audience_labels
-    audience_label_ids = campaign.audience.select { |audience| audience['type'] == 'Label' }.pluck('id')
+    audience_list = campaign.normalized_audience
+    audience_label_ids = audience_list.select { |audience| audience.is_a?(Hash) && audience['type'] == 'Label' }.map { |a| a['id'] }
     campaign.account.labels.where(id: audience_label_ids).pluck(:title)
   end
 
@@ -66,7 +67,8 @@ class Whatsapp::OneoffCampaignService
   end
 
   def process_audience(audience_labels)
-    target_type = campaign.audience.find { |a| a['type'] == 'Target' }&.dig('value') || 'contacts'
+    audience_list = campaign.normalized_audience
+    target_type = audience_list.find { |a| a.is_a?(Hash) && a['type'] == 'Target' }&.dig('value') || 'contacts'
 
     if target_type == 'conversations'
       conversations = campaign.account.conversations.where(inbox_id: campaign.inbox_id, status: :open).tagged_with(audience_labels, any: true)
@@ -136,21 +138,34 @@ class Whatsapp::OneoffCampaignService
     nil
   end
 
+  # Infer Chatwoot file_type from a blob's content_type
+  def infer_file_type(blob)
+    content_type = blob.content_type.to_s
+    case content_type
+    when /\Aimage\// then :image
+    when /\Aaudio\// then :audio
+    when /\Avideo\// then :video
+    else :file
+    end
+  end
+
   def send_lite_whatsapp_message(to:, contact:, conversation: nil)
     Rails.logger.info "[WHATSAPP LITE CAMPAIGN] Sending message to #{to} via #{channel.provider}"
     
     if conversation.nil?
-      # Create or find conversation for this contact
       contact_inbox = ContactInbox.find_or_create_by!(
         contact: contact,
         inbox: campaign.inbox,
         source_id: to.to_s.gsub(/^\+/, '')
       )
-      
       conversation = Conversation.where(
         contact_id: contact.id,
         inbox_id: campaign.inbox.id
-      ).order(created_at: :desc).first_or_create!(
+      ).where.not(status: :resolved).order(created_at: :desc).first
+
+      conversation ||= Conversation.create!(
+        contact_id: contact.id,
+        inbox_id: campaign.inbox.id,
         account: campaign.account,
         contact_inbox: contact_inbox
       )
@@ -158,30 +173,65 @@ class Whatsapp::OneoffCampaignService
     
     conversation.update!(campaign: campaign)
     
-    message = Message.new(
-      conversation: conversation,
+    # Build message with a temporary source_id so the after_create_commit
+    # SendReplyJob guard (message.source_id.present?) skips re-sending —
+    # we already send directly below.
+    message = conversation.messages.create!(
       account: campaign.account,
       inbox: campaign.inbox,
       message_type: :outgoing,
       content: campaign.message,
-      additional_attributes: { campaign_id: campaign.id }
+      additional_attributes: { campaign_id: campaign.id },
+      source_id: "campaign_pending_#{campaign.id}_#{SecureRandom.hex(4)}"
     )
     
     if campaign.attachments.attached?
-      campaign.attachments.each do |attachment|
-        message.attachments.attach(attachment.blob)
+      Rails.logger.info "[WHATSAPP LITE CAMPAIGN] Campaign has attachments. Attaching to message..."
+      campaign.attachments.each do |active_storage_attachment|
+        blob = active_storage_attachment.blob
+        next unless blob
+        
+        Rails.logger.info "[WHATSAPP LITE CAMPAIGN] Attaching blob #{blob.id}..."
+        
+        # Safely update metadata
+        current_metadata = blob.metadata || {}
+        blob.update_columns(metadata: current_metadata.merge(analyzed: true)) if current_metadata[:analyzed].blank?
+        
+        begin
+          message_attachment = message.attachments.create!(
+            account_id: campaign.account_id,
+            file_type: infer_file_type(blob)
+          )
+          message_attachment.file.attach(blob)
+          
+          if message_attachment.file.blob
+            current_message_metadata = message_attachment.file.blob.metadata || {}
+            message_attachment.file.blob.update_columns(metadata: current_message_metadata.merge(analyzed: true))
+          else
+            Rails.logger.error "[WHATSAPP LITE CAMPAIGN] ❌ message_attachment.file.blob is nil after attach!"
+          end
+        rescue StandardError => e
+          Rails.logger.error "[WHATSAPP LITE CAMPAIGN] ❌ Failed to attach blob #{blob.id}: #{e.message}"
+        end
       end
     end
 
-    message.save!
-    
+    Rails.logger.info "[WHATSAPP LITE CAMPAIGN] Reloading message..."
+    # Reload to pick up the persisted attachments association
+    message.reload
+
+    Rails.logger.info "[WHATSAPP LITE CAMPAIGN] Sending via provider service..."
     # Send via Provider Service (Evolution or Evolution GO)
     phone_number = to.to_s.gsub(/^\+/, '')
     message_id = channel.provider_service.send_message(phone_number, message)
-    
+
+    # Add a small delay to prevent rate limiting or stream errors from Evolution API / Minio
+    # when it tries to download the same attachment concurrently for multiple contacts
+    sleep(1.5)
+
     if message_id.present?
+      Rails.logger.info "[WHATSAPP LITE CAMPAIGN] ✅ Message sent to #{to}. ID: #{message_id}"
       message.update!(source_id: message_id)
-      Rails.logger.info "[WHATSAPP LITE CAMPAIGN] ✅ Message sent to #{to}, ID: #{message_id}"
     else
       Rails.logger.error "[WHATSAPP LITE CAMPAIGN] ❌ Failed to send message to #{to}"
     end
@@ -192,23 +242,43 @@ class Whatsapp::OneoffCampaignService
   end
 
   def create_api_message(contact, conversation = nil)
-    conversation ||= Conversation.where(contact_id: contact.id, inbox_id: campaign.inbox.id).first_or_create!
+    if conversation.nil?
+      conversation = Conversation.where(
+        contact_id: contact.id,
+        inbox_id: campaign.inbox.id
+      ).where.not(status: :resolved).order(created_at: :desc).first
+
+      conversation ||= Conversation.create!(
+        contact_id: contact.id,
+        inbox_id: campaign.inbox.id,
+        account: campaign.account
+      )
+    end
     conversation.update!(campaign: campaign)
-    message = Message.new(
-      conversation: conversation,
+    message = conversation.messages.create!(
       account: campaign.account,
       inbox: campaign.inbox,
       message_type: :outgoing,
       content: campaign.message,
-      additional_attributes: { campaign_id: campaign.id }
+      additional_attributes: { campaign_id: campaign.id },
+      source_id: "campaign_pending_#{campaign.id}_#{SecureRandom.hex(4)}"
     )
 
     if campaign.attachments.attached?
-      campaign.attachments.each do |attachment|
-        message.attachments.attach(attachment.blob)
+      campaign.attachments.each do |active_storage_attachment|
+        blob = active_storage_attachment.blob
+        blob.update_columns(metadata: blob.metadata.merge(analyzed: true)) if blob.metadata[:analyzed].blank?
+        
+        message_attachment = message.attachments.create!(
+          account_id: campaign.account_id,
+          file_type: infer_file_type(blob)
+        )
+        message_attachment.file.attach(blob)
+        
+        message_attachment.file.blob.update_columns(metadata: message_attachment.file.blob.metadata.merge(analyzed: true))
+      rescue StandardError => e
+        Rails.logger.error "[WHATSAPP API CAMPAIGN] ❌ Failed to attach blob: #{e.message}"
       end
     end
-
-    message.save!
   end
 end
