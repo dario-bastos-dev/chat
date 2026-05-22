@@ -55,7 +55,15 @@ class DataImportJob < ApplicationJob
     Contact.import(contacts, synchronize: contacts, on_duplicate_key_ignore: true, track_validation_failures: true, validate: true, batch_size: 1000)
 
     contacts.each do |contact|
-      contact.save if contact.label_list.present?
+      next if contact.label_list.blank?
+
+      begin
+        labels = contact.label_list.to_a
+        contact.label_list = nil
+        contact.update_labels(labels)
+      rescue StandardError => e
+        Rails.logger.error("Failed to save labels for contact #{contact.id}: #{e.message}")
+      end
     end
   end
 
