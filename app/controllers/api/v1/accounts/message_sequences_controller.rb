@@ -40,9 +40,9 @@ class Api::V1::Accounts::MessageSequencesController < Api::V1::Accounts::BaseCon
   def message_sequence_params
     params.permit(
       :name, :activation_type, :activation_tag, :inbox_scope, :active,
-      :macro_id, :macro_execution_time,
+      :macro_id, :macro_execution_time, :restrict_execution_time, :execution_start_hour, :execution_end_hour,
       steps_attributes: [:id, :position, :step_type, :content, :wait_time, :file, :_destroy],
-      message_sequence_inboxes_attributes: [:id, :inbox_id, :_destroy]
+      inbox_ids: []
     )
   end
 

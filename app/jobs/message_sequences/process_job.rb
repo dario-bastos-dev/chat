@@ -34,6 +34,15 @@ class MessageSequences::ProcessJob < ApplicationJob
 
       # Se já deu o tempo, envia a mensagem
       if Time.current >= (reference_time + step_wait_duration)
+        # Verifica se o envio está dentro do horário permitido, caso restrição esteja ativa
+        if sequence.restrict_execution_time?
+          account_timezone = sequence.account.timezone.presence || 'UTC'
+          current_hour = Time.current.in_time_zone(account_timezone).hour
+          
+          # Se estiver fora do horário, a mensagem não é enviada agora e será avaliada no próximo minuto
+          next if current_hour < sequence.execution_start_hour || current_hour >= sequence.execution_end_hour
+        end
+
         execute_step(conversation, next_step)
 
         conv_seq.update!(
@@ -57,11 +66,18 @@ class MessageSequences::ProcessJob < ApplicationJob
 
     message = conversation.messages.build(message_params)
 
-    if step.send_attachment? && step.file.attached?
+    if !step.send_message? && step.file.attached?
+      determined_file_type = case step.step_type
+                             when 'send_image' then 'image'
+                             when 'send_audio' then 'audio'
+                             when 'send_document' then 'file'
+                             else 'file'
+                             end
+
       # Copia o blob do arquivo para a nova mensagem
       attachment = message.attachments.new(
         account_id: conversation.account_id,
-        file_type: 'file'
+        file_type: determined_file_type
       )
       attachment.file.attach(step.file.blob)
     end

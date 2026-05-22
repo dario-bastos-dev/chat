@@ -72,7 +72,12 @@ class DataImport::ContactManager
     raw_labels = params[:labels] || params[:tags]
     return if raw_labels.blank?
 
-    label_names = raw_labels.to_s.split(',').map(&:strip).map(&:downcase).compact_blank
+    label_names = raw_labels.to_s.split(',')
+                            .map(&:strip)
+                            .map { |name| name.gsub(/\s+/, '_') }
+                            .map(&:downcase)
+                            .map { |name| name.gsub(/[^\p{L}\p{N}_-]/, '') }
+                            .compact_blank
 
     new_labels = label_names.reject { |name| @existing_labels.include?(name) }
     new_labels.each do |label_name|

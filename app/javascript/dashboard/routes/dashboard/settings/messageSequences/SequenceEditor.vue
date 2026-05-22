@@ -1,9 +1,9 @@
 <template>
-  <div class="flex flex-col flex-1 h-full overflow-auto">
-    <div class="flex flex-col w-full h-auto md:flex-row md:h-full">
+  <div class="flex flex-col flex-1 h-full overflow-hidden">
+    <div class="flex flex-col w-full h-full md:flex-row">
       <!-- Left panel: Steps (like MacroNodes) -->
       <div
-        class="flex-1 w-full h-full max-h-full px-12 py-4 overflow-y-auto md:w-auto sequence-gradient-radial dark:sequence-dark-gradient-radial sequence-gradient-radial-size"
+        class="flex-1 w-full h-full px-4 py-4 overflow-y-auto md:px-12 sequence-gradient-radial dark:sequence-dark-gradient-radial sequence-gradient-radial-size"
       >
         <div class="flex flex-col items-start gap-4 py-6">
           <!-- Start label -->
@@ -42,7 +42,9 @@
                     class="w-full p-2 text-sm border rounded-md input border-n-weak"
                   >
                     <option value="send_message">Enviar mensagem</option>
-                    <option value="send_attachment">Enviar anexo</option>
+                    <option value="send_image">Enviar imagem</option>
+                    <option value="send_document">Enviar documento</option>
+                    <option value="send_audio">Enviar áudio</option>
                   </select>
                 </div>
               </div>
@@ -106,7 +108,7 @@
                   >{{ $t('MESSAGE_SEQUENCES.STEPS.CONTENT') }}</label
                 >
                 <label v-else class="block mb-1 text-xs text-n-slate-11">
-                  Conteúdo do Anexo
+                  Conteúdo do Arquivo
                 </label>
 
                 <!-- Message Input -->
@@ -116,17 +118,82 @@
                   class="w-full input border border-n-weak bg-white dark:bg-n-solid-1 rounded-md p-2 text-sm min-h-[80px] outline-none focus:ring-1 focus:ring-n-blue-11"
                 />
 
-                <!-- Attachment Input -->
+                <!-- Audio Input Options -->
+                <div v-else-if="step.step_type === 'send_audio'" class="flex flex-col gap-2">
+                  <div v-if="!step.file" class="flex items-center gap-2">
+                    <button
+                      v-if="recordingStepIndex !== index"
+                      class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium border rounded-md text-n-slate-11 border-n-weak hover:bg-n-alpha-1"
+                      @click.prevent="startRecording(index)"
+                    >
+                      <span class="i-lucide-mic size-3" />
+                      Gravar Áudio
+                    </button>
+                    <button
+                      v-else
+                      class="flex items-center gap-1 px-3 py-1.5 text-xs font-medium border rounded-md text-n-ruby-11 border-n-ruby-5 bg-n-ruby-2 hover:bg-n-ruby-3"
+                      @click.prevent="stopRecording"
+                      :disabled="isProcessingAudio"
+                    >
+                      <span v-if="isProcessingAudio" class="i-lucide-loader size-3 animate-spin" />
+                      <span v-else class="i-lucide-square size-3" />
+                      {{ isProcessingAudio ? 'Processando...' : `Parar (${recordingProgress})` }}
+                    </button>
+                    
+                    <span v-if="recordingStepIndex !== index" class="text-xs text-n-slate-10">ou enviar arquivo:</span>
+                    
+                    <input
+                      v-if="recordingStepIndex !== index"
+                      :id="`file-input-${index}`"
+                      type="file"
+                      :accept="getAcceptType(step.step_type)"
+                      class="block w-full text-xs text-n-slate-11 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-n-blue-3 file:text-n-blue-11 hover:file:bg-n-blue-4"
+                      @change="e => handleFileUpload(e, step)"
+                    />
+                  </div>
+
+                  <div v-show="recordingStepIndex === index && !isProcessingAudio" class="w-full bg-n-solid-2 border border-n-weak rounded-md mt-2">
+                    <AudioRecorder
+                      v-if="recordingStepIndex === index"
+                      ref="audioRecorder"
+                      audio-record-format="audio/mp3"
+                      @recorderProgressChanged="updateRecordingProgress"
+                      @finishRecord="(fileObj) => handleRecordFinish(fileObj, step)"
+                    />
+                  </div>
+                  
+                  <div v-if="step.file" class="flex items-center justify-between mt-2 text-xs font-medium text-n-green-11 bg-n-green-2 border border-n-green-4 p-2 rounded-md">
+                    <div>
+                      <span class="i-lucide-check-circle size-3 align-middle mr-1" />
+                      Mídia carregada: {{ step.file.name }}
+                    </div>
+                    <button class="text-n-ruby-9 hover:text-n-ruby-11" @click.prevent="removeFile(step, index)">
+                      <span class="i-lucide-x size-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Attachment/Document Input -->
                 <div v-else class="flex flex-col gap-2">
                   <input
+                    :id="`file-input-${index}`"
                     type="file"
+                    :accept="getAcceptType(step.step_type)"
                     class="block w-full text-sm text-n-slate-11 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-n-blue-3 file:text-n-blue-11 hover:file:bg-n-blue-4"
                     @change="e => handleFileUpload(e, step)"
                   />
+                  
+                  <div v-if="step.file" class="flex items-center justify-between mt-1 text-xs font-medium text-n-green-11">
+                    <span>Arquivo: {{ step.file.name }}</span>
+                    <button class="text-n-ruby-9 hover:text-n-ruby-11" @click.prevent="removeFile(step, index)">
+                      <span class="i-lucide-x size-4" />
+                    </button>
+                  </div>
+
                   <!-- Optional text content along with attachment -->
                   <textarea
                     v-model="step.content"
-                    placeholder="Mensagem opcional com o anexo"
+                    placeholder="Mensagem opcional com a mídia"
                     class="w-full mt-2 input border border-n-weak bg-white dark:bg-n-solid-1 rounded-md p-2 text-sm min-h-[60px] outline-none focus:ring-1 focus:ring-n-blue-11"
                   />
                 </div>
@@ -160,9 +227,9 @@
       </div>
 
       <!-- Right panel: Properties (like MacroProperties) -->
-      <div class="w-full pb-4 overflow-y-auto md:w-1/3 max-h-screen">
+      <div class="w-full h-full p-4 overflow-y-auto md:w-1/3 lg:w-1/4 min-w-[320px]">
         <div
-          class="flex flex-col h-full p-4 border rounded-lg shadow-sm bg-n-solid-2 border-n-weak"
+          class="flex flex-col min-h-full p-4 border rounded-lg shadow-sm bg-n-solid-2 border-n-weak"
         >
           <!-- Name -->
           <div class="mb-4">
@@ -343,8 +410,58 @@
             </label>
           </div>
 
+          <!-- Execution Interval Limit -->
+          <div class="p-3 mb-4 border rounded-md border-n-weak bg-n-solid-3">
+            <label
+              class="flex items-center gap-2 text-sm font-medium cursor-pointer mb-2"
+            >
+              <input
+                v-model="form.restrict_execution_time"
+                type="checkbox"
+                class="size-4"
+              />
+              <span class="text-n-slate-12"> Limitar horário de envio </span>
+            </label>
+
+            <div
+              v-if="form.restrict_execution_time"
+              class="flex items-center gap-3 mt-3 pt-3 border-t border-n-weak"
+            >
+              <div class="flex-1">
+                <label class="block mb-1 text-xs text-n-slate-11">
+                  Das (hora)
+                </label>
+                <input
+                  v-model.number="form.execution_start_hour"
+                  type="number"
+                  min="0"
+                  max="23"
+                  class="w-full p-2 text-sm border rounded-md input border-n-weak"
+                  placeholder="Ex: 8"
+                />
+              </div>
+              <span class="mt-4 text-n-slate-11 text-sm">até</span>
+              <div class="flex-1">
+                <label class="block mb-1 text-xs text-n-slate-11">
+                  Às (hora)
+                </label>
+                <input
+                  v-model.number="form.execution_end_hour"
+                  type="number"
+                  min="0"
+                  max="23"
+                  class="w-full p-2 text-sm border rounded-md input border-n-weak"
+                  placeholder="Ex: 19"
+                />
+              </div>
+            </div>
+            <p v-if="form.restrict_execution_time" class="mt-2 text-[10px] text-n-slate-10 leading-tight">
+              Mensagens serão disparadas apenas neste intervalo. Fora dele, o sistema aguardará o início do próximo ciclo.
+            </p>
+          </div>
+
           <!-- Save Button at bottom -->
-          <div class="w-full mt-auto">
+          <div class="w-full mt-auto pt-4">
             <button
               class="flex items-center justify-center w-full gap-2 px-4 py-2 text-sm font-medium text-white rounded-md bg-n-blue-11 hover:bg-n-blue-10"
               :disabled="uiFlags.isCreating || uiFlags.isUpdating"
@@ -367,14 +484,19 @@
 import { mapGetters } from 'vuex';
 import { useAlert } from 'dashboard/composables';
 import LabelDropdown from 'shared/components/ui/label/LabelDropdown.vue';
+import AudioRecorder from 'dashboard/components/widgets/WootWriter/AudioRecorder.vue';
 
 export default {
   components: {
     LabelDropdown,
+    AudioRecorder,
   },
   data() {
     return {
       selectedInboxIds: [],
+      recordingStepIndex: null,
+      recordingProgress: '00:00',
+      isProcessingAudio: false,
       form: {
         name: '',
         activation_type: 'tag',
@@ -384,6 +506,9 @@ export default {
         enable_macro: false,
         macro_id: '',
         macro_execution_time: 0,
+        restrict_execution_time: false,
+        execution_start_hour: 8,
+        execution_end_hour: 19,
         steps_attributes: [
           {
             position: 1,
@@ -492,6 +617,9 @@ export default {
             enable_macro: !!seq.macro_id,
             macro_id: seq.macro_id || '',
             macro_execution_time: seq.macro_execution_time || 0,
+            restrict_execution_time: seq.restrict_execution_time || false,
+            execution_start_hour: seq.execution_start_hour ?? 8,
+            execution_end_hour: seq.execution_end_hour ?? 19,
             steps_attributes: seq.steps
               ? seq.steps.map(s => ({
                   ...s,
@@ -537,12 +665,9 @@ export default {
         this.form.inbox_scope === 'selected_inboxes' &&
         this.selectedInboxIds.length > 0
       ) {
-        this.form.message_sequence_inboxes_attributes =
-          this.selectedInboxIds.map(id => ({
-            inbox_id: id,
-          }));
+        this.form.inbox_ids = this.selectedInboxIds;
       } else {
-        this.form.message_sequence_inboxes_attributes = [];
+        this.form.inbox_ids = [];
       }
     },
     buildFormData() {
@@ -564,6 +689,12 @@ export default {
         formData.append('macro_execution_time', 0);
       }
 
+      formData.append('restrict_execution_time', this.form.restrict_execution_time);
+      if (this.form.restrict_execution_time) {
+        formData.append('execution_start_hour', this.form.execution_start_hour);
+        formData.append('execution_end_hour', this.form.execution_end_hour);
+      }
+
       this.form.steps_attributes.forEach((step, index) => {
         if (step.id) {
           formData.append(`steps_attributes[${index}][id]`, step.id);
@@ -582,7 +713,7 @@ export default {
           step.wait_time || ''
         );
 
-        if (step.file) {
+        if (step.file && step.file instanceof File) {
           formData.append(`steps_attributes[${index}][file]`, step.file);
         }
         if (step._destroy) {
@@ -590,14 +721,9 @@ export default {
         }
       });
 
-      this.form.message_sequence_inboxes_attributes.forEach(
-        (inboxAssoc, index) => {
-          formData.append(
-            `message_sequence_inboxes_attributes[${index}][inbox_id]`,
-            inboxAssoc.inbox_id
-          );
-        }
-      );
+      this.form.inbox_ids.forEach((id) => {
+        formData.append('inbox_ids[]', id);
+      });
 
       return formData;
     },
@@ -631,6 +757,39 @@ export default {
       if (!file) return;
 
       step.file = file;
+    },
+    removeFile(step, index) {
+      step.file = null;
+      
+      const fileInput = document.getElementById(`file-input-${index}`);
+      if (fileInput) {
+        fileInput.value = '';
+      }
+    },
+    startRecording(index) {
+      this.recordingStepIndex = index;
+      this.recordingProgress = '00:00';
+      this.isProcessingAudio = false;
+    },
+    stopRecording() {
+      if (this.$refs.audioRecorder && this.$refs.audioRecorder[0]) {
+        this.$refs.audioRecorder[0].stopRecording();
+      }
+      this.isProcessingAudio = true;
+    },
+    updateRecordingProgress(timeString) {
+      this.recordingProgress = timeString;
+    },
+    handleRecordFinish(fileObj, step) {
+      step.file = fileObj.file;
+      this.recordingStepIndex = null;
+      this.isProcessingAudio = false;
+    },
+    getAcceptType(type) {
+      if (type === 'send_image') return 'image/*';
+      if (type === 'send_audio') return 'audio/*,video/mp4';
+      if (type === 'send_document') return '.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv';
+      return '*/*';
     },
   },
 };
