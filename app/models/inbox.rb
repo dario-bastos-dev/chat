@@ -74,6 +74,8 @@ class Inbox < ApplicationRecord
   has_one :agent_bot, through: :agent_bot_inbox
   has_many :webhooks, dependent: :destroy_async
   has_many :hooks, dependent: :destroy_async, class_name: 'Integrations::Hook'
+  has_many :message_sequence_inboxes, dependent: :destroy
+  has_many :message_sequences, through: :message_sequence_inboxes
 
   enum sender_name_type: { friendly: 0, professional: 1 }
   enum unread_reset_mode: { on_open: 0, on_reply: 1 }

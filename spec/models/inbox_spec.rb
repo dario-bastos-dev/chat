@@ -34,6 +34,10 @@ RSpec.describe Inbox do
     it { is_expected.to have_many(:reporting_events) }
 
     it { is_expected.to have_many(:hooks) }
+
+    it { is_expected.to have_many(:message_sequence_inboxes).dependent(:destroy) }
+
+    it { is_expected.to have_many(:message_sequences).through(:message_sequence_inboxes) }
   end
 
   describe 'concerns' do
