@@ -33,7 +33,7 @@ module Enterprise::Account
     reason = reason.to_s == 'manual_deletion' ? 'manual_deletion' : 'inactivity'
 
     result = custom_attributes.merge!(
-      'marked_for_deletion_at' => 7.days.from_now.iso8601,
+      'marked_for_deletion_at' => Time.current.iso8601,
       'marked_for_deletion_reason' => reason
     ) && save
 

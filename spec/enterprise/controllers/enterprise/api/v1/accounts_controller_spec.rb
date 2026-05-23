@@ -356,9 +356,12 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
       end
 
       context 'when it is an admin' do
+        let(:account_deletion_service) { instance_double(AccountDeletionService, perform: true) }
+
         before do
           # Create the installation config for cloud environment
           InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_initialize.update!(value: 'cloud')
+          allow(AccountDeletionService).to receive(:new).and_return(account_deletion_service)
         end
 
         it 'marks the account for deletion when action is delete' do
@@ -376,6 +379,8 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
           expect(account.custom_attributes['marked_for_deletion_reason']).to eq('manual_deletion')
           expect(Enterprise::Billing::CancelCloudSubscriptionsService).to have_received(:new).with(account: account)
           expect(cancellation_service).to have_received(:perform)
+          expect(AccountDeletionService).to have_received(:new).with(account: account)
+          expect(account_deletion_service).to have_received(:perform)
         end
 
         it 'returns success even if stripe cancellation fails' do
@@ -392,6 +397,8 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
           expect(response).to have_http_status(:ok)
           expect(account.reload.custom_attributes['marked_for_deletion_at']).to be_present
           expect(account.custom_attributes['marked_for_deletion_reason']).to eq('manual_deletion')
+          expect(AccountDeletionService).to have_received(:new).with(account: account)
+          expect(account_deletion_service).to have_received(:perform)
         end
 
         it 'unmarks the account for deletion when action is undelete' do

@@ -104,6 +104,8 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
     if @account.mark_for_deletion(reason)
       cancel_cloud_subscriptions_for_deletion
 
+      AccountDeletionService.new(account: @account).perform
+
       render json: { message: 'Account marked for deletion' }, status: :ok
     else
       render json: { message: @account.errors.full_messages.join(', ') }, status: :unprocessable_entity
