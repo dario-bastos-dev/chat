@@ -1,12 +1,16 @@
 # Service to process message status updates (Receipt events) from Evolution GO API
 #
-# Handles three scenarios:
-# 1. Delivered: Our outgoing message was delivered to the contact's phone
+# Handles scenarios:
+# 1. Delivered/ServerAck: Our outgoing message was delivered to the contact's phone
 #    → Updates message status from "sent" to "delivered"
 # 2. Read by contact: The contact opened and read our message
 #    → Updates message status from "delivered" to "read"
-# 3. Read by agent on phone: The agent read an incoming message on their phone
+# 3. ReadSelf: The agent read an incoming message on their phone
 #    → Marks the conversation as read in Chatwoot (updates agent_last_seen_at)
+# 4. PlayedSelf: The agent played an audio on their phone
+#    → Treated same as ReadSelf
+# 5. Empty state with empty Type: Delivery receipt from whatsmeow
+#    → Treated as delivered
 #
 # Payload structure:
 # {
@@ -15,11 +19,11 @@
 #     "IsFromMe": false/true,
 #     "MessageIDs": ["3EB04A0C6941DD79143466"],
 #     "Timestamp": "2026-04-21T21:50:31-03:00",
-#     "Type": "" | "read",
+#     "Type": "" | "read" | "read-self",
 #     "MessageSender": "" | "5527998999017@s.whatsapp.net"
 #   },
 #   "event": "Receipt",
-#   "state": "Delivered" | "Read"
+#   "state": "Delivered" | "Read" | "ReadSelf" | "ServerAck" | "PlayedSelf" | nil
 # }
 
 class Whatsapp::MessageStatusEvolutionGoService
@@ -29,13 +33,31 @@ class Whatsapp::MessageStatusEvolutionGoService
     return if data_params.blank?
     return if message_ids.blank?
 
+    Rails.logger.info "[EVOLUTION_GO STATUS] Receipt: state=#{state} | type=#{data_params['Type']} | " \
+                      "from_me=#{from_me?} | msg_ids=#{message_ids} | chat=#{data_params['Chat']} | " \
+                      "sender=#{data_params['Sender']}"
+
     case state
-    when 'Delivered'
+    when 'Delivered', 'ServerAck'
       handle_delivered
     when 'Read'
       from_me? ? handle_read_by_agent : handle_read_by_contact
+    when 'ReadSelf'
+      handle_read_by_agent
+    when 'PlayedSelf'
+      # Audio played by agent on phone, treat as read
+      handle_read_by_agent
+    when nil, ''
+      # EvoGO may send delivery receipts without state field (whatsmeow empty Type)
+      # If Type is blank/empty and not from_me, treat as delivery receipt
+      if data_params['Type'].blank? && !from_me?
+        Rails.logger.info "[EVOLUTION_GO STATUS] Inferred delivery from empty state/type"
+        handle_delivered
+      else
+        Rails.logger.warn "[EVOLUTION_GO STATUS] Empty state with type=#{data_params['Type']} from_me=#{from_me?}"
+      end
     else
-      Rails.logger.debug "[EVOLUTION_GO STATUS] Unhandled state: #{state}"
+      Rails.logger.warn "[EVOLUTION_GO STATUS] Unhandled state: #{state} | full_params: #{params.except('evolution_go').to_json}"
     end
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO STATUS] Error: #{e.message}"

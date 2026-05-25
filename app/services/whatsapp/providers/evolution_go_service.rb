@@ -358,11 +358,26 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   # --- Messaging ---
 
   def send_message(phone_number_or_jid, message)
-    return unless evolution_go_configured? && instance_token.present?
-    return if phone_number_or_jid.blank?
+    unless evolution_go_configured? && instance_token.present?
+      Rails.logger.error "[EVOLUTION_GO] ❌ send_message BLOCKED: " \
+                         "api_base_url=#{api_base_url.present?} global_api_token=#{global_api_token.present?} " \
+                         "instance_token=#{instance_token.present?}"
+      return
+    end
+
+    if phone_number_or_jid.blank?
+      Rails.logger.error "[EVOLUTION_GO] ❌ send_message BLOCKED: phone_number_or_jid is blank"
+      return
+    end
 
     formatted_number = extract_phone_number(phone_number_or_jid)
-    return nil if formatted_number.blank?
+    if formatted_number.blank?
+      Rails.logger.error "[EVOLUTION_GO] ❌ send_message BLOCKED: extract_phone_number returned blank for '#{phone_number_or_jid}'"
+      return nil
+    end
+
+    Rails.logger.info "[EVOLUTION_GO] Sending to #{formatted_number} (source: #{phone_number_or_jid}) | " \
+                      "JID: #{format_recipient_jid(formatted_number)} | attachments: #{message.attachments.count}"
 
     if message.attachments.any?
       send_message_with_attachments(formatted_number, message)

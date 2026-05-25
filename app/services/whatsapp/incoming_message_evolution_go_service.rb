@@ -74,7 +74,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
 
   def process_message
     direction = from_me? ? 'outgoing' : 'incoming'
-    Rails.logger.info "[EVOLUTION_GO MSG] #{direction} | #{contact_phone_number} | #{message_type}"
+    Rails.logger.info "[EVOLUTION_GO MSG] #{direction} | #{contact_phone_number} | #{message_type} | " \
+                      "Sender=#{sender_jid} SenderAlt=#{sender_alt_jid} Chat=#{chat_jid} → JID=#{contact_jid}"
 
     set_contact
     set_contact_avatar
@@ -126,7 +127,7 @@ class Whatsapp::IncomingMessageEvolutionGoService
   end
 
   # The JID that identifies the CONTACT (not the owner).
-  # For incoming messages: Sender/SenderAlt are analyzed to find the real number.
+  # For incoming messages: Sender/SenderAlt/Chat are analyzed to find the real number.
   def contact_jid
     return @contact_jid if defined?(@contact_jid)
 
@@ -144,7 +145,19 @@ class Whatsapp::IncomingMessageEvolutionGoService
                      jid
                    else
                      # Incoming: prioritize @s.whatsapp.net over @lid from Sender/SenderAlt
-                     preferred_identifier(sender_jid, sender_alt_jid)
+                     jid = preferred_identifier(sender_jid, sender_alt_jid)
+
+                     # Fallback to Chat field when Sender/SenderAlt are both @lid
+                     if jid.blank? || !jid.include?('@s.whatsapp.net')
+                       jid = chat_jid if chat_jid.to_s.include?('@s.whatsapp.net')
+                     end
+
+                     # Last resort: resolve via LID mapping table
+                     if jid.present? && !jid.include?('@s.whatsapp.net')
+                       jid = resolve_phone_from_lid(jid) || jid
+                     end
+
+                     jid
                    end
   end
 
