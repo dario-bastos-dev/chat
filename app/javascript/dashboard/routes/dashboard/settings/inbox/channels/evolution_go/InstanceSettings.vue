@@ -227,7 +227,10 @@ export default {
           formData: false,
           channel: {
             provider: 'evolution_go',
-            provider_config: this.settings,
+            provider_config: {
+              ...this.inbox.provider_config,
+              ...this.settings,
+            },
           },
         };
         await this.$store.dispatch('inboxes/updateInbox', payload);

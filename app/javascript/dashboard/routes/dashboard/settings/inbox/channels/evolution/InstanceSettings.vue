@@ -357,7 +357,10 @@ export default {
           formData: false, // Importante: não usar FormData para provider_config
           channel: {
             provider: 'evolution',
-            provider_config: this.settings,
+            provider_config: {
+              ...this.inbox.provider_config,
+              ...this.settings,
+            },
           },
         };
         console.log('[Evolution] Updating settings:', payload);
