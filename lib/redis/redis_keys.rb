@@ -63,4 +63,7 @@ module Redis::RedisKeys
 
   ## Account Email Rate Limiting
   ACCOUNT_OUTBOUND_EMAIL_COUNT_KEY = 'OUTBOUND_EMAIL_COUNT::%<account_id>d::%<date>s'.freeze
+
+  # Account Onboarding Enrichment Status
+  ACCOUNT_ONBOARDING_ENRICHMENT = 'ACCOUNT_ONBOARDING_ENRICHMENT::%<account_id>d'.freeze
 end
