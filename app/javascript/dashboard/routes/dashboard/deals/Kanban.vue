@@ -48,36 +48,117 @@
 
       <!-- Search Input and Filters Toggle in the center -->
       <div class="flex flex-1 items-center gap-3 max-w-xl justify-center">
-        <!-- Search Input -->
-        <div class="relative flex-1 min-w-[200px] max-w-md">
-          <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-n-slate-11">
-            <fluent-icon icon="search" size="16" />
-          </span>
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Pesquisar por nome do lead..."
-            class="w-full pl-9 pr-4 py-1.5 text-sm bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
-          />
+        <!-- Integrated Search & Filter Dropdown container -->
+        <div class="flex flex-1 items-center gap-2 max-w-md w-full" ref="filtersDropdownContainer">
+          <!-- Wrapper relative of search input so the dropdown has the exact same width -->
+          <div class="relative flex-1 min-w-[240px]">
+            <!-- Search bar with icon and text side-by-side -->
+            <div class="flex items-center gap-2 bg-n-alpha-1 border border-n-weak rounded-lg px-3 focus-within:border-n-brand focus-within:ring-1 focus-within:ring-n-brand transition-colors duration-150 h-9">
+              <fluent-icon icon="search" size="16" class="text-n-slate-11 shrink-0" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Pesquisar por nome do lead..."
+                class="w-full py-1 text-sm bg-transparent border-0 border-none outline-none focus:outline-none focus:ring-0 focus:border-none focus-visible:outline-none shadow-none text-n-slate-12 placeholder-n-slate-11 h-full p-0"
+              />
+            </div>
+
+            <!-- Dropdown logo abaixo, da mesma largura da barra de pesquisa -->
+            <transition
+              enter-active-class="transition duration-150 ease-out"
+              enter-from-class="opacity-0 translate-y-1"
+              leave-active-class="transition duration-100 ease-in"
+              leave-to-class="opacity-0 translate-y-1"
+            >
+              <div
+                v-if="showFilters"
+                class="absolute left-0 right-0 top-full mt-2 z-50 bg-n-solid-2 border border-n-weak rounded-xl shadow-xl p-4 flex flex-col gap-4 text-left"
+              >
+                <!-- Dropdown Header -->
+                <div class="flex items-center justify-between border-b border-n-weak pb-2">
+                  <span class="text-xs font-bold text-n-slate-12">Filtros do Kanban</span>
+                  <button
+                    v-if="activeFilterCount > 0"
+                    class="text-[11px] font-semibold text-n-ruby-9 hover:text-n-ruby-10 cursor-pointer"
+                    @click="clearAllFilters"
+                  >
+                    Limpar Filtros
+                  </button>
+                </div>
+
+                <!-- Filter by Stage -->
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Filtrar por Etapa</label>
+                  <select
+                    v-model="filterStageId"
+                    class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
+                  >
+                    <option :value="null">Todas as Etapas</option>
+                    <option v-for="stage in stages" :key="stage.id" :value="stage.id">
+                      {{ stage.name }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Filter by Tags -->
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Filtrar por Tag/Etiqueta</label>
+                  <select
+                    v-model="filterTag"
+                    class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
+                  >
+                    <option :value="null">Todas as Tags</option>
+                    <option v-for="tag in allLabels" :key="tag.id" :value="tag.title">
+                      {{ tag.title }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Filter by Custom Fields -->
+                <div class="flex flex-col gap-1.5" v-if="availableCustomFields.length > 0">
+                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Campo Personalizado</label>
+                  <div class="flex gap-2">
+                    <select
+                      v-model="filterCustomFieldKey"
+                      class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
+                      @change="filterCustomFieldValue = ''"
+                    >
+                      <option :value="null">Nenhum campo</option>
+                      <option v-for="field in availableCustomFields" :key="field" :value="field">
+                        {{ field }}
+                      </option>
+                    </select>
+                    <input
+                      v-if="filterCustomFieldKey"
+                      v-model="filterCustomFieldValue"
+                      type="text"
+                      placeholder="Valor..."
+                      class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
+                    />
+                  </div>
+                </div>
+              </div>
+            </transition>
+          </div>
+
+          <!-- Botão de filtro do mesmo tamanho da barra de pesquisa (h-9) -->
+          <button
+            class="flex items-center justify-center px-4 bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-11 hover:text-n-brand cursor-pointer hover:bg-n-alpha-2 transition-colors duration-150 h-9 shrink-0 gap-2 font-medium text-sm"
+            :class="{ 'text-n-brand border-n-brand bg-n-brand/10': showFilters }"
+            @click="showFilters = !showFilters"
+          >
+            <fluent-icon icon="filter" size="14" />
+            <span>Filtros</span>
+            <span v-if="activeFilterCount > 0" class="flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-n-brand rounded-full shrink-0">
+              {{ activeFilterCount }}
+            </span>
+          </button>
         </div>
 
-        <!-- Advanced Filter Toggle Button -->
-        <button
-          class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors duration-150 cursor-pointer shrink-0"
-          :class="showFilters ? 'bg-n-brand/10 border-n-brand text-n-brand' : 'bg-n-alpha-1 border-n-weak text-n-slate-12 hover:bg-n-alpha-2'"
-          @click="showFilters = !showFilters"
-        >
-          <fluent-icon icon="filter" size="14" />
-          Filtros
-          <span v-if="activeFilterCount > 0" class="flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-n-brand rounded-full ml-1 shrink-0">
-            {{ activeFilterCount }}
-          </span>
-        </button>
-
-        <!-- Clear Filters Button -->
+        <!-- Clear Filters Link (outside input) -->
         <button
           v-if="activeFilterCount > 0 || searchQuery"
-          class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-n-ruby-9 hover:text-n-ruby-10 cursor-pointer shrink-0"
+          class="flex items-center gap-1 px-2 text-xs font-semibold text-n-ruby-9 hover:text-n-ruby-10 cursor-pointer shrink-0"
           @click="clearAllFilters"
         >
           Limpar
@@ -109,63 +190,6 @@
         <span class="font-semibold text-n-slate-12">{{
           formatCurrency(totalValue)
         }}</span>
-      </div>
-    </div>
-
-    <!-- Expandable Filter Panel (just under the Stats bar) -->
-    <div v-if="showFilters" class="px-4 py-3 border-b border-n-weak bg-n-solid-2 shrink-0 animate-fade-in-up">
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <!-- Filter by Stage -->
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Filtrar por Etapa</label>
-          <select
-            v-model="filterStageId"
-            class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
-          >
-            <option :value="null">Todas as Etapas</option>
-            <option v-for="stage in stages" :key="stage.id" :value="stage.id">
-              {{ stage.name }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Filter by Tags -->
-        <div class="flex flex-col gap-1.5">
-          <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Filtrar por Tag/Etiqueta</label>
-          <select
-            v-model="filterTag"
-            class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
-          >
-            <option :value="null">Todas as Tags</option>
-            <option v-for="tag in allLabels" :key="tag.id" :value="tag.title">
-              {{ tag.title }}
-            </option>
-          </select>
-        </div>
-
-        <!-- Filter by Custom Fields -->
-        <div class="flex flex-col gap-1.5" v-if="availableCustomFields.length > 0">
-          <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Campo Personalizado</label>
-          <div class="flex gap-2">
-            <select
-              v-model="filterCustomFieldKey"
-              class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
-              @change="filterCustomFieldValue = ''"
-            >
-              <option :value="null">Nenhum campo</option>
-              <option v-for="field in availableCustomFields" :key="field" :value="field">
-                {{ field }}
-              </option>
-            </select>
-            <input
-              v-if="filterCustomFieldKey"
-              v-model="filterCustomFieldValue"
-              type="text"
-              placeholder="Valor..."
-              class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
-            />
-          </div>
-        </div>
       </div>
     </div>
 
