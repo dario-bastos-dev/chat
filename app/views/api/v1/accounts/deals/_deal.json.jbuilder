@@ -33,6 +33,7 @@ json.contact do
   json.email deal.contact.email
   json.phone_number deal.contact.phone_number
   json.avatar_url deal.contact.avatar_url if deal.contact.respond_to?(:avatar_url)
+  json.labels deal.contact.label_list
 end
 
 if deal.assignee.present?

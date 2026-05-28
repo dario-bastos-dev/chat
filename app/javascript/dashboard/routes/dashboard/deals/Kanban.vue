@@ -2,9 +2,9 @@
   <div class="flex flex-col flex-1 h-full">
     <!-- Header -->
     <div
-      class="flex items-center justify-between px-4 py-3 border-b border-n-weak bg-n-solid-2"
+      class="flex items-center justify-between px-4 py-3 border-b border-n-weak bg-n-solid-2 gap-4 shrink-0"
     >
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-3 shrink-0">
         <!-- Pipeline selector dropdown -->
         <div class="relative" ref="pipelineDropdown">
           <button
@@ -45,7 +45,47 @@
           </div>
         </div>
       </div>
-      <div class="flex items-center gap-2">
+
+      <!-- Search Input and Filters Toggle in the center -->
+      <div class="flex flex-1 items-center gap-3 max-w-xl justify-center">
+        <!-- Search Input -->
+        <div class="relative flex-1 min-w-[200px] max-w-md">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-n-slate-11">
+            <fluent-icon icon="search" size="16" />
+          </span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Pesquisar por nome do lead..."
+            class="w-full pl-9 pr-4 py-1.5 text-sm bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
+          />
+        </div>
+
+        <!-- Advanced Filter Toggle Button -->
+        <button
+          class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors duration-150 cursor-pointer shrink-0"
+          :class="showFilters ? 'bg-n-brand/10 border-n-brand text-n-brand' : 'bg-n-alpha-1 border-n-weak text-n-slate-12 hover:bg-n-alpha-2'"
+          @click="showFilters = !showFilters"
+        >
+          <fluent-icon icon="filter" size="14" />
+          Filtros
+          <span v-if="activeFilterCount > 0" class="flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-n-brand rounded-full ml-1 shrink-0">
+            {{ activeFilterCount }}
+          </span>
+        </button>
+
+        <!-- Clear Filters Button -->
+        <button
+          v-if="activeFilterCount > 0 || searchQuery"
+          class="flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-n-ruby-9 hover:text-n-ruby-10 cursor-pointer shrink-0"
+          @click="clearAllFilters"
+        >
+          Limpar
+        </button>
+      </div>
+
+      <!-- Right side: Create Deal Button -->
+      <div class="flex items-center gap-2 shrink-0">
         <button
           class="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-woot-500 hover:bg-woot-600 active:bg-woot-800 rounded-lg transition-colors duration-200"
           @click="openCreateDealModal"
@@ -58,7 +98,7 @@
 
     <!-- Stats bar -->
     <div
-      class="flex items-center gap-6 px-4 py-2 border-b border-n-weak bg-n-solid-2"
+      class="flex items-center gap-6 px-4 py-2 border-b border-n-weak bg-n-solid-2 shrink-0"
     >
       <div class="flex items-center gap-1.5 text-sm">
         <span class="text-n-slate-11">{{ $t('CRM.TOTAL_DEALS') }}:</span>
@@ -69,6 +109,63 @@
         <span class="font-semibold text-n-slate-12">{{
           formatCurrency(totalValue)
         }}</span>
+      </div>
+    </div>
+
+    <!-- Expandable Filter Panel (just under the Stats bar) -->
+    <div v-if="showFilters" class="px-4 py-3 border-b border-n-weak bg-n-solid-2 shrink-0 animate-fade-in-up">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <!-- Filter by Stage -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Filtrar por Etapa</label>
+          <select
+            v-model="filterStageId"
+            class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
+          >
+            <option :value="null">Todas as Etapas</option>
+            <option v-for="stage in stages" :key="stage.id" :value="stage.id">
+              {{ stage.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Filter by Tags -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Filtrar por Tag/Etiqueta</label>
+          <select
+            v-model="filterTag"
+            class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
+          >
+            <option :value="null">Todas as Tags</option>
+            <option v-for="tag in allLabels" :key="tag.id" :value="tag.title">
+              {{ tag.title }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Filter by Custom Fields -->
+        <div class="flex flex-col gap-1.5" v-if="availableCustomFields.length > 0">
+          <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Campo Personalizado</label>
+          <div class="flex gap-2">
+            <select
+              v-model="filterCustomFieldKey"
+              class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
+              @change="filterCustomFieldValue = ''"
+            >
+              <option :value="null">Nenhum campo</option>
+              <option v-for="field in availableCustomFields" :key="field" :value="field">
+                {{ field }}
+              </option>
+            </select>
+            <input
+              v-if="filterCustomFieldKey"
+              v-model="filterCustomFieldValue"
+              type="text"
+              placeholder="Valor..."
+              class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -126,7 +223,7 @@
               }"
               tabindex="0"
               role="button"
-              :aria-label="`${deal.title} - ${formatCurrency(deal.value || 0)}`"
+              :aria-label="`${cleanTitle(deal.title)} - ${formatCurrency(deal.value || 0)}`"
               @click="openDealDrawer(deal)"
               @keydown.enter="openDealDrawer(deal)"
               @keydown.space.prevent="openDealDrawer(deal)"
@@ -135,7 +232,7 @@
                 <span
                   class="text-sm font-medium text-n-slate-12 flex-1 mr-2"
                 >
-                  {{ deal.title }}
+                  {{ cleanTitle(deal.title) }}
                 </span>
                 <span
                   class="text-xs font-semibold text-n-teal-11 whitespace-nowrap"
@@ -235,6 +332,12 @@ export default {
       showPipelineDropdown: false,
       selectedDeal: null,
       selectedStageId: null,
+      searchQuery: '',
+      showFilters: false,
+      filterStageId: null,
+      filterTag: null,
+      filterCustomFieldKey: null,
+      filterCustomFieldValue: '',
     };
   },
   computed: {
@@ -244,6 +347,7 @@ export default {
       pipelineUIFlags: 'pipelines/getUIFlags',
       deals: 'deals/getDeals',
       dealsUIFlags: 'deals/getUIFlags',
+      allLabels: 'labels/getLabels',
     }),
     pipelineId() {
       return Number(this.$route.params.pipelineId);
@@ -262,6 +366,22 @@ export default {
         .filter(d => d.status === 'open')
         .reduce((sum, d) => sum + parseFloat(d.value || 0), 0);
     },
+    availableCustomFields() {
+      const fields = new Set();
+      this.deals.forEach(deal => {
+        if (deal.custom_attributes) {
+          Object.keys(deal.custom_attributes).forEach(key => fields.add(key));
+        }
+      });
+      return Array.from(fields);
+    },
+    activeFilterCount() {
+      let count = 0;
+      if (this.filterStageId) count++;
+      if (this.filterTag) count++;
+      if (this.filterCustomFieldKey && this.filterCustomFieldValue) count++;
+      return count;
+    },
   },
   mounted() {
     this.loadData();
@@ -276,11 +396,13 @@ export default {
       fetchPipelines: 'pipelines/get',
       fetchDeals: 'deals/get',
       moveDeal: 'deals/move',
+      fetchLabels: 'labels/get',
     }),
     async loadData() {
       await Promise.all([
         this.fetchPipeline(this.pipelineId),
         this.fetchPipelines(),
+        this.fetchLabels(),
       ]);
       await this.fetchDeals({ pipelineId: this.pipelineId, status: 'open' });
     },
@@ -313,7 +435,42 @@ export default {
     getDealsForStage(stageId) {
       return this.deals
         .filter(deal => deal.stage_id === stageId || deal.stage?.id === stageId)
+        .filter(deal => {
+          // Search by contact name (lead name)
+          if (this.searchQuery) {
+            const query = this.searchQuery.toLowerCase();
+            const contactName = (deal.contact?.name || '').toLowerCase();
+            if (!contactName.includes(query)) return false;
+          }
+
+          // Filter by Stage
+          if (this.filterStageId && deal.stage_id !== this.filterStageId && deal.stage?.id !== this.filterStageId) {
+            return false;
+          }
+
+          // Filter by Tags (labels)
+          if (this.filterTag) {
+            const contactLabels = deal.contact?.labels || [];
+            if (!contactLabels.includes(this.filterTag)) return false;
+          }
+
+          // Filter by Custom Fields
+          if (this.filterCustomFieldKey && this.filterCustomFieldValue) {
+            const customVal = String(deal.custom_attributes?.[this.filterCustomFieldKey] || '').toLowerCase();
+            const filterVal = this.filterCustomFieldValue.toLowerCase();
+            if (!customVal.includes(filterVal)) return false;
+          }
+
+          return true;
+        })
         .sort((a, b) => a.position - b.position);
+    },
+    clearAllFilters() {
+      this.searchQuery = '';
+      this.filterStageId = null;
+      this.filterTag = null;
+      this.filterCustomFieldKey = null;
+      this.filterCustomFieldValue = '';
     },
     async onDragEnd(event, newStageId) {
       const dealId = this.deals[event.oldIndex]?.id;
@@ -357,6 +514,10 @@ export default {
     onDealDeleted() {
       this.closeDealDrawer();
       this.fetchDeals({ pipelineId: this.pipelineId, status: 'open' });
+    },
+    cleanTitle(title) {
+      if (!title) return '';
+      return title.replace(/\s*-\s*\d+$/, '');
     },
     formatCurrency(value) {
       return new Intl.NumberFormat('pt-BR', {
