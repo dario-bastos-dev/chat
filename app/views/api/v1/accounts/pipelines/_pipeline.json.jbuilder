@@ -14,4 +14,6 @@ json.stages pipeline.stages do |stage|
   json.rotting_days stage.rotting_days
   json.deals_count stage.deals_count
   json.total_value stage.total_value
+  json.color stage.color
+  json.stage_type stage.stage_type
 end

@@ -109,6 +109,10 @@ onMounted(() => {
       @apply max-w-[80%] w-[56.25rem];
     }
 
+    &.modal-big {
+      @apply max-w-[95%] w-[68.75rem];
+    }
+
     // .content-box {
     //   @apply h-auto p-0;
     // }
@@ -125,10 +129,6 @@ onMounted(() => {
       }
     }
   }
-}
-
-.modal-big {
-  @apply w-full;
 }
 
 .modal-mask.right-aligned {

@@ -66,7 +66,7 @@ export const actions = {
       commit(types.ADD_PIPELINE, response.data);
       return response.data;
     } catch (error) {
-      const errorMessage = error?.response?.data?.message;
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error?.message || error;
       throw new Error(errorMessage);
     } finally {
       commit(types.SET_PIPELINES_UI_FLAG, { isCreating: false });
@@ -80,7 +80,8 @@ export const actions = {
       commit(types.EDIT_PIPELINE, response.data);
       return response.data;
     } catch (error) {
-      throw new Error(error);
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error?.message || error;
+      throw new Error(errorMessage);
     } finally {
       commit(types.SET_PIPELINES_UI_FLAG, { isUpdating: false });
     }
@@ -92,7 +93,8 @@ export const actions = {
       await PipelinesAPI.delete(id);
       commit(types.DELETE_PIPELINE, id);
     } catch (error) {
-      throw new Error(error);
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error;
+      throw new Error(errorMessage);
     } finally {
       commit(types.SET_PIPELINES_UI_FLAG, { isDeleting: false });
     }

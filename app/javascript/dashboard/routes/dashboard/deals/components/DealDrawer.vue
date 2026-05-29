@@ -387,6 +387,18 @@
       </div>
     </div>
   </woot-modal>
+
+  <!-- Delete Deal Modal -->
+  <woot-delete-modal
+    v-if="showDeleteModal"
+    v-model:show="showDeleteModal"
+    :title="$t('CRM.DEALS.DELETE_TITLE') || 'Excluir Negócio'"
+    :message="$t('CRM.DEALS.DELETE_CONFIRM') || 'Tem certeza que deseja excluir este negócio? Esta ação não pode ser desfeita.'"
+    :confirm-text="$t('CRM.DELETE') || 'Excluir'"
+    :reject-text="$t('CRM.CANCEL') || 'Cancelar'"
+    :on-confirm="executeDelete"
+    :on-close="closeDeleteModal"
+  />
 </template>
 
 <script>
@@ -422,6 +434,7 @@ export default {
       showLostModal: false,
       showActivityModal: false,
       showLinkConversationModal: false,
+      showDeleteModal: false,
       lostReason: '',
       isUpdating: false,
       isCreatingActivity: false,
@@ -469,19 +482,20 @@ export default {
       this.closeEditModal();
       this.$emit('updated');
     },
-    async confirmDelete() {
-      const confirmed = await this.$confirm(
-        this.$t('CRM.DEALS.DELETE_CONFIRM'),
-        this.$t('CRM.DEALS.DELETE_TITLE')
-      );
-
-      if (confirmed) {
-        try {
-          await this.deleteDeal(this.deal.id);
-          this.$emit('deleted');
-        } catch (error) {
-          this.$toast.error(this.$t('CRM.DEALS.DELETE_ERROR'));
-        }
+    confirmDelete() {
+      this.showDeleteModal = true;
+    },
+    closeDeleteModal() {
+      this.showDeleteModal = false;
+    },
+    async executeDelete() {
+      try {
+        await this.deleteDeal(this.deal.id);
+        this.$emit('deleted');
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.DEALS.DELETE_ERROR'));
+      } finally {
+        this.closeDeleteModal();
       }
     },
     async markAsWon() {

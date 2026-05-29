@@ -1,110 +1,121 @@
 <template>
-  <div class="contact-deals-section">
-    <div class="section-header">
-      <h4 class="section-title">
-        <span class="i-ph-handshake size-5" />
+  <div class="flex flex-col w-full h-full">
+    <!-- Header elegante: Título e Botão de Criar -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-n-strong">
+      <h4 class="flex items-center gap-1.5 text-sm font-semibold text-n-slate-12 m-0">
+        <span class="i-ph-handshake size-5 text-n-slate-10" />
         {{ $t('CRM.DEALS.TITLE') }}
       </h4>
       <woot-button
         variant="smooth"
         size="tiny"
         icon="add"
+        class="!py-1 !px-2.5"
         @click="openCreateDealModal"
       >
         {{ $t('CRM.DEALS.CREATE') }}
       </woot-button>
     </div>
 
-    <div v-if="isLoading" class="loading-section">
+    <!-- Loading State -->
+    <div v-if="isLoading" class="flex items-center justify-center py-10 text-n-slate-11">
       <spinner size="small" />
     </div>
 
-    <div v-else-if="deals.length === 0" class="empty-section">
-      <div class="empty-icon">
-        <span class="i-ph-chart-pie-slice size-12 text-n-slate-8" />
-      </div>
-      <p class="empty-text">{{ $t('CRM.DEALS.SIDEBAR.EMPTY') }}</p>
-    </div>
-
-    <div v-else class="deals-grid">
+    <!-- Listagem de Negócios (semelhante ao histórico de conversas) -->
+    <div
+      v-else-if="deals.length > 0"
+      class="px-6 py-4 divide-y divide-n-strong [&>*:hover]:!border-y-transparent [&>*:hover+*]:!border-t-transparent"
+    >
       <div
         v-for="deal in deals"
         :key="deal.id"
-        class="deal-card"
-        :class="getStatusClass(deal)"
+        class="flex flex-col gap-2 p-4 cursor-pointer transition-all duration-200 rounded-none hover:rounded-xl hover:bg-n-alpha-1 dark:hover:bg-n-alpha-3"
         @click="goToDealDetails(deal)"
       >
-        <div class="deal-card-header">
-          <h5 class="deal-title">{{ deal.title }}</h5>
+        <!-- Linha superior: Título e Status -->
+        <div class="flex items-start justify-between w-full gap-2">
+          <h5 class="text-sm font-semibold text-n-slate-12 truncate flex-1 m-0">
+            {{ deal.title }}
+          </h5>
           <span
             v-if="deal.status !== 'open'"
-            class="deal-badge"
-            :class="deal.status"
+            class="text-[10px] font-semibold px-2 py-0.5 rounded leading-none"
+            :class="deal.status === 'won' ? 'bg-g-100 text-g-700 dark:bg-g-900/30 dark:text-g-400' : 'bg-r-100 text-r-700 dark:bg-r-900/30 dark:text-r-400'"
           >
-            {{
-              deal.status === 'won'
-                ? $t('CRM.DEALS.STATUS_WON')
-                : $t('CRM.DEALS.STATUS_LOST')
-            }}
+            {{ deal.status === 'won' ? $t('CRM.DEALS.STATUS_WON') : $t('CRM.DEALS.STATUS_LOST') }}
           </span>
         </div>
-        <div class="deal-value">
+
+        <!-- Linha do Meio: Valor -->
+        <div class="text-sm font-bold text-g-600 dark:text-g-400">
           {{ formatCurrency(deal.value, deal.currency) }}
         </div>
-        <div class="deal-meta">
-          <span class="meta-item">
-            <span class="i-ph-funnel size-3" />
+
+        <!-- Linha de Metadados: Pipeline & Estágio -->
+        <div class="flex flex-wrap items-center gap-3 text-xs text-n-slate-11">
+          <span class="inline-flex items-center gap-1">
+            <span class="i-ph-funnel text-n-slate-9 size-3.5" />
             {{ deal.pipeline?.name }}
           </span>
-          <span class="meta-item">
-            <span class="i-ph-git-branch size-3" />
+          <span class="inline-flex items-center gap-1">
+            <span class="i-ph-git-branch text-n-slate-9 size-3.5" />
             {{ deal.stage?.name }}
           </span>
         </div>
-        <div v-if="deal.assignee" class="deal-assignee">
-          <Avatar
-            :src="deal.assignee.thumbnail"
-            :name="deal.assignee.name"
-            :size="20"
-          />
-          <span class="assignee-name">{{ deal.assignee.name }}</span>
-        </div>
-        <div v-if="deal.expected_close_date" class="deal-close-date">
-          <span class="i-ph-calendar size-3" />
-          {{ formatDate(deal.expected_close_date) }}
+
+        <!-- Responsável e Data se existirem -->
+        <div class="flex items-center justify-between w-full mt-1 text-xs text-n-slate-10">
+          <div v-if="deal.assignee" class="flex items-center gap-1.5">
+            <Avatar
+              :src="deal.assignee.thumbnail"
+              :name="deal.assignee.name"
+              :size="18"
+            />
+            <span>{{ deal.assignee.name }}</span>
+          </div>
+          <div v-if="deal.expected_close_date" class="flex items-center gap-1">
+            <span class="i-ph-calendar size-3.5" />
+            <span>{{ formatDate(deal.expected_close_date) }}</span>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Create Deal Modal -->
     <woot-modal v-model:show="showCreateModal" :on-close="closeCreateModal">
-      <div class="create-deal-modal-content">
+      <div class="p-6 min-w-[28.125rem]">
         <woot-modal-header :header-title="$t('CRM.DEALS.CREATE')" />
-        <form class="modal-form" @submit.prevent="createDeal">
-          <div class="form-field">
-            <label>{{ $t('CRM.DEALS.FORM.TITLE') }} *</label>
+        <form class="flex flex-col gap-4 mt-4" @submit.prevent="createDeal">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-n-slate-12">{{ $t('CRM.DEALS.FORM.TITLE') }} *</label>
             <input
               v-model="newDeal.title"
               type="text"
+              class="w-full p-2.5 border border-n-strong rounded bg-n-surface-2 text-n-slate-12 focus:border-w-500 focus:outline-none text-sm"
               :placeholder="$t('CRM.DEALS.FORM.TITLE_PLACEHOLDER')"
               required
             />
           </div>
 
-          <div class="form-row">
-            <div class="form-field">
-              <label>{{ $t('CRM.DEALS.FORM.VALUE') }}</label>
+          <div class="grid grid-cols-3 gap-3">
+            <div class="flex flex-col col-span-2 gap-1.5">
+              <label class="text-sm font-medium text-n-slate-12">{{ $t('CRM.DEALS.FORM.VALUE') }}</label>
               <input
                 v-model.number="newDeal.value"
                 type="number"
                 step="0.01"
                 min="0"
+                class="w-full p-2.5 border border-n-strong rounded bg-n-surface-2 text-n-slate-12 focus:border-w-500 focus:outline-none text-sm"
                 :placeholder="$t('CRM.DEALS.FORM.VALUE_PLACEHOLDER')"
               />
             </div>
-            <div class="form-field currency-field">
-              <label>{{ $t('CRM.DEALS.FORM.CURRENCY') }}</label>
-              <select v-model="newDeal.currency">
+            <div class="flex flex-col gap-1.5">
+              <label class="text-sm font-medium text-n-slate-12">{{ $t('CRM.DEALS.FORM.CURRENCY') }}</label>
+              <select
+                v-model="newDeal.currency"
+                class="w-full p-2.5 border border-n-strong rounded bg-n-surface-2 text-n-slate-12 focus:border-w-500 focus:outline-none text-sm"
+              >
                 <option value="BRL">BRL</option>
                 <option value="USD">USD</option>
                 <option value="EUR">EUR</option>
@@ -112,10 +123,11 @@
             </div>
           </div>
 
-          <div class="form-field">
-            <label>{{ $t('CRM.DEALS.FORM.PIPELINE') }} *</label>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-n-slate-12">{{ $t('CRM.DEALS.FORM.PIPELINE') }} *</label>
             <select
               v-model="selectedPipelineId"
+              class="w-full p-2.5 border border-n-strong rounded bg-n-surface-2 text-n-slate-12 focus:border-w-500 focus:outline-none text-sm"
               required
               @change="onPipelineChange"
             >
@@ -129,9 +141,13 @@
             </select>
           </div>
 
-          <div class="form-field">
-            <label>{{ $t('CRM.DEALS.FORM.STAGE') }} *</label>
-            <select v-model="newDeal.stage_id" required>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-n-slate-12">{{ $t('CRM.DEALS.FORM.STAGE') }} *</label>
+            <select
+              v-model="newDeal.stage_id"
+              class="w-full p-2.5 border border-n-strong rounded bg-n-surface-2 text-n-slate-12 focus:border-w-500 focus:outline-none text-sm"
+              required
+            >
               <option
                 v-for="stage in currentStages"
                 :key="stage.id"
@@ -142,14 +158,21 @@
             </select>
           </div>
 
-          <div class="form-field">
-            <label>{{ $t('CRM.DEALS.FORM.EXPECTED_CLOSE') }}</label>
-            <input v-model="newDeal.expected_close_date" type="date" />
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-n-slate-12">{{ $t('CRM.DEALS.FORM.EXPECTED_CLOSE') }}</label>
+            <input
+              v-model="newDeal.expected_close_date"
+              type="date"
+              class="w-full p-2.5 border border-n-strong rounded bg-n-surface-2 text-n-slate-12 focus:border-w-500 focus:outline-none text-sm"
+            />
           </div>
 
-          <div class="form-field">
-            <label>{{ $t('CRM.DEALS.FORM.ASSIGNEE') }}</label>
-            <select v-model="newDeal.assignee_id">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-n-slate-12">{{ $t('CRM.DEALS.FORM.ASSIGNEE') }}</label>
+            <select
+              v-model="newDeal.assignee_id"
+              class="w-full p-2.5 border border-n-strong rounded bg-n-surface-2 text-n-slate-12 focus:border-w-500 focus:outline-none text-sm"
+            >
               <option :value="null">
                 {{ $t('CRM.DEALS.FORM.UNASSIGNED') }}
               </option>
@@ -159,7 +182,7 @@
             </select>
           </div>
 
-          <div class="modal-actions">
+          <div class="flex justify-end gap-3.5 pt-4 border-t border-n-strong">
             <woot-button variant="clear" @click.prevent="closeCreateModal">
               {{ $t('CRM.CANCEL') }}
             </woot-button>
@@ -179,7 +202,7 @@
 
 <script>
 import { mapGetters, mapActions } from 'vuex';
-import Spinner from 'shared/components/Spinner.vue';
+import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import DealsAPI from 'dashboard/api/deals';
 import { format } from 'date-fns';
@@ -259,13 +282,6 @@ export default {
         this.isLoading = false;
       }
     },
-    getStatusClass(deal) {
-      const classes = [];
-      if (deal.status === 'won') classes.push('is-won');
-      if (deal.status === 'lost') classes.push('is-lost');
-      if (deal.is_rotting) classes.push('is-rotting');
-      return classes;
-    },
     openCreateDealModal() {
       this.newDeal = {
         title: '',
@@ -334,211 +350,3 @@ export default {
   },
 };
 </script>
-
-<style lang="scss" scoped>
-.contact-deals-section {
-  padding: var(--space-normal);
-  border-top: 1px solid var(--color-border);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-normal);
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-smaller);
-  font-size: var(--font-size-default);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-heading);
-  margin: 0;
-}
-
-.loading-section,
-.empty-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-large);
-  text-align: center;
-}
-
-.empty-icon {
-  margin-bottom: var(--space-small);
-  opacity: 0.5;
-}
-
-.empty-text {
-  font-size: var(--font-size-small);
-  color: var(--color-body);
-  margin: 0;
-}
-
-.deals-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: var(--space-normal);
-}
-
-.deal-card {
-  background: var(--white);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-medium);
-  padding: var(--space-slab);
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    border-color: var(--w-500);
-    box-shadow: var(--shadow-small);
-  }
-
-  &.is-won {
-    border-left: 4px solid var(--g-500);
-    background: var(--g-25);
-  }
-
-  &.is-lost {
-    border-left: 4px solid var(--r-500);
-    opacity: 0.7;
-  }
-
-  &.is-rotting {
-    border-left: 4px solid var(--y-500);
-  }
-}
-
-.deal-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: var(--space-smaller);
-}
-
-.deal-title {
-  font-size: var(--font-size-small);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-heading);
-  margin: 0;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.deal-badge {
-  font-size: var(--font-size-micro);
-  padding: 2px 6px;
-  border-radius: var(--border-radius-small);
-  font-weight: var(--font-weight-medium);
-
-  &.won {
-    background: var(--g-100);
-    color: var(--g-700);
-  }
-
-  &.lost {
-    background: var(--r-100);
-    color: var(--r-700);
-  }
-}
-
-.deal-value {
-  font-size: var(--font-size-medium);
-  font-weight: var(--font-weight-bold);
-  color: var(--g-600);
-  margin-bottom: var(--space-smaller);
-}
-
-.deal-meta {
-  display: flex;
-  gap: var(--space-small);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-smaller);
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-micro);
-  font-size: var(--font-size-mini);
-  color: var(--color-body);
-}
-
-.deal-assignee {
-  display: flex;
-  align-items: center;
-  gap: var(--space-smaller);
-  margin-top: var(--space-smaller);
-}
-
-.assignee-name {
-  font-size: var(--font-size-mini);
-  color: var(--color-body);
-}
-
-.deal-close-date {
-  display: flex;
-  align-items: center;
-  gap: var(--space-micro);
-  font-size: var(--font-size-micro);
-  color: var(--color-body);
-  margin-top: var(--space-smaller);
-}
-
-.create-deal-modal-content {
-  padding: var(--space-normal);
-  min-width: 450px;
-}
-
-.modal-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-normal);
-}
-
-.form-field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-smaller);
-
-  label {
-    font-weight: var(--font-weight-medium);
-    font-size: var(--font-size-small);
-    color: var(--color-heading);
-  }
-
-  input,
-  select {
-    width: 100%;
-    padding: var(--space-small);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-small);
-    font-size: var(--font-size-small);
-
-    &:focus {
-      border-color: var(--w-500);
-      outline: none;
-    }
-  }
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--space-small);
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-small);
-  padding-top: var(--space-normal);
-  border-top: 1px solid var(--color-border);
-}
-</style>

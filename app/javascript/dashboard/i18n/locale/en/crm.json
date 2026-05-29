@@ -1,5 +1,11 @@
 {
   "CRM": {
+    "STAGE_GROUPS": {
+      "NOT_STARTED": "Not Started",
+      "ACTIVE": "Active",
+      "DONE": "Done",
+      "CLOSED": "Closed"
+    },
     "TITLE": "CRM",
     "LOADING": "Loading...",
     "CANCEL": "Cancel",
@@ -15,7 +21,14 @@
       "SUBTITLE": "Manage your pipelines and deals",
       "CREATE": "New Pipeline",
       "CREATE_DESCRIPTION": "Create a new pipeline to organize your deals",
+      "CREATE_SUCCESS": "Pipeline created successfully",
+      "UPDATE_SUCCESS": "Pipeline updated successfully",
       "CREATE_ERROR": "Error creating pipeline",
+      "UPDATE_ERROR": "Error updating pipeline",
+      "DELETE_CONFIRM_TITLE": "Delete Pipeline",
+      "DELETE_CONFIRM_MESSAGE": "Are you sure you want to delete this pipeline? All deals inside it will be permanently deleted.",
+      "DELETE_SUCCESS": "Pipeline deleted successfully",
+      "DELETE_ERROR": "Error deleting pipeline",
       "DEFAULT": "Default",
       "YOUR_PIPELINES": "Your Pipelines",
       "PIPELINE_COUNT": "pipeline(s)",

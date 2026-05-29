@@ -163,6 +163,7 @@ const contactCustomViews = useMapGetter('customViews/getContactCustomViews');
 const conversationCustomViews = useMapGetter(
   'customViews/getConversationCustomViews'
 );
+const pipelines = useMapGetter('pipelines/getPipelines');
 
 onMounted(() => {
   store.dispatch('labels/get');
@@ -172,11 +173,20 @@ onMounted(() => {
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
+  store.dispatch('pipelines/get');
 });
 
 const sortedInboxes = computed(() =>
   inboxes.value.slice().sort((a, b) => a.name.localeCompare(b.name))
 );
+
+const defaultChildName = computed(() => {
+  if (!Array.isArray(pipelines.value) || pipelines.value.length === 0) {
+    return null;
+  }
+  const defaultPipeline = pipelines.value.find(p => p.is_default) || pipelines.value[0];
+  return defaultPipeline ? `Pipeline-${defaultPipeline.id}` : null;
+});
 
 const closeMobileSidebar = () => {
   if (!props.isMobileSidebarOpen) return;
@@ -317,13 +327,20 @@ const menuItems = computed(() => {
             name: 'CRM',
             label: t('SIDEBAR.CRM'),
             icon: 'i-lucide-kanban',
+            defaultChildName: defaultChildName.value,
             children: [
               {
                 name: 'Deals',
                 label: t('SIDEBAR.CRM_DEALS'),
                 to: accountScopedRoute('deals_index'),
-                activeOn: ['deals_index', 'deals_kanban'],
+                activeOn: ['deals_index'],
               },
+              ...pipelines.value.map(pipeline => ({
+                name: `Pipeline-${pipeline.id}`,
+                label: pipeline.name,
+                to: accountScopedRoute('deals_kanban', { pipelineId: pipeline.id }),
+                activeOn: ['deals_kanban'],
+              })),
             ],
           },
         ]

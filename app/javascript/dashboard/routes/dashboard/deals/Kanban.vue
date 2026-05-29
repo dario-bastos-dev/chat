@@ -59,7 +59,7 @@
                 v-model="searchQuery"
                 type="text"
                 placeholder="Pesquisar por nome do lead..."
-                class="w-full py-1 text-sm bg-transparent border-0 border-none outline-none focus:outline-none focus:ring-0 focus:border-none focus-visible:outline-none shadow-none text-n-slate-12 placeholder-n-slate-11 h-full p-0"
+                class="w-full !py-1 text-sm !bg-transparent !border-0 !border-none !outline-none !focus:outline-none !focus:ring-0 !focus:border-none !focus-visible:outline-none !shadow-none text-n-slate-12 placeholder-n-slate-11 !h-full !p-0 !m-0 no-margin"
               />
             </div>
 
@@ -179,17 +179,61 @@
 
     <!-- Stats bar -->
     <div
-      class="flex items-center gap-6 px-4 py-2 border-b border-n-weak bg-n-solid-2 shrink-0"
+      class="flex items-center justify-between px-4 py-2 border-b border-n-weak bg-n-solid-2 shrink-0 gap-4"
     >
-      <div class="flex items-center gap-1.5 text-sm">
-        <span class="text-n-slate-11">{{ $t('CRM.TOTAL_DEALS') }}:</span>
-        <span class="font-semibold text-n-slate-12">{{ totalDeals }}</span>
+      <div class="flex items-center gap-6">
+        <div class="flex items-center gap-1.5 text-sm">
+          <span class="text-n-slate-11">{{ $t('CRM.TOTAL_DEALS') }}:</span>
+          <span class="font-semibold text-n-slate-12">{{ totalDeals }}</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-sm">
+          <span class="text-n-slate-11">{{ $t('CRM.TOTAL_VALUE') }}:</span>
+          <span class="font-semibold text-n-slate-12">{{
+            formatCurrency(totalValue)
+          }}</span>
+        </div>
       </div>
-      <div class="flex items-center gap-1.5 text-sm">
-        <span class="text-n-slate-11">{{ $t('CRM.TOTAL_VALUE') }}:</span>
-        <span class="font-semibold text-n-slate-12">{{
-          formatCurrency(totalValue)
-        }}</span>
+
+      <!-- Bulk Actions / Selection Controls -->
+      <div class="flex items-center gap-4 text-sm shrink-0">
+        <!-- Select All Checkbox -->
+        <label class="flex items-center gap-2 text-xs font-medium text-n-slate-11 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            :checked="isAllFilteredDealsSelected"
+            @change="toggleSelectAllFiltered"
+            class="w-3.5 h-3.5 rounded border-n-weak text-n-brand focus:ring-n-brand cursor-pointer"
+            :disabled="filteredDeals.length === 0"
+          />
+          <span>Selecionar todos</span>
+        </label>
+
+        <!-- Bulk delete button & count if selected -->
+        <transition
+          enter-active-class="transition duration-150 ease-out"
+          enter-from-class="opacity-0 scale-95"
+          leave-active-class="transition duration-100 ease-in"
+          leave-to-class="opacity-0 scale-95"
+        >
+          <div v-if="selectedDealIds.length > 0" class="flex items-center gap-3">
+            <span class="text-xs text-n-slate-12 font-medium bg-n-brand/10 text-n-brand px-2 py-0.5 rounded-full">
+              {{ selectedDealIds.length }} selecionado(s)
+            </span>
+            <button
+              @click="deleteSelectedDeals"
+              class="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-white bg-n-ruby-9 hover:bg-n-ruby-10 active:bg-n-ruby-11 rounded-lg transition-colors duration-150 cursor-pointer"
+            >
+              <fluent-icon icon="delete" size="12" />
+              <span>Deletar</span>
+            </button>
+            <button
+              @click="clearSelection"
+              class="text-xs text-n-slate-11 hover:text-n-slate-12 cursor-pointer font-medium"
+            >
+              Cancelar
+            </button>
+          </div>
+        </transition>
       </div>
     </div>
 
@@ -201,8 +245,14 @@
       <div
         v-for="stage in stages"
         :key="stage.id"
-        class="flex flex-col min-w-[280px] max-w-[320px] flex-1 rounded-xl border border-n-weak bg-n-solid-2"
+        class="flex flex-col min-w-[280px] max-w-[320px] flex-1 rounded-xl border border-n-weak bg-n-solid-2 overflow-hidden"
       >
+        <!-- Stage Color Accent Bar -->
+        <div
+          class="h-1 w-full"
+          :style="{ backgroundColor: stage.color || '#1f93ff' }"
+        />
+
         <!-- Column header -->
         <div
           class="flex items-center justify-between px-3 py-2.5 border-b border-n-weak"
@@ -225,8 +275,8 @@
         <!-- Progress bar -->
         <div class="h-0.5 bg-n-alpha-1">
           <div
-            class="h-full bg-n-brand transition-all duration-300"
-            :style="{ width: `${stage.win_probability || 0}%` }"
+            class="h-full transition-all duration-300"
+            :style="{ width: `${stage.win_probability || 0}%`, backgroundColor: stage.color || '#1f93ff' }"
           />
         </div>
 
@@ -241,7 +291,7 @@
         >
           <template #item="{ element: deal }">
             <div
-              class="bg-n-solid-3 border border-n-weak rounded-lg p-3 cursor-pointer transition-all duration-200 hover:border-n-brand hover:shadow-md"
+              class="bg-n-solid-3 border border-n-weak rounded-lg p-3 cursor-pointer transition-all duration-200 hover:border-n-brand hover:shadow-md relative"
               :class="{
                 'border-l-2 !border-l-n-ruby-9': deal.is_rotting,
               }"
@@ -252,42 +302,55 @@
               @keydown.enter="openDealDrawer(deal)"
               @keydown.space.prevent="openDealDrawer(deal)"
             >
-              <div class="flex items-start justify-between mb-1.5">
-                <span
-                  class="text-sm font-medium text-n-slate-12 flex-1 mr-2"
-                >
-                  {{ cleanTitle(deal.title) }}
-                </span>
-                <span
-                  class="text-xs font-semibold text-n-teal-11 whitespace-nowrap"
-                >
-                  {{ formatCurrency(deal.value || 0) }}
-                </span>
-              </div>
-              <div class="flex items-center gap-1.5 mb-1.5">
-                <Avatar
-                  :src="deal.contact?.avatar_url"
-                  :name="deal.contact?.name"
-                  :size="20"
+              <!-- Checkbox de seleção individual -->
+              <div class="absolute top-3.5 left-3.5" @click.stop>
+                <input
+                  type="checkbox"
+                  :value="deal.id"
+                  v-model="selectedDealIds"
+                  class="w-3.5 h-3.5 rounded border-n-weak text-n-brand focus:ring-n-brand cursor-pointer"
                 />
-                <span class="text-xs text-n-slate-11 truncate">
-                  {{ deal.contact?.name }}
-                </span>
               </div>
-              <div class="flex items-center justify-between">
-                <span v-if="deal.assignee">
+
+              <!-- Conteúdo deslocado para não sobrepor o checkbox -->
+              <div class="pl-6">
+                <div class="flex items-start justify-between mb-1.5">
+                  <span
+                    class="text-sm font-medium text-n-slate-12 flex-1 mr-2"
+                  >
+                    {{ cleanTitle(deal.title) }}
+                  </span>
+                  <span
+                    class="text-xs font-semibold text-n-teal-11 whitespace-nowrap"
+                  >
+                    {{ formatCurrency(deal.value || 0) }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-1.5 mb-1.5">
                   <Avatar
-                    :src="deal.assignee?.avatar_url"
-                    :name="deal.assignee?.name"
-                    :size="16"
+                    :src="deal.contact?.avatar_url"
+                    :name="deal.contact?.name"
+                    :size="20"
                   />
-                </span>
-                <span
-                  v-if="deal.last_activity_at"
-                  class="text-[10px] text-n-slate-10"
-                >
-                  {{ formatDate(deal.last_activity_at) }}
-                </span>
+                  <span class="text-xs text-n-slate-11 truncate">
+                    {{ deal.contact?.name }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span v-if="deal.assignee">
+                    <Avatar
+                      :src="deal.assignee?.avatar_url"
+                      :name="deal.assignee?.name"
+                      :size="16"
+                    />
+                  </span>
+                  <span
+                    v-if="deal.last_activity_at"
+                    class="text-[10px] text-n-slate-10"
+                  >
+                    {{ formatDate(deal.last_activity_at) }}
+                  </span>
+                </div>
               </div>
             </div>
           </template>
@@ -362,6 +425,7 @@ export default {
       filterTag: null,
       filterCustomFieldKey: null,
       filterCustomFieldValue: '',
+      selectedDealIds: [],
     };
   },
   computed: {
@@ -406,6 +470,42 @@ export default {
       if (this.filterCustomFieldKey && this.filterCustomFieldValue) count++;
       return count;
     },
+    filteredDeals() {
+      return this.deals
+        .filter(deal => deal.status === 'open')
+        .filter(deal => {
+          // Search by contact name (lead name)
+          if (this.searchQuery) {
+            const query = this.searchQuery.toLowerCase();
+            const contactName = (deal.contact?.name || '').toLowerCase();
+            if (!contactName.includes(query)) return false;
+          }
+
+          // Filter by Stage
+          if (this.filterStageId && deal.stage_id !== this.filterStageId && deal.stage?.id !== this.filterStageId) {
+            return false;
+          }
+
+          // Filter by Tags (labels)
+          if (this.filterTag) {
+            const contactLabels = deal.contact?.labels || [];
+            if (!contactLabels.includes(this.filterTag)) return false;
+          }
+
+          // Filter by Custom Fields
+          if (this.filterCustomFieldKey && this.filterCustomFieldValue) {
+            const customVal = String(deal.custom_attributes?.[this.filterCustomFieldKey] || '').toLowerCase();
+            const filterVal = this.filterCustomFieldValue.toLowerCase();
+            if (!customVal.includes(filterVal)) return false;
+          }
+
+          return true;
+        });
+    },
+    isAllFilteredDealsSelected() {
+      if (this.filteredDeals.length === 0) return false;
+      return this.filteredDeals.every(deal => this.selectedDealIds.includes(deal.id));
+    },
   },
   mounted() {
     this.loadData();
@@ -421,6 +521,7 @@ export default {
       fetchDeals: 'deals/get',
       moveDeal: 'deals/move',
       fetchLabels: 'labels/get',
+      deleteDeal: 'deals/delete',
     }),
     async loadData() {
       await Promise.all([
@@ -457,37 +558,37 @@ export default {
       });
     },
     getDealsForStage(stageId) {
-      return this.deals
+      return this.filteredDeals
         .filter(deal => deal.stage_id === stageId || deal.stage?.id === stageId)
-        .filter(deal => {
-          // Search by contact name (lead name)
-          if (this.searchQuery) {
-            const query = this.searchQuery.toLowerCase();
-            const contactName = (deal.contact?.name || '').toLowerCase();
-            if (!contactName.includes(query)) return false;
-          }
-
-          // Filter by Stage
-          if (this.filterStageId && deal.stage_id !== this.filterStageId && deal.stage?.id !== this.filterStageId) {
-            return false;
-          }
-
-          // Filter by Tags (labels)
-          if (this.filterTag) {
-            const contactLabels = deal.contact?.labels || [];
-            if (!contactLabels.includes(this.filterTag)) return false;
-          }
-
-          // Filter by Custom Fields
-          if (this.filterCustomFieldKey && this.filterCustomFieldValue) {
-            const customVal = String(deal.custom_attributes?.[this.filterCustomFieldKey] || '').toLowerCase();
-            const filterVal = this.filterCustomFieldValue.toLowerCase();
-            if (!customVal.includes(filterVal)) return false;
-          }
-
-          return true;
-        })
         .sort((a, b) => a.position - b.position);
+    },
+    toggleSelectAllFiltered() {
+      if (this.isAllFilteredDealsSelected) {
+        // Deselect only the currently filtered/displayed deals
+        const filteredIds = this.filteredDeals.map(deal => deal.id);
+        this.selectedDealIds = this.selectedDealIds.filter(id => !filteredIds.includes(id));
+      } else {
+        // Select all currently filtered/displayed deals (union with existing selection)
+        const filteredIds = this.filteredDeals.map(deal => deal.id);
+        const union = new Set([...this.selectedDealIds, ...filteredIds]);
+        this.selectedDealIds = Array.from(union);
+      }
+    },
+    async deleteSelectedDeals() {
+      const ok = confirm(`Tem certeza que deseja deletar os ${this.selectedDealIds.length} negócio(s) selecionado(s)?`);
+      if (!ok) return;
+
+      try {
+        await Promise.all(this.selectedDealIds.map(id => this.deleteDeal(id)));
+        this.$toast.success('Negócio(s) deletado(s) com sucesso!');
+        this.selectedDealIds = [];
+        this.fetchDeals({ pipelineId: this.pipelineId, status: 'open' });
+      } catch (error) {
+        this.$toast.error('Ocorreu um erro ao deletar os negócios.');
+      }
+    },
+    clearSelection() {
+      this.selectedDealIds = [];
     },
     clearAllFilters() {
       this.searchQuery = '';
@@ -495,6 +596,7 @@ export default {
       this.filterTag = null;
       this.filterCustomFieldKey = null;
       this.filterCustomFieldValue = '';
+      this.selectedDealIds = [];
     },
     async onDragEnd(event, newStageId) {
       const dealId = this.deals[event.oldIndex]?.id;

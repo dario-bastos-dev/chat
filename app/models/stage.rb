@@ -24,10 +24,10 @@ class Stage < ApplicationRecord
   has_many :deals, dependent: :restrict_with_error
 
   validates :name, presence: true
-  validates :pipeline_id, presence: true
   validates :position, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
   validates :win_probability, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 100 }, allow_nil: true
   validates :rotting_days, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
+  validates :stage_type, inclusion: { in: %w[not_started active done closed] }
 
   before_validation :set_default_position, on: :create
 

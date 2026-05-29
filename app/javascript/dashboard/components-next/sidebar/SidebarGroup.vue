@@ -18,6 +18,7 @@ const props = defineProps({
   activeOn: { type: Array, default: () => [] },
   children: { type: Array, default: undefined },
   getterKeys: { type: Object, default: () => ({}) },
+  defaultChildName: { type: String, default: null },
 });
 
 const {
@@ -113,6 +114,17 @@ const hasAccessibleChildren = computed(() => {
   return accessibleItems.value.length > 0;
 });
 
+const defaultChild = computed(() => {
+  if (!hasAccessibleChildren.value) return null;
+  if (props.defaultChildName) {
+    const matched = accessibleItems.value.find(
+      child => child.name === props.defaultChildName
+    );
+    if (matched) return matched;
+  }
+  return accessibleItems.value[0];
+});
+
 const isActive = computed(() => {
   if (props.to) {
     if (route.path === resolvePath(props.to)) return true;
@@ -170,21 +182,18 @@ const hasActiveChild = computed(() => {
 });
 
 const handleCollapsedClick = () => {
-  if (hasChildren.value && hasAccessibleChildren.value) {
-    const firstItem = accessibleItems.value[0];
-    router.push(firstItem.to);
+  if (hasChildren.value && defaultChild.value) {
+    router.push(defaultChild.value.to);
   }
 };
 
 const toggleTrigger = () => {
   if (
-    hasAccessibleChildren.value &&
+    defaultChild.value &&
     !isExpanded.value &&
     !hasActiveChild.value
   ) {
-    // if not already expanded, navigate to the first child
-    const firstItem = accessibleItems.value[0];
-    router.push(firstItem.to);
+    router.push(defaultChild.value.to);
   }
   setExpandedItem(props.name);
 };
