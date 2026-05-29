@@ -246,6 +246,7 @@ Rails.application.routes.draw do
             delete :avatar, on: :member
             post :sync_templates, on: :member
             get :health, on: :member
+            post :register_webhook, on: :member
             get :evolution_qrcode, on: :member
             get :evolution_status, on: :member
             post :evolution_create_instance, on: :member

@@ -100,6 +100,7 @@ export default {
       showBusinessNameInput: false,
       healthData: null,
       isLoadingHealth: false,
+      isRegisteringWebhook: false,
       healthError: null,
       widgetBubblePosition: 'right',
       widgetBubbleType: 'standard',
@@ -437,6 +438,18 @@ export default {
         this.healthError = error.message || 'Failed to fetch health data';
       } finally {
         this.isLoadingHealth = false;
+      }
+    },
+    async registerWebhook() {
+      try {
+        this.isRegisteringWebhook = true;
+        await InboxHealthAPI.registerWebhook(this.currentInboxId);
+        useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
+        await this.fetchHealthData();
+      } catch (error) {
+        useAlert(error.message || this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
+      } finally {
+        this.isRegisteringWebhook = false;
       }
     },
     handleFeatureFlag(e) {
@@ -1138,7 +1151,11 @@ export default {
         <BotConfiguration :inbox="inbox" />
       </div>
       <div v-if="selectedTabKey === 'whatsapp-health'">
-        <AccountHealth :health-data="healthData" />
+        <AccountHealth
+          :health-data="healthData"
+          :is-registering-webhook="isRegisteringWebhook"
+          @registerWebhook="registerWebhook"
+        />
       </div>
       <div v-if="selectedTabKey === 'evolution-instance'">
         <InstanceSettings :inbox="inbox" />
