@@ -55,7 +55,7 @@ class DealListener < BaseListener
   # CRM: Create activity record when deal is won
   def deal_won(event)
     deal = event.data[:deal]
-    create_status_activity(deal, 'won', "Negócio marcado como ganho. Valor: #{deal.value}")
+    create_status_activity(deal, 'won', "Negócio marcado como ganho.")
   end
 
   # CRM: Create activity record when deal is lost

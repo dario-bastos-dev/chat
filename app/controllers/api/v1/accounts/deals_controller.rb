@@ -15,15 +15,25 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
   def show; end
 
   def create
-    @deal = Current.account.deals.new(deal_params)
+    @deal = Current.account.deals.new(deal_params.except(:labels))
     @deal.assignee = current_user if @deal.assignee_id.nil?
-    @deal.save!
+    ActiveRecord::Base.transaction do
+      @deal.save!
+      if params[:deal].key?(:labels)
+        @deal.update_labels(params[:deal][:labels])
+      end
+    end
     link_conversation if params[:conversation_id].present?
   end
 
   def update
     authorize @deal
-    @deal.update!(deal_params)
+    ActiveRecord::Base.transaction do
+      if params[:deal].key?(:labels)
+        @deal.update_labels(params[:deal][:labels])
+      end
+      @deal.update!(deal_params.except(:labels))
+    end
   end
 
   def destroy
@@ -86,9 +96,10 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
 
   def deal_params
     params.require(:deal).permit(
-      :title, :value, :currency, :stage_id, :contact_id, :inbox_id,
-      :assignee_id, :expected_close_date, :position,
-      custom_attributes: {}
+      :title, :stage_id, :contact_id, :inbox_id,
+      :assignee_id, :position,
+      custom_attributes: {},
+      labels: []
     )
   end
 

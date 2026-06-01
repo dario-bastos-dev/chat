@@ -103,6 +103,7 @@ export const getActionOptions = ({
   type,
   addNoneToListFn,
   priorityOptions,
+  t,
 }) => {
   const actionsMap = {
     assign_agent: addNoneToListFn ? addNoneToListFn(agents) : agents,
@@ -118,6 +119,22 @@ export const getActionOptions = ({
         name: `${p.name} > ${s.name}`,
       }))
     ),
+    move_deal_stage: (pipelines || []).flatMap(p =>
+      (p.stages || []).map(s => ({
+        id: `${p.id}:${s.id}`,
+        name: `${p.name} > ${s.name}`,
+      }))
+    ),
+    sync_deal_assignee: [
+      { id: 'conversation_to_deal', name: t ? t('AUTOMATION.ACTION.SYNC_ASSIGNEE_CONV_TO_DEAL') : 'Sync Conversation assignee to Deal' },
+      { id: 'deal_to_conversation', name: t ? t('AUTOMATION.ACTION.SYNC_ASSIGNEE_DEAL_TO_CONV') : 'Sync Deal assignee to Conversation' },
+    ],
+    change_deal_status: [
+      { id: 'won', name: t ? t('AUTOMATION.ACTION.STATUS_WON') : 'Won' },
+      { id: 'lost', name: t ? t('AUTOMATION.ACTION.STATUS_LOST') : 'Lost' },
+    ],
+    add_deal_label: generateConditionOptions(labels, 'title'),
+    remove_deal_label: generateConditionOptions(labels, 'title'),
   };
   return actionsMap[type];
 };
@@ -134,6 +151,7 @@ export const getConditionOptions = ({
   labels,
   statusFilterOptions,
   teams,
+  pipelines,
   type,
   priorityOptions,
   messageTypeOptions,
@@ -160,6 +178,14 @@ export const getConditionOptions = ({
     private_note: booleanFilterOptions,
     priority: priorityOptions,
     labels: generateConditionOptions(labels, 'title'),
+    has_active_deal: booleanFilterOptions,
+    deal_labels: generateConditionOptions(labels, 'title'),
+    deal_stage_id: (pipelines || []).flatMap(p =>
+      (p.stages || []).map(s => ({
+        id: s.id,
+        name: `${p.name} > ${s.name}`,
+      }))
+    ),
   };
 
   return conditionFilterMaps[type];
@@ -225,7 +251,9 @@ export const generateCustomAttributes = (
   // eslint-disable-next-line default-param-last
   contactAttributes = [],
   conversationlabel,
-  contactlabel
+  contactlabel,
+  dealAttributes = [],
+  deallabel
 ) => {
   const customAttributes = [];
   if (conversationAttributes.length) {
@@ -246,6 +274,16 @@ export const generateCustomAttributes = (
         disabled: true,
       },
       ...contactAttributes
+    );
+  }
+  if (dealAttributes.length) {
+    customAttributes.push(
+      {
+        key: `deal_custom_attribute`,
+        name: deallabel,
+        disabled: true,
+      },
+      ...dealAttributes
     );
   }
   return customAttributes;

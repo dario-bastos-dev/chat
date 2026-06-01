@@ -1,17 +1,15 @@
 json.id deal.id
 json.title deal.title
-json.value deal.value.to_f
-json.currency deal.currency
 json.status deal.status
 json.lost_reason deal.lost_reason
 json.position deal.position
-json.expected_close_date deal.expected_close_date
 json.last_activity_at deal.last_activity_at
 json.won_at deal.won_at
 json.lost_at deal.lost_at
 json.is_rotting deal.rotting?
-json.weighted_value deal.weighted_value
+
 json.custom_attributes deal.custom_attributes
+json.labels deal.label_list
 json.created_at deal.created_at
 json.updated_at deal.updated_at
 
@@ -33,6 +31,7 @@ json.contact do
   json.email deal.contact.email
   json.phone_number deal.contact.phone_number
   json.avatar_url deal.contact.avatar_url if deal.contact.respond_to?(:avatar_url)
+  json.labels deal.contact.label_list
 end
 
 if deal.assignee.present?

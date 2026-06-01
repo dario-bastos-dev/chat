@@ -38,9 +38,9 @@
 
 class Deal < ApplicationRecord
   include Events::Types
+  include Labelable
 
   STATUSES = %w[open won lost].freeze
-  CURRENCIES = %w[BRL USD EUR GBP].freeze
 
   belongs_to :account
   belongs_to :pipeline
@@ -59,13 +59,12 @@ class Deal < ApplicationRecord
   validates :stage_id, presence: true
   validates :contact_id, presence: true
   validates :status, inclusion: { in: STATUSES }
-  validates :currency, inclusion: { in: CURRENCIES }
-  validates :value, numericality: { greater_than_or_equal_to: 0 }
   validates :lost_reason, presence: true, if: -> { status == 'lost' }
 
   validate :stage_belongs_to_pipeline
 
-  before_validation :set_pipeline_from_stage, on: :create
+  before_validation :set_pipeline_from_stage
+  before_validation :sync_status_with_stage_type
   before_save :set_won_or_lost_timestamp
   before_save :update_last_activity_at, if: :will_save_change_to_stage_id?
 
@@ -90,11 +89,27 @@ class Deal < ApplicationRecord
   end
 
   def mark_as_won!
-    update!(status: 'won', won_at: Time.current)
+    target_stage = pipeline.stages.find_by(stage_type: 'done')
+    if target_stage.present?
+      self.stage = target_stage
+    end
+    self.status = 'won'
+    self.won_at = Time.current
+    self.lost_at = nil
+    self.lost_reason = nil
+    save!
   end
 
   def mark_as_lost!(reason)
-    update!(status: 'lost', lost_at: Time.current, lost_reason: reason)
+    target_stage = pipeline.stages.find_by(stage_type: 'closed')
+    if target_stage.present?
+      self.stage = target_stage
+    end
+    self.status = 'lost'
+    self.lost_at = Time.current
+    self.lost_reason = reason
+    self.won_at = nil
+    save!
   end
 
   def mark_as_rotting!
@@ -114,18 +129,12 @@ class Deal < ApplicationRecord
     dispatch_stage_changed_event(old_stage_id, new_stage.id)
   end
 
-  def weighted_value
-    return 0 if value.nil? || stage.win_probability.nil?
 
-    value * (stage.win_probability / 100.0)
-  end
 
   def webhook_data
     {
       id: id,
       title: title,
-      value: value.to_f,
-      currency: currency,
       status: status,
       stage_id: stage_id,
       pipeline_id: pipeline_id,
@@ -142,7 +151,6 @@ class Deal < ApplicationRecord
     {
       id: id,
       title: title,
-      value: value,
       status: status,
       stage_id: stage_id,
       contact_id: contact_id,
@@ -160,10 +168,31 @@ class Deal < ApplicationRecord
   end
 
   def set_pipeline_from_stage
-    return if pipeline_id.present?
     return unless stage.present?
 
     self.pipeline_id = stage.pipeline_id
+  end
+
+  def sync_status_with_stage_type
+    return unless stage.present?
+
+    case stage.stage_type
+    when 'done'
+      self.status = 'won'
+      self.won_at ||= Time.current
+      self.lost_at = nil
+      self.lost_reason = nil
+    when 'closed'
+      self.status = 'lost'
+      self.lost_at ||= Time.current
+      self.won_at = nil
+      self.lost_reason = 'Movido para a etapa Perdido' if lost_reason.blank?
+    when 'not_started', 'active'
+      self.status = 'open'
+      self.won_at = nil
+      self.lost_at = nil
+      self.lost_reason = nil
+    end
   end
 
   def set_won_or_lost_timestamp
@@ -208,7 +237,7 @@ class Deal < ApplicationRecord
   def dispatch_won_event
     Rails.configuration.dispatcher.dispatch(
       DEAL_WON, Time.zone.now,
-      deal: self, value: value, won_at: won_at
+      deal: self, won_at: won_at
     )
   end
 

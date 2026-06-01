@@ -506,11 +506,15 @@
       "TABS": {
         "ATTRIBUTES": "Atributos",
         "HISTORY": "Histórico",
+        "DEALS": "Negócios",
         "NOTES": "Notas",
         "MERGE": "Mesclar"
       },
       "HISTORY": {
         "EMPTY_STATE": "Não há conversas anteriores associadas a este contato"
+      },
+      "DEALS": {
+        "EMPTY_STATE": "Não há negócios associados a este contato"
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "Pesquisar atributos",

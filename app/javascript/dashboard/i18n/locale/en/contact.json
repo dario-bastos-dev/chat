@@ -508,11 +508,15 @@
       "TABS": {
         "ATTRIBUTES": "Attributes",
         "HISTORY": "History",
+        "DEALS": "Deals",
         "NOTES": "Notes",
         "MERGE": "Merge"
       },
       "HISTORY": {
         "EMPTY_STATE": "There are no previous conversations associated to this contact"
+      },
+      "DEALS": {
+        "EMPTY_STATE": "There are no deals associated to this contact"
       },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "Search for attributes",

@@ -29,7 +29,6 @@ if conversation.respond_to?(:deals) && conversation.deals.any?
     json.array! conversation.deals do |deal|
       json.id deal.id
       json.title deal.title
-      json.value deal.value.to_f
       json.status deal.status
     end
   end

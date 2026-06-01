@@ -27,8 +27,8 @@ class Deals::Updater
 
   def deal_params
     @params.slice(
-      :title, :value, :currency, :stage_id,
-      :assignee_id, :expected_close_date, :position, :custom_attributes
+      :title, :stage_id,
+      :assignee_id, :position, :custom_attributes
     )
   end
 end

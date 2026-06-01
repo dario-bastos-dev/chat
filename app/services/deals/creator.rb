@@ -35,8 +35,8 @@ class Deals::Creator
 
   def deal_params
     @params.slice(
-      :title, :value, :currency, :stage_id, :pipeline_id,
-      :contact_id, :inbox_id, :assignee_id, :expected_close_date,
+      :title, :stage_id, :pipeline_id,
+      :contact_id, :inbox_id, :assignee_id,
       :position, :custom_attributes
     )
   end

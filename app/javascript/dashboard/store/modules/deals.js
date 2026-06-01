@@ -129,8 +129,21 @@ export const actions = {
     }
   },
 
-  move: async function moveDeal({ commit }, { id, stageId, position }) {
+  move: async function moveDeal({ commit, getters }, { id, stageId, position }) {
     commit(types.SET_DEALS_UI_FLAG, { isMoving: true });
+    
+    // Optimistic Update: atualiza localmente no Vuex para evitar o efeito "ioiô" no Kanban
+    const deal = getters.getDealById(id);
+    if (deal) {
+      const optimisticDeal = {
+        ...deal,
+        stage_id: stageId,
+        stage: { ...deal.stage, id: stageId },
+        position: position
+      };
+      commit(types.EDIT_DEAL, optimisticDeal);
+    }
+
     try {
       const response = await DealsAPI.move(id, stageId, position);
       commit(types.EDIT_DEAL, response.data);

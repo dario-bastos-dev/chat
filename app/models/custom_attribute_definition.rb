@@ -26,7 +26,7 @@ class CustomAttributeDefinition < ApplicationRecord
     :conversation => %w[status priority assignee_id inbox_id team_id display_id campaign_id labels browser_language country_code referer created_at
                         last_activity_at],
     :contact => %w[name email phone_number identifier country_code city created_at last_activity_at referer blocked],
-    :deal => %w[title value status stage_id pipeline_id assignee_id contact_id currency expected_close_date]
+    :deal => %w[title status stage_id pipeline_id assignee_id contact_id]
   }.freeze
 
   scope :with_attribute_model, ->(attribute_model) { attribute_model.presence && where(attribute_model: attribute_model) }

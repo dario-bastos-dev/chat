@@ -1,5 +1,11 @@
 {
   "CRM": {
+    "STAGE_GROUPS": {
+      "NOT_STARTED": "Entrada",
+      "ACTIVE": "Ativas",
+      "DONE": "Concluído",
+      "CLOSED": "Perdido"
+    },
     "TITLE": "CRM",
     "LOADING": "Carregando...",
     "CANCEL": "Cancelar",
@@ -15,7 +21,14 @@
       "SUBTITLE": "Gerencie seus pipelines e negócios",
       "CREATE": "Novo Pipeline",
       "CREATE_DESCRIPTION": "Crie um novo pipeline para organizar seus negócios",
+      "CREATE_SUCCESS": "Pipeline criado com sucesso",
+      "UPDATE_SUCCESS": "Pipeline atualizado com sucesso",
       "CREATE_ERROR": "Erro ao criar pipeline",
+      "UPDATE_ERROR": "Erro ao atualizar pipeline",
+      "DELETE_CONFIRM_TITLE": "Excluir Pipeline",
+      "DELETE_CONFIRM_MESSAGE": "Tem certeza de que deseja excluir este pipeline? Todos os negócios dentro dele serão permanentemente excluídos.",
+      "DELETE_SUCCESS": "Pipeline excluído com sucesso",
+      "DELETE_ERROR": "Erro ao excluir pipeline",
       "DEFAULT": "Padrão",
       "YOUR_PIPELINES": "Seus Pipelines",
       "PIPELINE_COUNT": "pipeline(s)",
@@ -82,6 +95,9 @@
       "LOST_REASON_TITLE": "Por que este negócio foi perdido?",
       "LOST_REASON_PLACEHOLDER": "Descreva o motivo pelo qual este negócio foi perdido...",
       "LOST_REASON_REQUIRED": "O motivo da perda é obrigatório",
+      "REOPEN": "Reabrir Negócio",
+      "REOPEN_SUCCESS": "Negócio reaberto com sucesso!",
+      "REOPEN_ERROR": "Erro ao reabrir negócio",
       "CONVERSATIONS": "Conversas Vinculadas",
       "LINK_CONVERSATION": "Vincular Conversa",
       "NO_CONVERSATIONS": "Nenhuma conversa vinculada a este negócio",
@@ -90,6 +106,7 @@
       "LINK": "Vincular",
       "LINK_SUCCESS": "Conversa vinculada com sucesso!",
       "LINK_ERROR": "Erro ao vincular conversa",
+      "NO_CUSTOM_ATTRIBUTES": "Nenhum atributo personalizado configurado para negócios.",
       "FORM": {
         "TITLE": "Título",
         "TITLE_PLACEHOLDER": "Ex: Venda de produto X",

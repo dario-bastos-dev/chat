@@ -97,7 +97,7 @@ const getTranslatedAttributes = (type, event) => {
   return getAttributes(type, event).map(attribute => {
     const skipTranslation =
       attribute.customAttributeType ||
-      ['contact_custom_attribute', 'conversation_custom_attribute'].includes(
+      ['contact_custom_attribute', 'conversation_custom_attribute', 'deal_custom_attribute'].includes(
         attribute.key
       );
     return {
@@ -115,7 +115,21 @@ const filterTypes = computed(() => {
   const event = eventName.value;
   if (!event || !props.automationTypes[event]) return [];
 
-  const attributes = getTranslatedAttributes(props.automationTypes, event);
+  let attributes = getTranslatedAttributes(props.automationTypes, event);
+
+  if (!isCloudFeatureEnabled('crm')) {
+    const CRM_CONDITIONS = new Set([
+      'has_active_deal',
+      'deal_stage_id',
+      'deal_labels',
+    ]);
+    attributes = attributes.filter(attr => {
+      if (CRM_CONDITIONS.has(attr.key) || attr.customAttributeType === 'deal_attribute') {
+        return false;
+      }
+      return true;
+    });
+  }
 
   return attributes.map(attr => {
     if (attr.disabled) {
@@ -151,12 +165,19 @@ const filterTypes = computed(() => {
   });
 });
 
-const automationRuleEvents = computed(() =>
-  AUTOMATION_RULE_EVENTS.map(event => ({
+const automationRuleEvents = computed(() => {
+  const isCrmEnabled = isCloudFeatureEnabled('crm');
+  const filteredEvents = AUTOMATION_RULE_EVENTS.filter(event => {
+    if (event.key.startsWith('deal_')) {
+      return isCrmEnabled;
+    }
+    return true;
+  });
+  return filteredEvents.map(event => ({
     ...event,
     value: t(`AUTOMATION.EVENTS.${event.value}`),
-  }))
-);
+  }));
+});
 
 const hasAutomationMutated = computed(() => {
   return Boolean(
@@ -165,10 +186,24 @@ const hasAutomationMutated = computed(() => {
   );
 });
 
+const CRM_ACTIONS = new Set([
+  'create_deal',
+  'move_deal_stage',
+  'update_deal_info',
+  'sync_deal_assignee',
+  'change_deal_status',
+  'add_deal_label',
+  'remove_deal_label',
+]);
+
 const automationActionTypes = computed(() => {
-  const actionTypes = isCloudFeatureEnabled('sla')
+  let actionTypes = isCloudFeatureEnabled('sla')
     ? AUTOMATION_ACTION_TYPES
     : AUTOMATION_ACTION_TYPES.filter(({ key }) => key !== 'add_sla');
+
+  if (!isCloudFeatureEnabled('crm')) {
+    actionTypes = actionTypes.filter(({ key }) => !CRM_ACTIONS.has(key));
+  }
 
   return actionTypes.map(action => ({
     ...action,

@@ -4,7 +4,6 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
   before_action :fetch_pipeline, only: [:show, :update, :destroy]
 
   def index
-    ::Pipelines::CreateDefaultService.new(Current.account).perform if Current.account.pipelines.count.zero?
     @pipelines = Current.account.pipelines.includes(:stages)
   end
 
@@ -24,11 +23,10 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
   def destroy
     authorize @pipeline
     
-    if @pipeline.deals.exists?
-      render_could_not_create_error('Pipeline has deals associated and cannot be deleted')
-    else
-      @pipeline.destroy!
+    if @pipeline.destroy
       head :ok
+    else
+      render_could_not_create_error(@pipeline.errors.full_messages.join(', '))
     end
   end
 
@@ -39,6 +37,13 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
   end
 
   def pipeline_params
-    params.require(:pipeline).permit(:name, :is_default, :visibility, lost_reasons: [], allowed_team_ids: [])
+    params.require(:pipeline).permit(
+      :name,
+      :is_default,
+      :visibility,
+      lost_reasons: [],
+      allowed_team_ids: [],
+      stages_attributes: [:id, :name, :position, :win_probability, :rotting_days, :color, :stage_type, :_destroy]
+    )
   end
 end

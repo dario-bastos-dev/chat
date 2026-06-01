@@ -328,7 +328,7 @@ onMounted(() => {
               <ContactNotes :contact-id="contactId" />
             </AccordionItem>
           </div>
-          <div v-else-if="element.name === 'contact_deals'">
+          <div v-else-if="element.name === 'contact_deals' && isCloudFeatureEnabled('crm')">
             <AccordionItem
               v-if="contactId"
               :title="$t('CONVERSATION_SIDEBAR.ACCORDION.CONTACT_DEALS')"

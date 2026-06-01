@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useRoute, useRouter } from 'vue-router';
+import { useAccount } from 'dashboard/composables/useAccount';
 
 import ContactsDetailsLayout from 'dashboard/components-next/Contacts/ContactsDetailsLayout.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
@@ -13,6 +14,7 @@ import ContactNotes from 'dashboard/components-next/Contacts/ContactsSidebar/Con
 import ContactHistory from 'dashboard/components-next/Contacts/ContactsSidebar/ContactHistory.vue';
 import ContactMerge from 'dashboard/components-next/Contacts/ContactsSidebar/ContactMerge.vue';
 import ContactCustomAttributes from 'dashboard/components-next/Contacts/ContactsSidebar/ContactCustomAttributes.vue';
+import ContactDealsSection from 'dashboard/components-next/Contacts/ContactDealsSection.vue';
 
 const store = useStore();
 const route = useRoute();
@@ -35,23 +37,42 @@ const showSpinner = computed(
 );
 
 const { t } = useI18n();
+const { currentAccount, isCloudFeatureEnabled } = useAccount();
+
+const isCRMEnabled = computed(() => {
+  if (!currentAccount.value?.id) return false;
+  return isCloudFeatureEnabled('crm');
+});
 
 const CONTACT_TABS_OPTIONS = [
   { key: 'ATTRIBUTES', value: 'attributes' },
   { key: 'HISTORY', value: 'history' },
+  { key: 'DEALS', value: 'deals' },
   { key: 'NOTES', value: 'notes' },
   { key: 'MERGE', value: 'merge' },
 ];
 
 const tabs = computed(() => {
-  return CONTACT_TABS_OPTIONS.map(tab => ({
+  const options = CONTACT_TABS_OPTIONS.filter(tab => {
+    if (tab.value === 'deals') {
+      return isCRMEnabled.value;
+    }
+    return true;
+  });
+  return options.map(tab => ({
     label: t(`CONTACTS_LAYOUT.SIDEBAR.TABS.${tab.key}`),
     value: tab.value,
   }));
 });
 
 const activeTabIndex = computed(() => {
-  return CONTACT_TABS_OPTIONS.findIndex(v => v.value === activeTab.value);
+  const options = CONTACT_TABS_OPTIONS.filter(tab => {
+    if (tab.value === 'deals') {
+      return isCRMEnabled.value;
+    }
+    return true;
+  });
+  return options.findIndex(v => v.value === activeTab.value);
 });
 
 const goToContactsList = () => {
@@ -171,6 +192,10 @@ onMounted(() => {
           />
           <ContactNotes v-if="activeTab === 'notes'" />
           <ContactHistory v-if="activeTab === 'history'" />
+          <ContactDealsSection
+            v-if="activeTab === 'deals' && selectedContact?.id && isCRMEnabled"
+            :contact-id="selectedContact.id"
+          />
           <ContactMerge
             v-if="activeTab === 'merge'"
             ref="contactMergeRef"

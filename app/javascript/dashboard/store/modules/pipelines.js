@@ -66,7 +66,7 @@ export const actions = {
       commit(types.ADD_PIPELINE, response.data);
       return response.data;
     } catch (error) {
-      const errorMessage = error?.response?.data?.message;
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error?.message || error;
       throw new Error(errorMessage);
     } finally {
       commit(types.SET_PIPELINES_UI_FLAG, { isCreating: false });
@@ -80,7 +80,8 @@ export const actions = {
       commit(types.EDIT_PIPELINE, response.data);
       return response.data;
     } catch (error) {
-      throw new Error(error);
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error?.message || error;
+      throw new Error(errorMessage);
     } finally {
       commit(types.SET_PIPELINES_UI_FLAG, { isUpdating: false });
     }
@@ -92,7 +93,8 @@ export const actions = {
       await PipelinesAPI.delete(id);
       commit(types.DELETE_PIPELINE, id);
     } catch (error) {
-      throw new Error(error);
+      const errorMessage = error?.response?.data?.message || error?.response?.data?.error || error;
+      throw new Error(errorMessage);
     } finally {
       commit(types.SET_PIPELINES_UI_FLAG, { isDeleting: false });
     }
@@ -176,8 +178,26 @@ export const mutations = {
   },
 
   [types.SET_PIPELINES]: MutationHelpers.set,
-  [types.ADD_PIPELINE]: MutationHelpers.create,
-  [types.EDIT_PIPELINE]: MutationHelpers.update,
+  [types.ADD_PIPELINE](_state, pipeline) {
+    MutationHelpers.create(_state, pipeline);
+    if (pipeline.is_default) {
+      _state.records.forEach(record => {
+        if (record.id !== pipeline.id) {
+          record.is_default = false;
+        }
+      });
+    }
+  },
+  [types.EDIT_PIPELINE](_state, pipeline) {
+    MutationHelpers.update(_state, pipeline);
+    if (pipeline.is_default) {
+      _state.records.forEach(record => {
+        if (record.id !== pipeline.id) {
+          record.is_default = false;
+        }
+      });
+    }
+  },
   [types.DELETE_PIPELINE]: MutationHelpers.destroy,
 
   [types.SET_CURRENT_PIPELINE](_state, pipeline) {

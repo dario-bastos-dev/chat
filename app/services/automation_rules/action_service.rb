@@ -87,15 +87,160 @@ class AutomationRules::ActionService < ActionService
     contact = @conversation.contact
     return unless contact
 
-    Deals::Creator.new(
-      account: @account,
-      params: {
-        title: "#{contact.name} - #{@conversation.display_id}",
-        pipeline_id: pipeline.id,
-        stage_id: stage.id,
-        contact_id: contact.id,
-        conversation_id: @conversation.id
-      }
-    ).perform
+    existing_deal = @account.deals.find_by(
+      contact_id: contact.id,
+      pipeline_id: pipeline.id,
+      status: 'open'
+    )
+
+    if existing_deal
+      conversation_deal = ConversationDeal.find_or_initialize_by(
+        conversation_id: @conversation.id,
+        deal_id: existing_deal.id
+      )
+      conversation_deal.is_primary = true
+      conversation_deal.save!
+    else
+      Deals::Creator.new(
+        account: @account,
+        params: {
+          title: contact.name,
+          pipeline_id: pipeline.id,
+          stage_id: stage.id,
+          contact_id: contact.id,
+          conversation_id: @conversation.id
+        }
+      ).perform
+    end
+  end
+
+  def update_deal_info(params)
+    action_param = params[0]&.with_indifferent_access
+    return unless action_param
+
+    deal = @conversation.deals.where(status: 'open').first
+    deal ||= @account.deals.where(contact_id: @conversation.contact_id, status: 'open').first
+    return unless deal
+
+    params_to_update = {}
+    if action_param[:title].present?
+      params_to_update[:title] = render_liquid_variables(action_param[:title])
+    end
+
+    if action_param[:custom_attributes].present? && action_param[:custom_attributes].is_a?(Hash)
+      processed_custom_attrs = {}
+      action_param[:custom_attributes].each do |key, value|
+        processed_custom_attrs[key] = render_liquid_variables(value.to_s)
+      end
+      params_to_update[:custom_attributes] = (deal.custom_attributes || {}).merge(processed_custom_attrs)
+    end
+
+    if params_to_update.present?
+      Deals::Updater.new(deal: deal, params: params_to_update).perform
+    end
+  end
+
+  def move_deal_stage(params)
+    action_param = params[0]
+    return unless action_param.present?
+
+    if action_param.to_s.include?(':')
+      pipeline_id, stage_id = action_param.split(':')
+    else
+      pipeline_id = action_param
+      stage_id = nil
+    end
+
+    deal = @conversation.deals.where(status: 'open').first
+    deal ||= @account.deals.where(contact_id: @conversation.contact_id, status: 'open').first
+    return unless deal
+
+    pipeline = @account.pipelines.find_by(id: pipeline_id)
+    return unless pipeline
+
+    stage = if stage_id
+              pipeline.stages.find_by(id: stage_id)
+            else
+              pipeline.stages.order(position: :asc).first
+            end
+    return unless stage
+
+    Deals::Updater.new(deal: deal, params: { stage_id: stage.id }).perform
+  end
+
+  def sync_deal_assignee(params)
+    direction = params[0]
+    return unless direction.present?
+
+    deal = @conversation.deals.where(status: 'open').first
+    deal ||= @account.deals.where(contact_id: @conversation.contact_id, status: 'open').first
+    return unless deal
+
+    if direction == 'conversation_to_deal'
+      if @conversation.assignee_id != deal.assignee_id
+        Deals::Updater.new(deal: deal, params: { assignee_id: @conversation.assignee_id }).perform
+      end
+    elsif direction == 'deal_to_conversation'
+      if deal.assignee_id.present? && @conversation.assignee_id != deal.assignee_id
+        @conversation.update!(assignee_id: deal.assignee_id)
+      end
+    end
+  end
+
+  def change_deal_status(params)
+    status_val = params[0]
+    return unless %w[won lost].include?(status_val)
+
+    deal = @conversation.deals.where(status: 'open').first
+    deal ||= @account.deals.where(contact_id: @conversation.contact_id, status: 'open').first
+    return unless deal
+
+    if status_val == 'won'
+      deal.mark_as_won!
+    elsif status_val == 'lost'
+      deal.mark_as_lost!
+    end
+  end
+
+  def add_deal_label(params)
+    labels = params
+    return unless labels.present?
+
+    deal = @conversation.deals.where(status: 'open').first
+    deal ||= @account.deals.where(contact_id: @conversation.contact_id, status: 'open').first
+    return unless deal
+
+    deal.add_labels(labels)
+  end
+
+  def remove_deal_label(params)
+    labels_to_remove = params
+    return unless labels_to_remove.present?
+
+    deal = @conversation.deals.where(status: 'open').first
+    deal ||= @account.deals.where(contact_id: @conversation.contact_id, status: 'open').first
+    return unless deal
+
+    remaining_labels = deal.label_list - labels_to_remove
+    deal.update_labels(remaining_labels)
+  end
+
+  private
+
+  def render_liquid_variables(string)
+    return string if string.blank?
+
+    drops = {
+      'contact' => ContactDrop.new(@conversation.contact),
+      'agent' => UserDrop.new(@conversation.assignee),
+      'conversation' => ConversationDrop.new(@conversation),
+      'inbox' => InboxDrop.new(@conversation.inbox),
+      'account' => AccountDrop.new(@account)
+    }
+
+    template = Liquid::Template.parse(string)
+    template.render(drops)
+  rescue Liquid::Error
+    string
   end
 end
