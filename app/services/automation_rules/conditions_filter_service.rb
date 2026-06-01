@@ -64,8 +64,17 @@ class AutomationRules::ConditionsFilterService < FilterService
     conversation_filter = @conversation_filters[query_hash['attribute_key']]
     contact_filter = @contact_filters[query_hash['attribute_key']]
     message_filter = @message_filters[query_hash['attribute_key']]
+    definition = custom_attr_definition(query_hash['attribute_key'])
 
-    if conversation_filter
+    if %w[has_active_deal deal_stage_id deal_labels].include?(query_hash['attribute_key'])
+      result = evaluate_crm_condition(query_hash)
+      query_operator = query_hash['query_operator'] || 'AND'
+      @query_string += " #{result ? '1=1' : '1=0'} #{query_operator} "
+    elsif definition&.attribute_model == 'deal_attribute'
+      result = evaluate_deal_custom_attribute(query_hash, definition)
+      query_operator = query_hash['query_operator'] || 'AND'
+      @query_string += " #{result ? '1=1' : '1=0'} #{query_operator} "
+    elsif conversation_filter
       @query_string += conversation_query_string('conversations', conversation_filter, query_hash.with_indifferent_access, current_index)
     elsif contact_filter
       @query_string += contact_query_string(contact_filter, query_hash.with_indifferent_access, current_index)
@@ -206,5 +215,96 @@ class AutomationRules::ConditionsFilterService < FilterService
 
   def label_conditions?
     @rule.conditions.any? { |condition| condition['attribute_key'] == 'labels' }
+  end
+
+  def custom_attr_definition(key)
+    @account.custom_attribute_definitions.find_by(attribute_key: key)
+  end
+
+  def active_deal
+    @active_deal ||= @options[:deal] || @conversation.deals.where(status: 'open').first
+    @active_deal ||= @account.deals.where(contact_id: @conversation.contact_id, status: 'open').first
+    @active_deal
+  end
+
+  def evaluate_crm_condition(query_hash)
+    attr_key = query_hash['attribute_key']
+    filter_operator = query_hash['filter_operator']
+    values = query_hash['values'] || []
+
+    case attr_key
+    when 'has_active_deal'
+      has_deal = active_deal.present?
+      val = values.first.to_s
+      if filter_operator == 'equal_to'
+        val == 'true' ? has_deal : !has_deal
+      elsif filter_operator == 'is_present'
+        has_deal
+      elsif filter_operator == 'is_not_present'
+        !has_deal
+      else
+        has_deal
+      end
+    when 'deal_stage_id'
+      return false if active_deal.blank?
+      stage_id = active_deal.stage_id.to_s
+      case filter_operator
+      when 'equal_to'
+        values.map(&:to_s).include?(stage_id)
+      when 'not_equal_to'
+        !values.map(&:to_s).include?(stage_id)
+      when 'is_present'
+        active_deal.stage_id.present?
+      when 'is_not_present'
+        active_deal.stage_id.blank?
+      else
+        false
+      end
+    when 'deal_labels'
+      return false if active_deal.blank?
+      deal_tags = active_deal.label_list || []
+      case filter_operator
+      when 'equal_to'
+        (deal_tags & values).any?
+      when 'not_equal_to'
+        (deal_tags & values).empty?
+      when 'is_present'
+        deal_tags.any?
+      when 'is_not_present'
+        deal_tags.empty?
+      else
+        false
+      end
+    else
+      false
+    end
+  end
+
+  def evaluate_deal_custom_attribute(query_hash, definition)
+    return false if active_deal.blank?
+
+    attr_key = query_hash['attribute_key']
+    val = active_deal.custom_attributes[attr_key]
+    filter_operator = query_hash['filter_operator']
+    values = query_hash['values'] || []
+
+    case filter_operator
+    when 'equal_to'
+      values.map(&:to_s).include?(val.to_s)
+    when 'not_equal_to'
+      !values.map(&:to_s).include?(val.to_s)
+    when 'is_present'
+      val.present?
+    when 'is_not_present'
+      val.blank?
+    when 'starts_with'
+      val.to_s.downcase.start_with?(values.first.to_s.downcase)
+    when 'contains'
+      val.to_s.downcase.include?(values.first.to_s.downcase)
+    when 'does_not_contain'
+      !val.to_s.downcase.include?(values.first.to_s.downcase)
+    else
+      false
+    end
   end
 end

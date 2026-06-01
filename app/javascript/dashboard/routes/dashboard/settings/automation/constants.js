@@ -5,6 +5,50 @@ import {
   OPERATOR_TYPES_6,
 } from './operators';
 
+const CRM_CONDITIONS = [
+  {
+    key: 'has_active_deal',
+    name: 'HAS_ACTIVE_DEAL',
+    inputType: 'boolean_select',
+    filterOperators: OPERATOR_TYPES_1,
+  },
+  {
+    key: 'deal_stage_id',
+    name: 'DEAL_STAGE_ID',
+    inputType: 'search_select',
+    filterOperators: OPERATOR_TYPES_1,
+  },
+  {
+    key: 'deal_labels',
+    name: 'DEAL_LABELS',
+    inputType: 'multi_select',
+    filterOperators: OPERATOR_TYPES_3,
+  },
+];
+
+const CRM_ACTIONS = [
+  {
+    key: 'move_deal_stage',
+    name: 'MOVE_DEAL_STAGE',
+  },
+  {
+    key: 'sync_deal_assignee',
+    name: 'SYNC_DEAL_ASSIGNEE',
+  },
+  {
+    key: 'change_deal_status',
+    name: 'CHANGE_DEAL_STATUS',
+  },
+  {
+    key: 'add_deal_label',
+    name: 'ADD_DEAL_LABEL',
+  },
+  {
+    key: 'remove_deal_label',
+    name: 'REMOVE_DEAL_LABEL',
+  },
+];
+
 export const AUTOMATIONS = {
   message_created: {
     conditions: [
@@ -136,6 +180,10 @@ export const AUTOMATIONS = {
         key: 'create_deal',
         name: 'CREATE_DEAL',
       },
+      {
+        key: 'update_deal_info',
+        name: 'UPDATE_DEAL_INFO',
+      },
     ],
   },
   conversation_created: {
@@ -255,6 +303,10 @@ export const AUTOMATIONS = {
       {
         key: 'create_deal',
         name: 'CREATE_DEAL',
+      },
+      {
+        key: 'update_deal_info',
+        name: 'UPDATE_DEAL_INFO',
       },
     ],
   },
@@ -392,6 +444,10 @@ export const AUTOMATIONS = {
         key: 'create_deal',
         name: 'CREATE_DEAL',
       },
+      {
+        key: 'update_deal_info',
+        name: 'UPDATE_DEAL_INFO',
+      },
     ],
   },
   conversation_opened: {
@@ -518,6 +574,10 @@ export const AUTOMATIONS = {
         key: 'create_deal',
         name: 'CREATE_DEAL',
       },
+      {
+        key: 'update_deal_info',
+        name: 'UPDATE_DEAL_INFO',
+      },
     ],
   },
   conversation_resolved: {
@@ -622,9 +682,126 @@ export const AUTOMATIONS = {
         key: 'create_deal',
         name: 'CREATE_DEAL',
       },
+      {
+        key: 'update_deal_info',
+        name: 'UPDATE_DEAL_INFO',
+      },
+    ],
+  },
+  deal_created: {
+    conditions: [
+      {
+        key: 'status',
+        name: 'STATUS',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'browser_language',
+        name: 'BROWSER_LANGUAGE',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'inbox_id',
+        name: 'INBOX',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'assignee_id',
+        name: 'ASSIGNEE_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'team_id',
+        name: 'TEAM_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'priority',
+        name: 'PRIORITY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'conversation_language',
+        name: 'CONVERSATION_LANGUAGE',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'phone_number',
+        name: 'PHONE_NUMBER',
+        inputType: 'plain_text',
+        filterOperators: OPERATOR_TYPES_6,
+      },
+      {
+        key: 'labels',
+        name: 'LABELS',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+    ],
+    actions: [
+      {
+        key: 'assign_agent',
+        name: 'ASSIGN_AGENT',
+      },
+      {
+        key: 'assign_team',
+        name: 'ASSIGN_TEAM',
+      },
+      {
+        key: 'add_label',
+        name: 'ADD_LABEL',
+      },
+      {
+        key: 'remove_label',
+        name: 'REMOVE_LABEL',
+      },
+      {
+        key: 'send_email_to_team',
+        name: 'SEND_EMAIL_TO_TEAM',
+      },
+      {
+        key: 'send_message',
+        name: 'SEND_MESSAGE',
+      },
+      {
+        key: 'send_email_transcript',
+        name: 'SEND_EMAIL_TRANSCRIPT',
+      },
+      {
+        key: 'send_webhook_event',
+        name: 'SEND_WEBHOOK_EVENT',
+      },
+      {
+        key: 'send_attachment',
+        name: 'SEND_ATTACHMENT',
+      },
+      {
+        key: 'create_deal',
+        name: 'CREATE_DEAL',
+      },
+      {
+        key: 'update_deal_info',
+        name: 'UPDATE_DEAL_INFO',
+      },
     ],
   },
 };
+
+AUTOMATIONS.deal_stage_changed = AUTOMATIONS.deal_created;
+AUTOMATIONS.deal_won = AUTOMATIONS.deal_created;
+AUTOMATIONS.deal_lost = AUTOMATIONS.deal_created;
+
+Object.keys(AUTOMATIONS).forEach(eventKey => {
+  AUTOMATIONS[eventKey].conditions.push(...CRM_CONDITIONS);
+  AUTOMATIONS[eventKey].actions.push(...CRM_ACTIONS);
+});
 
 export const AUTOMATION_RULE_EVENTS = [
   {
@@ -646,6 +823,22 @@ export const AUTOMATION_RULE_EVENTS = [
   {
     key: 'conversation_opened',
     value: 'CONVERSATION_OPENED',
+  },
+  {
+    key: 'deal_created',
+    value: 'DEAL_CREATED',
+  },
+  {
+    key: 'deal_stage_changed',
+    value: 'DEAL_STAGE_CHANGED',
+  },
+  {
+    key: 'deal_won',
+    value: 'DEAL_WON',
+  },
+  {
+    key: 'deal_lost',
+    value: 'DEAL_LOST',
   },
 ];
 
@@ -739,5 +932,35 @@ export const AUTOMATION_ACTION_TYPES = [
     key: 'create_deal',
     label: 'CREATE_DEAL',
     inputType: 'search_select',
+  },
+  {
+    key: 'update_deal_info',
+    label: 'UPDATE_DEAL_INFO',
+    inputType: 'deal_update',
+  },
+  {
+    key: 'move_deal_stage',
+    label: 'MOVE_DEAL_STAGE',
+    inputType: 'deal_stage_move',
+  },
+  {
+    key: 'sync_deal_assignee',
+    label: 'SYNC_DEAL_ASSIGNEE',
+    inputType: 'deal_assignee_sync',
+  },
+  {
+    key: 'change_deal_status',
+    label: 'CHANGE_DEAL_STATUS',
+    inputType: 'deal_status_change',
+  },
+  {
+    key: 'add_deal_label',
+    label: 'ADD_DEAL_LABEL',
+    inputType: 'deal_labels_change',
+  },
+  {
+    key: 'remove_deal_label',
+    label: 'REMOVE_DEAL_LABEL',
+    inputType: 'deal_labels_change',
   },
 ];

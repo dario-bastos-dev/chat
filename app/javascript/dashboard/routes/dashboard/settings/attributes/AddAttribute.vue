@@ -6,6 +6,7 @@ import { useAlert } from 'dashboard/composables';
 import { convertToAttributeSlug } from 'dashboard/helper/commons.js';
 import { normalizeRegexPattern } from 'shared/helpers/Validators';
 import { ATTRIBUTE_MODELS, ATTRIBUTE_TYPES } from './constants';
+import { useAccount } from 'dashboard/composables/useAccount';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import TagInput from 'dashboard/components-next/taginput/TagInput.vue';
@@ -28,7 +29,8 @@ export default {
     },
   },
   setup() {
-    return { v$: useVuelidate() };
+    const { isCloudFeatureEnabled } = useAccount();
+    return { v$: useVuelidate(), isCloudFeatureEnabled };
   },
   data() {
     return {
@@ -54,7 +56,13 @@ export default {
       uiFlags: 'getUIFlags',
     }),
     models() {
-      return ATTRIBUTE_MODELS.map(item => ({
+      const filteredModels = ATTRIBUTE_MODELS.filter(item => {
+        if (item.id === 2) {
+          return this.isCloudFeatureEnabled('crm');
+        }
+        return true;
+      });
+      return filteredModels.map(item => ({
         ...item,
         option: this.$t(`ATTRIBUTES_MGMT.ATTRIBUTE_MODELS.${item.key}`),
       }));

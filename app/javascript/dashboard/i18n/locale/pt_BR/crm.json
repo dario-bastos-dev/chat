@@ -95,6 +95,9 @@
       "LOST_REASON_TITLE": "Por que este negócio foi perdido?",
       "LOST_REASON_PLACEHOLDER": "Descreva o motivo pelo qual este negócio foi perdido...",
       "LOST_REASON_REQUIRED": "O motivo da perda é obrigatório",
+      "REOPEN": "Reabrir Negócio",
+      "REOPEN_SUCCESS": "Negócio reaberto com sucesso!",
+      "REOPEN_ERROR": "Erro ao reabrir negócio",
       "CONVERSATIONS": "Conversas Vinculadas",
       "LINK_CONVERSATION": "Vincular Conversa",
       "NO_CONVERSATIONS": "Nenhuma conversa vinculada a este negócio",
@@ -103,6 +106,7 @@
       "LINK": "Vincular",
       "LINK_SUCCESS": "Conversa vinculada com sucesso!",
       "LINK_ERROR": "Erro ao vincular conversa",
+      "NO_CUSTOM_ATTRIBUTES": "Nenhum atributo personalizado configurado para negócios.",
       "FORM": {
         "TITLE": "Título",
         "TITLE_PLACEHOLDER": "Ex: Venda de produto X",

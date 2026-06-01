@@ -89,14 +89,22 @@
     "CONDITION": {
       "DELETE_MESSAGE": "Você precisa ter pelo menos uma condição para salvar",
       "CONTACT_CUSTOM_ATTR_LABEL": "Atributos personalizados do contato",
-      "CONVERSATION_CUSTOM_ATTR_LABEL": "Atributos personalizados da conversa"
+      "CONVERSATION_CUSTOM_ATTR_LABEL": "Atributos personalizados da conversa",
+      "DEAL_CUSTOM_ATTR_LABEL": "Atributos personalizados do negócio"
     },
     "ACTION": {
       "DELETE_MESSAGE": "Você precisa ter pelo menos uma ação para salvar",
       "TEAM_MESSAGE_INPUT_PLACEHOLDER": "Escreva sua mensagem aqui",
       "TEAM_DROPDOWN_PLACEHOLDER": "Selecione times",
       "EMAIL_INPUT_PLACEHOLDER": "Insira o e-mail",
-      "URL_INPUT_PLACEHOLDER": "Insira a URL"
+      "URL_INPUT_PLACEHOLDER": "Insira a URL",
+      "DEAL_TITLE_LABEL": "Nome do Negócio",
+      "DEAL_CUSTOM_ATTRIBUTES_LABEL": "Atributos Personalizados do Negócio",
+      "ADD_DEAL_ATTRIBUTE_BTN": "Adicionar Atributo",
+      "SYNC_ASSIGNEE_CONV_TO_DEAL": "Sincronizar responsável da conversa para o negócio",
+      "SYNC_ASSIGNEE_DEAL_TO_CONV": "Sincronizar responsável do negócio para a conversa",
+      "STATUS_WON": "Ganho",
+      "STATUS_LOST": "Perdido"
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Ativar regra de automação",
@@ -132,7 +140,11 @@
       "CONVERSATION_UPDATED": "Conversa Atualizada",
       "MESSAGE_CREATED": "Mensagem Criada",
       "CONVERSATION_RESOLVED": "Conversa Resolvida",
-      "CONVERSATION_OPENED": "Conversa Aberta"
+      "CONVERSATION_OPENED": "Conversa Aberta",
+      "DEAL_CREATED": "Negócio Criado",
+      "DEAL_STAGE_CHANGED": "Estágio do Negócio Alterado",
+      "DEAL_WON": "Negócio Ganho",
+      "DEAL_LOST": "Negócio Perdido"
     },
     "ACTIONS": {
       "ASSIGN_AGENT": "Atribuir ao Agente",
@@ -151,7 +163,13 @@
       "CHANGE_PRIORITY": "Alterar Prioridade",
       "ADD_SLA": "Adicionar SLA",
       "OPEN_CONVERSATION": "Abrir conversa",
-      "CREATE_DEAL": "Criar Negócio"
+      "CREATE_DEAL": "Criar Negócio",
+      "UPDATE_DEAL_INFO": "Atualizar Informações do Negócio",
+      "MOVE_DEAL_STAGE": "Mover Negócio de Etapa",
+      "SYNC_DEAL_ASSIGNEE": "Sincronizar Responsável",
+      "CHANGE_DEAL_STATUS": "Marcar como Ganho/Perdido",
+      "ADD_DEAL_LABEL": "Adicionar Etiqueta do Negócio",
+      "REMOVE_DEAL_LABEL": "Remover Etiqueta do Negócio"
     },
     "MESSAGE_TYPES": {
       "INCOMING": "Mensagem Recebida",
@@ -179,7 +197,10 @@
       "ASSIGNEE_NAME": "Agente atribuído",
       "TEAM_NAME": "Time",
       "PRIORITY": "Prioridade",
-      "LABELS": "Etiquetas"
+      "LABELS": "Etiquetas",
+      "HAS_ACTIVE_DEAL": "Possui Negócio Ativo",
+      "DEAL_STAGE_ID": "Etapa do Negócio",
+      "DEAL_LABELS": "Etiqueta do Negócio"
     }
   }
 }

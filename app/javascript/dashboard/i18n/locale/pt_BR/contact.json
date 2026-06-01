@@ -513,6 +513,9 @@
       "HISTORY": {
         "EMPTY_STATE": "Não há conversas anteriores associadas a este contato"
       },
+      "DEALS": {
+        "EMPTY_STATE": "Não há negócios associados a este contato"
+      },
       "ATTRIBUTES": {
         "SEARCH_PLACEHOLDER": "Pesquisar atributos",
         "UNUSED_ATTRIBUTES": "{count} atributos utilizados | {count} atributos não utilizados",

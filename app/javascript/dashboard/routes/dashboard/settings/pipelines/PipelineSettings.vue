@@ -153,11 +153,12 @@
 
             <!-- Pipeline Padrão no rodapé da coluna -->
             <div class="mt-8 pt-4 border-t border-n-weak/50">
-              <label class="flex items-center gap-2 px-2 py-1 text-xs font-semibold text-n-slate-11 cursor-pointer m-0">
+              <label class="flex items-center gap-2 px-2 py-1 text-xs font-semibold text-n-slate-11 cursor-pointer m-0" :class="{ 'opacity-60 cursor-not-allowed': isDefaultCheckboxDisabled }">
                 <input
                   type="checkbox"
                   v-model="currentPipeline.is_default"
-                  class="w-3.5 h-3.5 rounded border-n-weak text-n-brand focus:ring-n-brand cursor-pointer"
+                  :disabled="isDefaultCheckboxDisabled"
+                  class="w-3.5 h-3.5 rounded border-n-weak text-n-brand focus:ring-n-brand cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <span>Definir como padrão</span>
               </label>
@@ -525,6 +526,7 @@ import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import { BaseTable, BaseTableRow, BaseTableCell } from 'dashboard/components-next/table';
+import { useAlert } from 'dashboard/composables';
 
 export default {
   components: {
@@ -572,6 +574,13 @@ export default {
       if (!this.searchQuery) return this.pipelines;
       const query = this.searchQuery.toLowerCase();
       return this.pipelines.filter(p => p.name.toLowerCase().includes(query));
+    },
+    isDefaultCheckboxDisabled() {
+      if (this.isEditing) {
+        const originalPipeline = this.pipelines.find(p => p.id === this.currentPipeline.id);
+        return originalPipeline ? originalPipeline.is_default : false;
+      }
+      return !this.pipelines || this.pipelines.length === 0;
     },
     tableHeaders() {
       return [
@@ -683,9 +692,10 @@ export default {
     openAddPipelineModal() {
       this.isEditing = false;
       this.activeTab = 'stages';
+      const isFirstPipeline = !this.pipelines || this.pipelines.length === 0;
       this.currentPipeline = {
         name: '',
-        is_default: false,
+        is_default: isFirstPipeline,
         stages: [
           { name: 'Pendente', color: '#3b82f6', stage_type: 'not_started', position: 1, win_probability: 10 },
           { name: 'Aberto', color: '#eab308', stage_type: 'active', position: 2, win_probability: 50 },
@@ -713,10 +723,18 @@ export default {
     },
     closeModal() {
       this.showModal = false;
-      this.currentPipeline = {
-        name: '', is_default: false, stages: [],
-        lost_reasons: [], visibility: 'public', allowed_team_ids: [],
-      };
+      setTimeout(() => {
+        if (!this.showModal) {
+          this.currentPipeline = {
+            name: '',
+            is_default: false,
+            stages: [],
+            lost_reasons: [],
+            visibility: 'public',
+            allowed_team_ids: [],
+          };
+        }
+      }, 200);
     },
     addLostReason() {
       this.currentPipeline.lost_reasons.push('');
@@ -738,10 +756,29 @@ export default {
     async savePipeline() {
       this.isSaving = true;
 
-      // Update positions based on current order
-      this.currentPipeline.stages.forEach((stage, index) => {
+      // Ordenar logicamente por tipo de estágio (not_started -> active -> done -> closed)
+      const stageTypeOrder = {
+        'not_started': 1,
+        'active': 2,
+        'done': 3,
+        'closed': 4
+      };
+
+      const sortedStages = [...this.currentPipeline.stages].sort((a, b) => {
+        const orderA = stageTypeOrder[a.stage_type] || 2;
+        const orderB = stageTypeOrder[b.stage_type] || 2;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+        return (a.position || 0) - (b.position || 0);
+      });
+
+      // Update positions based on sorted order
+      sortedStages.forEach((stage, index) => {
         stage.position = index + 1;
       });
+
+      this.currentPipeline.stages = sortedStages;
 
       try {
         if (this.isEditing) {
@@ -763,7 +800,7 @@ export default {
             })),
           };
           await this.updatePipeline(payload);
-          this.$toast.success(this.$t('CRM.PIPELINES.UPDATE_SUCCESS'));
+          useAlert(this.$t('CRM.PIPELINES.UPDATE_SUCCESS'));
         } else {
           const payload = {
             name: this.currentPipeline.name,
@@ -781,12 +818,18 @@ export default {
             })),
           };
           await this.createPipeline(payload);
-          this.$toast.success(this.$t('CRM.PIPELINES.CREATE_SUCCESS'));
+          useAlert(this.$t('CRM.PIPELINES.CREATE_SUCCESS'));
         }
         this.closeModal();
-        this.fetchPipelines();
+        this.$nextTick(async () => {
+          try {
+            await this.fetchPipelinesAction();
+          } catch (e) {
+            // Sincronização em background silenciada
+          }
+        });
       } catch (error) {
-        this.$toast.error(error.message || this.$t('CRM.PIPELINES.SAVE_ERROR'));
+        useAlert(error.message || this.$t('CRM.PIPELINES.SAVE_ERROR'));
       } finally {
         this.isSaving = false;
       }
@@ -803,10 +846,10 @@ export default {
       if (!this.pipelineToDelete) return;
       try {
         await this.deletePipelineAction(this.pipelineToDelete.id);
-        this.$toast.success(this.$t('CRM.PIPELINES.DELETE_SUCCESS'));
+        useAlert(this.$t('CRM.PIPELINES.DELETE_SUCCESS'));
         this.fetchPipelines();
       } catch (error) {
-        this.$toast.error(error.message || this.$t('CRM.PIPELINES.DELETE_ERROR'));
+        useAlert(error.message || this.$t('CRM.PIPELINES.DELETE_ERROR'));
       } finally {
         this.closeDeleteModal();
       }

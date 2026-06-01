@@ -110,6 +110,7 @@ export default function useAutomationValues() {
       priorityOptions: priorityOptions.value,
       messageTypeOptions: messageTypeOptions.value,
       teams: teams.value,
+      pipelines: pipelines.value,
       languages,
       countries,
       type,
@@ -143,6 +144,7 @@ export default function useAutomationValues() {
       type,
       addNoneToListFn: addNoneToList,
       priorityOptions: priorityOptions.value,
+      t,
     });
   };
 

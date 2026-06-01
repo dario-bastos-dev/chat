@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useRoute, useRouter } from 'vue-router';
+import { useAccount } from 'dashboard/composables/useAccount';
 
 import ContactsDetailsLayout from 'dashboard/components-next/Contacts/ContactsDetailsLayout.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
@@ -36,6 +37,12 @@ const showSpinner = computed(
 );
 
 const { t } = useI18n();
+const { currentAccount, isCloudFeatureEnabled } = useAccount();
+
+const isCRMEnabled = computed(() => {
+  if (!currentAccount.value?.id) return false;
+  return isCloudFeatureEnabled('crm');
+});
 
 const CONTACT_TABS_OPTIONS = [
   { key: 'ATTRIBUTES', value: 'attributes' },
@@ -46,14 +53,26 @@ const CONTACT_TABS_OPTIONS = [
 ];
 
 const tabs = computed(() => {
-  return CONTACT_TABS_OPTIONS.map(tab => ({
+  const options = CONTACT_TABS_OPTIONS.filter(tab => {
+    if (tab.value === 'deals') {
+      return isCRMEnabled.value;
+    }
+    return true;
+  });
+  return options.map(tab => ({
     label: t(`CONTACTS_LAYOUT.SIDEBAR.TABS.${tab.key}`),
     value: tab.value,
   }));
 });
 
 const activeTabIndex = computed(() => {
-  return CONTACT_TABS_OPTIONS.findIndex(v => v.value === activeTab.value);
+  const options = CONTACT_TABS_OPTIONS.filter(tab => {
+    if (tab.value === 'deals') {
+      return isCRMEnabled.value;
+    }
+    return true;
+  });
+  return options.findIndex(v => v.value === activeTab.value);
 });
 
 const goToContactsList = () => {
@@ -174,7 +193,7 @@ onMounted(() => {
           <ContactNotes v-if="activeTab === 'notes'" />
           <ContactHistory v-if="activeTab === 'history'" />
           <ContactDealsSection
-            v-if="activeTab === 'deals' && selectedContact?.id"
+            v-if="activeTab === 'deals' && selectedContact?.id && isCRMEnabled"
             :contact-id="selectedContact.id"
           />
           <ContactMerge

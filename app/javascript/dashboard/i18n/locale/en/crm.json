@@ -95,6 +95,9 @@
       "LOST_REASON_TITLE": "Why was this deal lost?",
       "LOST_REASON_PLACEHOLDER": "Describe why this deal was lost...",
       "LOST_REASON_REQUIRED": "Lost reason is required",
+      "REOPEN": "Reopen Deal",
+      "REOPEN_SUCCESS": "Deal reopened successfully!",
+      "REOPEN_ERROR": "Error reopening deal",
       "CONVERSATIONS": "Linked Conversations",
       "LINK_CONVERSATION": "Link Conversation",
       "NO_CONVERSATIONS": "No conversations linked to this deal",
@@ -103,6 +106,7 @@
       "LINK": "Link",
       "LINK_SUCCESS": "Conversation linked successfully!",
       "LINK_ERROR": "Error linking conversation",
+      "NO_CUSTOM_ATTRIBUTES": "No custom attributes configured for deals.",
       "FORM": {
         "TITLE": "Title",
         "TITLE_PLACEHOLDER": "E.g.: Product X Sale",

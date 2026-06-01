@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col flex-1 h-full">
     <!-- Redirecting to default pipeline — show skeleton only -->
-    <div v-if="uiFlags.isFetching || isRedirecting" class="flex flex-1 gap-4 p-4 animate-pulse">
+    <div v-if="((uiFlags.isFetching && pipelines.length === 0) || isRedirecting) && !showDealDrawer" class="flex flex-1 gap-4 p-4 animate-pulse">
       <div
         v-for="i in 5"
         :key="i"
@@ -57,9 +57,6 @@
           <h1 class="text-lg font-bold text-n-slate-12 m-0 tracking-tight">
             Negócios
           </h1>
-          <p class="text-xs text-n-slate-11 m-0">
-            Gerencie todos os negócios cadastrados de forma consolidada
-          </p>
         </div>
 
         <!-- Barra de busca alinhada à direita -->
@@ -85,10 +82,6 @@
             <span class="text-n-slate-11">Total de Negócios:</span>
             <span class="font-semibold text-n-slate-12">{{ filteredDeals.length }}</span>
           </div>
-          <div class="flex items-center gap-1.5 text-sm">
-            <span class="text-n-slate-11">Valor Total Consolidado:</span>
-            <span class="font-semibold text-n-slate-12">{{ formatCurrency(totalValue) }}</span>
-          </div>
         </div>
 
         <!-- Bulk Actions / Selection Controls -->
@@ -105,32 +98,83 @@
             <span>Selecionar todos</span>
           </label>
 
-          <!-- Ações em lote -->
-          <transition
-            enter-active-class="transition duration-150 ease-out"
-            enter-from-class="opacity-0 scale-95"
-            leave-active-class="transition duration-100 ease-in"
-            leave-to-class="opacity-0 scale-95"
-          >
-            <div v-if="selectedDealIds.length > 0" class="flex items-center gap-3">
-              <span class="text-xs text-n-slate-12 font-medium bg-n-brand/10 text-n-brand px-2 py-0.5 rounded-full animate-fadeIn">
-                {{ selectedDealIds.length }} selecionado(s)
-              </span>
+          <!-- Botão Ações (Dropdown) -->
+          <div class="relative" ref="bulkActionsDropdown">
+            <button
+              class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-n-slate-12 bg-n-alpha-1 hover:bg-n-alpha-2 border border-n-weak rounded-lg transition-colors duration-150 cursor-pointer h-8"
+              @click="toggleBulkActionsDropdown"
+            >
+              <span>Ações</span>
+              <fluent-icon icon="chevron-down" size="10" />
+            </button>
+            
+            <div
+              v-if="showBulkActionsDropdown"
+              class="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] bg-n-solid-2 border border-n-weak rounded-xl shadow-xl p-1.5 flex flex-col gap-0.5 text-left"
+            >
+              <!-- Opção Mover (Etapa e Pipeline) -->
               <button
-                @click="deleteSelectedDeals"
-                class="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-white bg-n-ruby-9 hover:bg-n-ruby-10 active:bg-n-ruby-11 rounded-lg transition-colors duration-150 cursor-pointer border-0 bg-transparent flex-shrink-0"
+                class="flex items-center gap-2 w-full px-2.5 py-2 text-xs font-medium text-n-slate-12 hover:bg-n-alpha-1 rounded-lg transition-colors cursor-pointer border-0 bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="selectedDealIds.length === 0"
+                @click="openBulkMoveModal"
               >
-                <fluent-icon icon="delete" size="12" />
+                <fluent-icon icon="arrow-swap" size="12" class="text-n-slate-11" />
+                <span>Mover Etapa</span>
+              </button>
+
+              <!-- Opção Exportar -->
+              <button
+                class="flex items-center gap-2 w-full px-2.5 py-2 text-xs font-medium text-n-slate-12 hover:bg-n-alpha-1 rounded-lg transition-colors cursor-pointer border-0 bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="selectedDealIds.length === 0"
+                @click="exportDeals"
+              >
+                <fluent-icon icon="share" size="12" class="text-n-slate-11" />
+                <span>Exportar</span>
+              </button>
+
+              <!-- Opção Importar -->
+              <button
+                class="flex items-center gap-2 w-full px-2.5 py-2 text-xs font-medium text-n-slate-12 hover:bg-n-alpha-1 rounded-lg transition-colors cursor-pointer border-0 bg-transparent"
+                @click="importDeals"
+              >
+                <fluent-icon icon="arrow-right-import" size="12" class="text-n-slate-11" />
+                <span>Importar</span>
+              </button>
+
+              <!-- Divisor -->
+              <div class="h-[1px] bg-n-weak/30 my-1" />
+
+              <!-- Opção Deletar -->
+              <button
+                class="flex items-center gap-2 w-full px-2.5 py-2 text-xs font-bold text-n-ruby-9 hover:bg-n-ruby-9/10 rounded-lg transition-colors cursor-pointer border-0 bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="selectedDealIds.length === 0"
+                @click="deleteSelectedDeals"
+              >
+                <fluent-icon icon="delete" size="12" class="text-n-ruby-9" />
                 <span>Deletar</span>
               </button>
-              <button
-                @click="clearSelection"
-                class="text-xs text-n-slate-11 hover:text-n-slate-12 cursor-pointer font-medium border-0 bg-transparent"
-              >
-                Cancelar
-              </button>
             </div>
-          </transition>
+          </div>
+
+          <!-- Oculto Import Input -->
+          <input
+            type="file"
+            ref="importFileInput"
+            accept=".csv"
+            class="hidden"
+            @change="handleCSVImport"
+          />
+
+          <span v-if="selectedDealIds.length > 0" class="text-xs text-n-brand font-medium bg-n-brand/10 px-2 py-0.5 rounded-full">
+            {{ selectedDealIds.length }} selecionado(s)
+          </span>
+          <button
+            v-if="selectedDealIds.length > 0"
+            @click="clearSelection"
+            class="text-xs text-n-slate-11 hover:text-n-slate-12 cursor-pointer font-medium border-0 bg-transparent"
+          >
+            Cancelar
+          </button>
         </div>
       </div>
 
@@ -163,7 +207,7 @@
                     class="font-semibold text-n-slate-12 cursor-pointer hover:text-woot-500 transition-colors truncate block max-w-[200px]"
                     @click="openDealDrawer(deal)"
                   >
-                    {{ deal.title }}
+                    {{ cleanTitle(deal.title) }}
                   </span>
                 </BaseTableCell>
 
@@ -194,10 +238,7 @@
                   </div>
                 </BaseTableCell>
 
-                <!-- Valor -->
-                <BaseTableCell class="font-semibold text-n-slate-12">
-                  {{ formatCurrency(deal.value, deal.currency) }}
-                </BaseTableCell>
+
 
                 <!-- Responsável -->
                 <BaseTableCell>
@@ -257,7 +298,7 @@
     <DealDrawer
       v-if="selectedDeal"
       :is-open="showDealDrawer"
-      :deal="selectedDeal"
+      :initial-deal="selectedDeal"
       @close="closeDealDrawer"
     />
 
@@ -677,17 +718,83 @@
     </div>
   </woot-modal>
 
-  <!-- Delete Deal Modal -->
-  <woot-delete-modal
-    v-if="showDeleteModal"
-    v-model:show="showDeleteModal"
-    :title="isBulkDelete ? 'Excluir Negócios' : 'Excluir Negócio'"
-    :message="isBulkDelete ? `Tem certeza que deseja excluir os ${selectedDealIds.length} negócio(s) selecionado(s)? Esta ação não pode ser desfeita.` : 'Tem certeza que deseja excluir este negócio? Esta ação não pode ser desfeita.'"
-    :confirm-text="$t('CRM.DELETE') || 'Excluir'"
-    :reject-text="$t('CRM.CANCEL') || 'Cancelar'"
-    :on-confirm="confirmDeleteDeal"
-    :on-close="closeDeleteModal"
-  />
+    <!-- Delete Deal Modal -->
+    <woot-delete-modal
+      v-if="showDeleteModal"
+      v-model:show="showDeleteModal"
+      :title="isBulkDelete ? 'Excluir Negócios' : 'Excluir Negócio'"
+      :message="isBulkDelete ? `Tem certeza que deseja excluir os ${selectedDealIds.length} negócio(s) selecionado(s)? Esta ação não pode ser desfeita.` : 'Tem certeza que deseja excluir este negócio? Esta ação não pode ser desfeita.'"
+      :confirm-text="$t('CRM.DELETE') || 'Excluir'"
+      :reject-text="$t('CRM.CANCEL') || 'Cancelar'"
+      :on-confirm="confirmDeleteDeal"
+      :on-close="closeDeleteModal"
+    />
+
+    <!-- Bulk Move Stage Modal -->
+    <woot-modal
+      v-model:show="showBulkMoveModal"
+      :on-close="closeBulkMoveModal"
+    >
+      <div class="p-6 min-w-[400px] flex flex-col gap-4 bg-n-surface-2 text-n-slate-12">
+        <woot-modal-header header-title="Mover Negócios em Lote" />
+        
+        <p class="text-xs text-n-slate-11 m-0">
+          Selecione a nova etapa e o pipeline para mover os <strong>{{ selectedDealIds.length }}</strong> negócio(s) selecionado(s):
+        </p>
+
+        <!-- Dropdown / Acordeão de Pipelines e Etapas -->
+        <div class="border border-n-weak rounded-xl overflow-hidden p-2 bg-n-solid-2 max-h-72 overflow-y-auto flex flex-col gap-1.5">
+          <div
+            v-for="pipeline in pipelines"
+            :key="pipeline.id"
+            class="flex flex-col border border-n-weak/50 rounded-lg overflow-hidden bg-n-solid-3"
+            style="background-color: var(--bg-n-solid-3, #1c1d1f);"
+          >
+            <!-- Nome do Pipeline (Acordeão Header) -->
+            <button
+              class="flex items-center justify-between w-full px-3 py-2 text-xs font-bold uppercase tracking-wider bg-n-solid-2 text-n-slate-11 hover:text-n-brand transition-colors cursor-pointer border-0 bg-transparent"
+              @click="toggleBulkMovePipeline(pipeline.id)"
+            >
+              <span class="truncate">{{ pipeline.name }}</span>
+              <fluent-icon
+                icon="chevron-down"
+                size="12"
+                class="transition-transform duration-200 text-n-slate-10 shrink-0 ml-2"
+                :class="{ 'rotate-180': bulkMoveExpandedPipelineId === pipeline.id }"
+              />
+            </button>
+
+            <!-- Lista de Etapas (Acordeão Content) -->
+            <div
+              v-show="bulkMoveExpandedPipelineId === pipeline.id"
+              class="flex flex-col gap-[5px] p-[5px] pb-[10px] bg-n-surface-1"
+            >
+              <button
+                v-for="stage in pipeline.stages"
+                :key="stage.id"
+                class="flex items-center justify-between w-full px-3.5 py-2 text-xs text-left transition-all duration-150 cursor-pointer border-l-4 hover:brightness-95 active:brightness-90 text-n-slate-12 font-medium border-0 rounded-md"
+                :style="{
+                  backgroundColor: stage.color ? `${stage.color}15` : '#1f93ff15',
+                  borderLeftColor: stage.color || '#1f93ff'
+                }"
+                @click="executeBulkMove(stage.id)"
+              >
+                <span>{{ stage.name }}</span>
+                <span class="text-n-brand flex shrink-0 ml-2">
+                  <fluent-icon icon="checkmark" size="12" />
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 mt-4 border-t border-n-weak pt-4">
+          <woot-button variant="clear" @click="closeBulkMoveModal">
+            {{ $t('CRM.CANCEL') }}
+          </woot-button>
+        </div>
+      </div>
+    </woot-modal>
 </div>
 </template>
 
@@ -722,6 +829,9 @@ export default {
       selectedDeal: null,
       selectedDealIds: [],
       showDeleteModal: false,
+      showBulkActionsDropdown: false,
+      showBulkMoveModal: false,
+      bulkMoveExpandedPipelineId: null,
       dealToDelete: null,
       isBulkDelete: false,
       newPipeline: {
@@ -765,7 +875,6 @@ export default {
         'Contato',
         'Pipeline',
         'Etapa',
-        'Valor',
         'Responsável',
         'Status',
         'Ações',
@@ -788,9 +897,7 @@ export default {
         return titleMatch || contactMatch;
       });
     },
-    totalValue() {
-      return this.filteredDeals.reduce((sum, deal) => sum + parseFloat(deal.value || 0), 0);
-    },
+
     notStartedStages: {
       get() {
         return this.newPipeline.stages.filter(s => s.stage_type === 'not_started');
@@ -838,6 +945,10 @@ export default {
     } catch (error) {
       this.isRedirecting = false;
     }
+    document.addEventListener('click', this.handleClickOutsideBulk);
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleClickOutsideBulk);
   },
   methods: {
     ...mapActions({
@@ -846,6 +957,8 @@ export default {
       fetchDealsAction: 'deals/get',
       deleteDealAction: 'deals/delete',
       fetchAgents: 'agents/get',
+      updateDeal: 'deals/update',
+      createDeal: 'deals/create',
     }),
     getStagesByGroup(groupKey) {
       return this.newPipeline.stages.filter(s => s.stage_type === groupKey);
@@ -974,13 +1087,10 @@ export default {
         );
       }
     },
-    formatCurrency(value, currency = 'BRL') {
-      const number = parseFloat(value || 0);
-      return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency,
-      }).format(number);
+    cleanTitle(title) {
+      return title || '';
     },
+
     getDealStageColor(deal) {
       if (deal.stage && deal.stage.color) return deal.stage.color;
       return '#3b82f6';
@@ -1000,8 +1110,12 @@ export default {
       this.showDealDrawer = true;
     },
     closeDealDrawer() {
-      this.selectedDeal = null;
       this.showDealDrawer = false;
+      setTimeout(() => {
+        if (!this.showDealDrawer) {
+          this.selectedDeal = null;
+        }
+      }, 250);
     },
     deleteDeal(deal) {
       this.dealToDelete = deal;
@@ -1041,6 +1155,7 @@ export default {
       this.selectedDealIds = [];
     },
     deleteSelectedDeals() {
+      this.showBulkActionsDropdown = false;
       this.isBulkDelete = true;
       this.dealToDelete = null;
       this.showDeleteModal = true;
@@ -1065,6 +1180,154 @@ export default {
         this.$toast.error('Erro ao excluir negócio(s).');
       } finally {
         this.closeDeleteModal();
+      }
+    },
+    toggleBulkActionsDropdown() {
+      this.showBulkActionsDropdown = !this.showBulkActionsDropdown;
+    },
+    toggleBulkMovePipeline(pipelineId) {
+      if (this.bulkMoveExpandedPipelineId === pipelineId) {
+        this.bulkMoveExpandedPipelineId = null;
+      } else {
+        this.bulkMoveExpandedPipelineId = pipelineId;
+      }
+    },
+    openBulkMoveModal() {
+      this.showBulkActionsDropdown = false;
+      this.showBulkMoveModal = true;
+      this.bulkMoveExpandedPipelineId = this.pipelines[0]?.id;
+    },
+    closeBulkMoveModal() {
+      this.showBulkMoveModal = false;
+      this.bulkMoveExpandedPipelineId = null;
+    },
+    async executeBulkMove(stageId) {
+      this.closeBulkMoveModal();
+      this.$toast.info('Movendo negócios...');
+      try {
+        await Promise.all(
+          this.selectedDealIds.map(id =>
+            this.updateDeal({
+              id: id,
+              stage_id: stageId,
+            })
+          )
+        );
+        this.$toast.success('Negócio(s) movido(s) com sucesso!');
+        this.selectedDealIds = [];
+        await this.fetchDealsAction({ pipelineId: null, stageId: null });
+      } catch (error) {
+        this.$toast.error('Erro ao mover os negócios.');
+      }
+    },
+    exportDeals() {
+      this.showBulkActionsDropdown = false;
+      const selectedDeals = this.deals.filter(d => this.selectedDealIds.includes(d.id));
+      if (selectedDeals.length === 0) return;
+
+      const headers = ['ID', 'Negocio', 'Contato', 'E-mail', 'Telefone', 'Pipeline', 'Etapa', 'Responsavel', 'Status', 'Criado Em'];
+      const rows = selectedDeals.map(d => [
+        d.id,
+        d.title || '',
+        d.contact?.name || '',
+        d.contact?.email || '',
+        d.contact?.phone_number || '',
+        d.pipeline?.name || '',
+        d.stage?.name || '',
+        d.assignee?.name || '',
+        d.status || '',
+        d.created_at || '',
+      ]);
+
+      const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+        + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(','))].join('\n');
+      
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `negocios_exportados_${new Date().getTime()}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      this.$toast.success('Negócios exportados com sucesso!');
+    },
+    importDeals() {
+      this.showBulkActionsDropdown = false;
+      this.$refs.importFileInput.click();
+    },
+    async handleCSVImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const text = e.target.result;
+          const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+          if (lines.length <= 1) {
+            this.$toast.error('O arquivo CSV está vazio ou inválido.');
+            return;
+          }
+
+          const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
+          const titleIdx = headers.indexOf('negocio') > -1 ? headers.indexOf('negocio') : headers.indexOf('negócio');
+          const contactIdx = headers.indexOf('contato');
+
+          if (titleIdx === -1) {
+            this.$toast.error('A coluna "Negócio" é obrigatória no CSV.');
+            return;
+          }
+
+          const pipeline = this.defaultPipeline;
+          const stageId = pipeline?.stages?.[0]?.id;
+          if (!stageId) {
+            this.$toast.error('Nenhum funil ou etapa ativa encontrada para importar.');
+            return;
+          }
+
+          this.$toast.info('Iniciando importação de negócios...');
+          let successCount = 0;
+
+          for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+            const title = cols[titleIdx];
+            if (!title) continue;
+
+            const contactName = contactIdx !== -1 ? cols[contactIdx] : 'Cliente Importado';
+
+            let contactId = null;
+            try {
+              const newContact = await this.$store.dispatch('contacts/create', { name: contactName });
+              contactId = newContact.id;
+            } catch (err) {
+              contactId = this.deals[0]?.contact_id || 1;
+            }
+
+            try {
+              await this.createDeal({
+                title,
+                stage_id: stageId,
+                contact_id: contactId,
+              });
+              successCount++;
+            } catch (err) {
+              // Ignore row error
+            }
+          }
+
+          this.$toast.success(`${successCount} negócio(s) importado(s) com sucesso!`);
+          await this.fetchDealsAction({ pipelineId: null, stageId: null });
+        } catch (err) {
+          this.$toast.error('Erro ao ler ou processar o arquivo CSV.');
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    },
+    handleClickOutsideBulk(event) {
+      const dropdown = this.$refs.bulkActionsDropdown;
+      if (dropdown && !dropdown.contains(event.target)) {
+        this.showBulkActionsDropdown = false;
       }
     },
   },

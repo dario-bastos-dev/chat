@@ -61,12 +61,15 @@ const getOperator = (filter, selectedOperator) => {
   return operatorFromOptions;
 };
 
-const currentOperator = computed(() =>
-  getOperator(currentFilter.value, filterOperator.value)
-);
+const currentOperator = computed(() => {
+  if (!currentFilter.value) return null;
+  return getOperator(currentFilter.value, filterOperator.value);
+});
 
-const getInputType = (operator, filter) =>
-  operator.inputOverride ?? filter.inputType;
+const getInputType = (operator, filter) => {
+  if (!operator) return 'plainText';
+  return operator.inputOverride ?? filter?.inputType ?? 'plainText';
+};
 
 const inputType = computed(() =>
   getInputType(currentOperator.value, currentFilter.value)
@@ -117,8 +120,9 @@ const resetModelOnAttributeKeyChange = newAttributeKey => {
    * to an empty array.
    */
   const filter = getFilterFromFilterTypes(newAttributeKey);
+  if (!filter) return;
   const newOperator = getOperator(filter, filterOperator.value);
-  const newInputType = getInputType(newOperator, filter);
+  const newInputType = newOperator ? getInputType(newOperator, filter) : 'plainText';
   if (newInputType === 'multiSelect') {
     values.value = [];
   } else if (['searchSelect', 'booleanSelect'].includes(newInputType)) {
@@ -126,7 +130,9 @@ const resetModelOnAttributeKeyChange = newAttributeKey => {
   } else {
     values.value = '';
   }
-  filterOperator.value = newOperator.value;
+  if (newOperator) {
+    filterOperator.value = newOperator.value;
+  }
 };
 
 watch([attributeKey, values, filterOperator], () => {
@@ -170,19 +176,19 @@ defineExpose({ validate, resetValidation });
       <FilterSelect
         v-model="filterOperator"
         variant="ghost"
-        :options="currentFilter?.filterOperators"
+        :options="currentFilter?.filterOperators || []"
       />
       <template v-if="currentOperator?.hasInput">
         <MultiSelect
           v-if="inputType === 'multiSelect'"
           v-model="values"
-          :options="currentFilter.options"
+          :options="currentFilter?.options || []"
           dropdown-max-height="max-h-72"
         />
         <SingleSelect
           v-else-if="inputType === 'searchSelect'"
           v-model="values"
-          :options="currentFilter.options"
+          :options="currentFilter?.options || []"
           dropdown-max-height="max-h-64"
         />
         <SingleSelect

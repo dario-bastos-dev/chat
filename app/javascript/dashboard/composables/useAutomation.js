@@ -37,6 +37,7 @@ export function useAutomation(startValue = null) {
     labels,
     teams,
     slaPolicies,
+    pipelines,
   } = useAutomationValues();
 
   const automation = ref(startValue);
@@ -143,6 +144,9 @@ export function useAutomation(startValue = null) {
     ].value('conversation_attribute');
     const contactCustomAttributesRaw =
       getters['attributes/getAttributesByModel'].value('contact_attribute');
+    const dealCustomAttributesRaw = getters[
+      'attributes/getAttributesByModel'
+    ].value('deal_attribute');
 
     const conversationCustomAttributeTypes = generateCustomAttributeTypes(
       conversationCustomAttributesRaw,
@@ -152,17 +156,24 @@ export function useAutomation(startValue = null) {
       contactCustomAttributesRaw,
       'contact_attribute'
     );
+    const dealCustomAttributeTypes = generateCustomAttributeTypes(
+      dealCustomAttributesRaw,
+      'deal_attribute'
+    );
 
     const manifestedCustomAttributes = generateCustomAttributes(
       conversationCustomAttributeTypes,
       contactCustomAttributeTypes,
       t('AUTOMATION.CONDITION.CONVERSATION_CUSTOM_ATTR_LABEL'),
-      t('AUTOMATION.CONDITION.CONTACT_CUSTOM_ATTR_LABEL')
+      t('AUTOMATION.CONDITION.CONTACT_CUSTOM_ATTR_LABEL'),
+      dealCustomAttributeTypes,
+      t('AUTOMATION.CONDITION.DEAL_CUSTOM_ATTR_LABEL')
     );
 
     const CUSTOM_ATTR_HEADER_KEYS = new Set([
       'conversation_custom_attribute',
       'contact_custom_attribute',
+      'deal_custom_attribute',
     ]);
 
     [
@@ -170,6 +181,10 @@ export function useAutomation(startValue = null) {
       'conversation_created',
       'conversation_updated',
       'conversation_opened',
+      'deal_created',
+      'deal_stage_changed',
+      'deal_won',
+      'deal_lost',
     ].forEach(eventToUpdate => {
       const standardConditions = automationTypes[
         eventToUpdate
@@ -193,6 +208,7 @@ export function useAutomation(startValue = null) {
     labels,
     teams,
     slaPolicies,
+    pipelines,
     booleanFilterOptions,
     statusFilterOptions,
     onEventChange,

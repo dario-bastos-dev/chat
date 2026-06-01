@@ -28,13 +28,14 @@ class Pipeline < ApplicationRecord
   validates :account_id, presence: true
   validates :visibility, inclusion: { in: %w[public restricted] }
 
+  before_save :ensure_at_least_one_default
   before_save :ensure_single_default
   before_destroy :migrate_deals, prepend: true
 
   scope :default_pipeline, -> { where(is_default: true).first }
 
   def total_value
-    deals.where(status: 'open').sum(:value)
+    0.0
   end
 
   def total_deals_count
@@ -42,6 +43,12 @@ class Pipeline < ApplicationRecord
   end
 
   private
+
+  def ensure_at_least_one_default
+    if !is_default && !account.pipelines.where.not(id: id).exists?(is_default: true)
+      self.is_default = true
+    end
+  end
 
   def ensure_single_default
     return unless is_default && is_default_changed?

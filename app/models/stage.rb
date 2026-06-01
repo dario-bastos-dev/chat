@@ -40,7 +40,7 @@ class Stage < ApplicationRecord
   end
 
   def total_value
-    deals.where(status: 'open').sum(:value)
+    0.0
   end
 
   private

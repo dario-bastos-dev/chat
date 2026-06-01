@@ -22,7 +22,7 @@ const { t } = useI18n();
 
 const getters = useStoreGetters();
 const store = useStore();
-const { currentAccount } = useAccount();
+const { currentAccount, isCloudFeatureEnabled } = useAccount();
 const inboxes = useMapGetter('inboxes/getInboxes');
 
 const [showAddPopup, toggleAddPopup] = useToggle(false);
@@ -49,7 +49,7 @@ const closeDelete = () => {
 };
 
 const tabs = computed(() => {
-  return [
+  const allTabs = [
     {
       key: 0,
       name: t('ATTRIBUTES_MGMT.TABS.CONVERSATION'),
@@ -63,6 +63,13 @@ const tabs = computed(() => {
       name: t('ATTRIBUTES_MGMT.TABS.DEAL'),
     },
   ];
+
+  return allTabs.filter(tab => {
+    if (tab.key === 2) {
+      return isCloudFeatureEnabled('crm');
+    }
+    return true;
+  });
 });
 
 const tabsForTabBar = computed(() =>

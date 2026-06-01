@@ -92,14 +92,22 @@
     "CONDITION": {
       "DELETE_MESSAGE": "You need to have atleast one condition to save",
       "CONTACT_CUSTOM_ATTR_LABEL": "Contact Custom Attributes",
-      "CONVERSATION_CUSTOM_ATTR_LABEL": "Conversation Custom Attributes"
+      "CONVERSATION_CUSTOM_ATTR_LABEL": "Conversation Custom Attributes",
+      "DEAL_CUSTOM_ATTR_LABEL": "Deal Custom Attributes"
     },
     "ACTION": {
       "DELETE_MESSAGE": "You need to have atleast one action to save",
       "TEAM_MESSAGE_INPUT_PLACEHOLDER": "Enter your message here",
       "TEAM_DROPDOWN_PLACEHOLDER": "Select teams",
       "EMAIL_INPUT_PLACEHOLDER": "Enter email",
-      "URL_INPUT_PLACEHOLDER": "Enter URL"
+      "URL_INPUT_PLACEHOLDER": "Enter URL",
+      "DEAL_TITLE_LABEL": "Deal Title",
+      "DEAL_CUSTOM_ATTRIBUTES_LABEL": "Deal Custom Attributes",
+      "ADD_DEAL_ATTRIBUTE_BTN": "Add Attribute",
+      "SYNC_ASSIGNEE_CONV_TO_DEAL": "Sync Conversation assignee to Deal",
+      "SYNC_ASSIGNEE_DEAL_TO_CONV": "Sync Deal assignee to Conversation",
+      "STATUS_WON": "Won",
+      "STATUS_LOST": "Lost"
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Activate Automation Rule",
@@ -136,7 +144,11 @@
       "CONVERSATION_UPDATED": "Conversation Updated",
       "MESSAGE_CREATED": "Message Created",
       "CONVERSATION_RESOLVED": "Conversation Resolved",
-      "CONVERSATION_OPENED": "Conversation Opened"
+      "CONVERSATION_OPENED": "Conversation Opened",
+      "DEAL_CREATED": "Deal Created",
+      "DEAL_STAGE_CHANGED": "Deal Stage Changed",
+      "DEAL_WON": "Deal Won",
+      "DEAL_LOST": "Deal Lost"
     },
     "ACTIONS": {
       "ASSIGN_AGENT": "Assign to Agent",
@@ -158,7 +170,13 @@
       "ADD_SLA": "Add SLA",
       "OPEN_CONVERSATION": "Open conversation",
       "PENDING_CONVERSATION": "Mark conversation as pending",
-      "CREATE_DEAL": "Create a Deal"
+      "CREATE_DEAL": "Create a Deal",
+      "UPDATE_DEAL_INFO": "Update Deal Info",
+      "MOVE_DEAL_STAGE": "Move Deal Stage",
+      "SYNC_DEAL_ASSIGNEE": "Sync Assignee",
+      "CHANGE_DEAL_STATUS": "Change Deal Status",
+      "ADD_DEAL_LABEL": "Add Deal Label",
+      "REMOVE_DEAL_LABEL": "Remove Deal Label"
     },
     "MESSAGE_TYPES": {
       "INCOMING": "Incoming Message",
@@ -188,7 +206,10 @@
       "ASSIGNEE_NAME": "Assignee",
       "TEAM_NAME": "Team",
       "PRIORITY": "Priority",
-      "LABELS": "Labels"
+      "LABELS": "Labels",
+      "HAS_ACTIVE_DEAL": "Has Active Deal",
+      "DEAL_STAGE_ID": "Deal Stage",
+      "DEAL_LABELS": "Deal Label"
     }
   }
 }

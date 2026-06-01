@@ -178,8 +178,26 @@ export const mutations = {
   },
 
   [types.SET_PIPELINES]: MutationHelpers.set,
-  [types.ADD_PIPELINE]: MutationHelpers.create,
-  [types.EDIT_PIPELINE]: MutationHelpers.update,
+  [types.ADD_PIPELINE](_state, pipeline) {
+    MutationHelpers.create(_state, pipeline);
+    if (pipeline.is_default) {
+      _state.records.forEach(record => {
+        if (record.id !== pipeline.id) {
+          record.is_default = false;
+        }
+      });
+    }
+  },
+  [types.EDIT_PIPELINE](_state, pipeline) {
+    MutationHelpers.update(_state, pipeline);
+    if (pipeline.is_default) {
+      _state.records.forEach(record => {
+        if (record.id !== pipeline.id) {
+          record.is_default = false;
+        }
+      });
+    }
+  },
   [types.DELETE_PIPELINE]: MutationHelpers.destroy,
 
   [types.SET_CURRENT_PIPELINE](_state, pipeline) {

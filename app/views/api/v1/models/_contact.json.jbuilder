@@ -31,7 +31,6 @@ if defined?(with_deals) && with_deals.present?
     json.array! resource.deals.open_deals.includes(:stage).limit(10) do |deal|
       json.id deal.id
       json.title deal.title
-      json.value deal.value.to_f
       json.stage_name deal.stage.name
       json.status deal.status
     end
