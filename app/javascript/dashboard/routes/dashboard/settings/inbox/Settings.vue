@@ -100,11 +100,11 @@ export default {
       showBusinessNameInput: false,
       healthData: null,
       isLoadingHealth: false,
-      isRegisteringWebhook: false,
       healthError: null,
       widgetBubblePosition: 'right',
       widgetBubbleType: 'standard',
       widgetBubbleLauncherTitle: '',
+      isRegisteringWebhook: false,
     };
   },
   computed: {
@@ -440,18 +440,6 @@ export default {
         this.isLoadingHealth = false;
       }
     },
-    async registerWebhook() {
-      try {
-        this.isRegisteringWebhook = true;
-        await InboxHealthAPI.registerWebhook(this.currentInboxId);
-        useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
-        await this.fetchHealthData();
-      } catch (error) {
-        useAlert(error.message || this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
-      } finally {
-        this.isRegisteringWebhook = false;
-      }
-    },
     handleFeatureFlag(e) {
       this.selectedFeatureFlags = this.toggleInput(
         this.selectedFeatureFlags,
@@ -572,6 +560,21 @@ export default {
     },
     toggleLockToSingleConversation(value) {
       this.locktoSingleConversation = value;
+    },
+    async registerWebhook() {
+      try {
+        this.isRegisteringWebhook = true;
+        await InboxHealthAPI.registerWebhook(this.currentInboxId);
+        useAlert(this.$t('INBOX_MGMT.ACCOUNT_HEALTH.WEBHOOK.REGISTER_SUCCESS'));
+        await this.fetchHealthData();
+      } catch (error) {
+        useAlert(
+          error.message ||
+            this.$t('INBOX_MGMT.ACCOUNT_HEALTH.WEBHOOK.REGISTER_ERROR')
+        );
+      } finally {
+        this.isRegisteringWebhook = false;
+      }
     },
   },
   validations: {
@@ -1154,7 +1157,7 @@ export default {
         <AccountHealth
           :health-data="healthData"
           :is-registering-webhook="isRegisteringWebhook"
-          @registerWebhook="registerWebhook"
+          @register-webhook="registerWebhook"
         />
       </div>
       <div v-if="selectedTabKey === 'evolution-instance'">
