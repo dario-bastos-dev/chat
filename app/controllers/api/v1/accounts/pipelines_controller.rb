@@ -17,7 +17,19 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
 
   def update
     authorize @pipeline
-    @pipeline.update!(pipeline_params)
+    ActiveRecord::Base.transaction do
+      if pipeline_params[:stages_attributes].present?
+        # Incrementa temporariamente as posições no banco para evitar colisões de chave única
+        @pipeline.stages.update_all('position = position + 1000')
+      end
+
+      @pipeline.update!(pipeline_params)
+
+      # Normaliza sequencialmente as posições das etapas ativas de 1 em diante
+      @pipeline.stages.reload.order(position: :asc).each_with_index do |stage, index|
+        stage.update_columns(position: index + 1)
+      end
+    end
   end
 
   def destroy
