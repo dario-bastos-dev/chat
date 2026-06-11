@@ -134,6 +134,8 @@ class User < ApplicationRecord
   end
 
   def assigned_inboxes
+    return Inbox.none if Current.account.blank?
+
     administrator? ? Current.account.inboxes : inboxes.where(account_id: Current.account.id)
   end
 

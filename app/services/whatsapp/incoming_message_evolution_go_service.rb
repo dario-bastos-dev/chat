@@ -38,8 +38,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
     return if contact_jid.to_s.match?(/(@broadcast|status)/)
     return if is_group?
 
-    # Skip invalid phone numbers
-    if contact_phone_number.blank?
+    # Skip invalid phone numbers (unless it's a LID)
+    if contact_phone_number.blank? && !contact_jid.to_s.include?('@lid')
       Rails.logger.debug "[EVOLUTION_GO MSG] Invalid phone: #{contact_jid}"
       return
     end
@@ -209,12 +209,16 @@ class Whatsapp::IncomingMessageEvolutionGoService
     return @contact_phone_number if defined?(@contact_phone_number)
 
     jid = contact_jid
-    phone = jid.split('@').first.split(':').first
-
-    if phone.present? && phone.match?(/^\d{7,15}$/)
-      @contact_phone_number = "+#{phone}"
-    else
+    # If the JID is a LID, it's not a real phone number
+    if jid.to_s.include?('@lid')
       @contact_phone_number = nil
+    else
+      phone = jid.split('@').first.split(':').first
+      if phone.present? && phone.match?(/^\d{7,15}$/)
+        @contact_phone_number = "+#{phone}"
+      else
+        @contact_phone_number = nil
+      end
     end
 
     @contact_phone_number
@@ -275,39 +279,66 @@ class Whatsapp::IncomingMessageEvolutionGoService
     # 1. Tenta encontrar o ContactInbox já existente nesta inbox (por source_id = JID atual)
     contact_inbox = find_existing_contact_inbox
 
-    # 2. Se não achou na inbox, mas temos um JID de telefone (@s.whatsapp.net), 
-    # busca se esse contato já existe em OUTRA inbox da conta para evitar duplicidade
+    # 2. Se não achou na inbox, mas temos um JID de telefone (@s.whatsapp.net)
     if contact_inbox.blank? && contact_jid.to_s.include?('@s.whatsapp.net')
-      existing_contact = inbox.account.contacts.find_by(phone_number: contact_phone_number)
+      # Busca o contato usando a busca exata + fallback de 9º dígito
+      existing_contact = find_existing_contact_by_phone
+      
+      # Fusão preventiva: Se achamos o contato real, mas temos um contato LID criado anteriormente, faz a mesclagem
+      if existing_contact && payload_lid_source_id.present?
+        lid_contact_inbox = inbox.contact_inboxes.find_by(source_id: payload_lid_source_id)
+        if lid_contact_inbox && lid_contact_inbox.contact_id != existing_contact.id
+          Rails.logger.info "[EVOLUTION_GO MSG] Mesclando contato LID #{lid_contact_inbox.contact_id} no contato real #{existing_contact.id}"
+          ContactMergeAction.new(
+            account: inbox.account,
+            base_contact: existing_contact,
+            mergee_contact: lid_contact_inbox.contact
+          ).perform
+        end
+      end
+
+      # Tenta recarregar/criar o ContactInbox após a fusão
+      existing_contact ||= find_existing_contact_by_phone
       if existing_contact
-        contact_inbox = inbox.contact_inboxes.create!(
+        contact_inbox = inbox.contact_inboxes.find_or_create_by!(
           contact: existing_contact,
           source_id: contact_source_id
         )
       end
     end
 
-    # 3. Se ainda não achou, e é um LID, verifica se já mapeamos esse LID para algum telefone anteriormente
+    # 3. Se ainda não achou, e é um LID, verifica se já temos o ContactInbox do LID ou mapeamento
     if contact_inbox.blank? && contact_jid.to_s.include?('@lid')
-      lid_value = extract_lid_digits(contact_jid)
-      mapping = Channel::WhatsappLidMapping.find_by(lid: lid_value, inbox_id: inbox.id)
-      if mapping
-        contact_inbox = mapping.contact.contact_inboxes.find_by(inbox_id: inbox.id)
+      # Busca pelo ContactInbox do LID diretamente
+      contact_inbox = inbox.contact_inboxes.find_by(source_id: contact_source_id)
+
+      # Se não achou, busca pelo mapeamento indexado
+      if contact_inbox.blank?
+        lid_value = extract_lid_digits(contact_jid)
+        mapping = Channel::WhatsappLidMapping.find_by(lid: lid_value, inbox_id: inbox.id)
+        if mapping
+          contact_inbox = mapping.contact.contact_inboxes.find_by(inbox_id: inbox.id)
+        end
       end
     end
 
-    # 4. Se ainda assim não achou, usa o builder padrão (que criará um novo se não achar por telefone)
+    # 4. Se ainda assim não achou, cria usando o builder padrão
     contact_inbox ||= ::ContactInboxWithContactBuilder.new(
       source_id: contact_source_id,
       inbox: inbox,
       contact_attributes: contact_attributes
     ).perform
 
-    # 5. JID Swap: Se o contato foi achado/criado via LID, mas agora temos o Telefone real, 
-    # atualiza o source_id para o telefone para que as próximas mensagens batam direto.
-    if contact_inbox.source_id.include?('lid') && contact_jid.to_s.include?('@s.whatsapp.net')
-      Rails.logger.info "[EVOLUTION_GO MSG] JID Swap: Updating source_id from #{contact_inbox.source_id} to #{contact_source_id}"
+    # 5. JID Swap corrigido
+    if contact_inbox.contact.identifier.to_s.include?('@lid') && contact_jid.to_s.include?('@s.whatsapp.net')
+      Rails.logger.info "[EVOLUTION_GO MSG] JID Swap: Atualizando source_id de #{contact_inbox.source_id} para #{contact_source_id}"
+      
+      # Atualiza a source_id do contact inbox e dados do contato
       contact_inbox.update!(source_id: contact_source_id)
+      contact_inbox.contact.update!(
+        phone_number: contact_phone_number,
+        identifier: contact_jid
+      )
     end
 
     @contact_inbox = contact_inbox
@@ -318,6 +349,47 @@ class Whatsapp::IncomingMessageEvolutionGoService
 
   def find_existing_contact_inbox
     inbox.contact_inboxes.find_by(source_id: contact_source_id)
+  end
+
+  # Auxiliar para identificar o LID no payload
+  def payload_lid_source_id
+    lid_jid = [sender_jid, sender_alt_jid, recipient_alt_jid].find { |j| j.to_s.include?('@lid') }
+    return nil if lid_jid.blank?
+
+    extract_lid_digits(lid_jid)
+  end
+
+  # Auxiliar de busca com fallback para o 9º dígito brasileiro
+  def find_existing_contact_by_phone
+    return nil if contact_phone_number.blank?
+
+    # 1. Busca exata
+    contact = inbox.account.contacts.find_by(phone_number: contact_phone_number)
+    return contact if contact.present?
+
+    # 2. Fallback de 9º dígito (apenas para números brasileiros)
+    # Formato e164: +55 + DDD (2 dígitos) + número (8 ou 9 dígitos)
+    clean_phone = contact_phone_number.to_s.gsub(/^\+/, '')
+    if clean_phone.start_with?('55')
+      ddd = clean_phone[2, 2]
+      number = clean_phone[4..-1]
+
+      modified_phone = if clean_phone.length == 13 && number.start_with?('9')
+                         # Remove o '9'
+                         "+55#{ddd}#{number[1..-1]}"
+                       elsif clean_phone.length == 12
+                         # Adiciona o '9'
+                         "+55#{ddd}9#{number}"
+                       end
+
+      if modified_phone.present?
+        Rails.logger.info "[EVOLUTION_GO MSG] Tentando busca com variante do 9º dígito: #{modified_phone}"
+        contact = inbox.account.contacts.find_by(phone_number: modified_phone)
+        return contact if contact.present?
+      end
+    end
+
+    nil
   end
 
   # Save LID → phone mapping when processing incoming messages.
@@ -372,6 +444,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
   end
 
   def update_contact_name_if_needed
+    return if from_me?
+    return if is_group?
     return if push_name.blank?
     return unless @contact.present?
 
@@ -404,6 +478,7 @@ class Whatsapp::IncomingMessageEvolutionGoService
   # --- Conversation management ---
 
   def set_conversation
+    # 1. Tenta buscar conversa ativa no ContactInbox específico
     @conversation = if inbox.lock_to_single_conversation
                       @contact_inbox.conversations.last
                     else
@@ -412,12 +487,26 @@ class Whatsapp::IncomingMessageEvolutionGoService
 
     return if @conversation
 
-    @conversation = ::Conversation.create!(
-      account_id: inbox.account_id,
-      inbox_id: inbox.id,
-      contact_id: @contact.id,
-      contact_inbox_id: @contact_inbox.id
-    )
+    # 2. Fallback: Busca qualquer conversa ativa do CONTATO nesta INBOX (LID ou Telefone)
+    active_conv = if inbox.lock_to_single_conversation
+                    inbox.conversations.where(contact_id: @contact.id).last
+                  else
+                    inbox.conversations.where(contact_id: @contact.id).where.not(status: :resolved).last
+                  end
+
+    if active_conv.present?
+      # Atualiza o contact_inbox_id para o atual para garantir que o fluxo de saída use o JID ativo correto
+      active_conv.update!(contact_inbox_id: @contact_inbox.id)
+      @conversation = active_conv
+    else
+      # 3. Cria uma nova conversa se realmente não existir nenhuma ativa
+      @conversation = ::Conversation.create!(
+        account_id: inbox.account_id,
+        inbox_id: inbox.id,
+        contact_id: @contact.id,
+        contact_inbox_id: @contact_inbox.id
+      )
+    end
   end
 
   # --- Message creation ---

@@ -593,6 +593,10 @@
           "VOICE": {
             "TITLE": "Voz",
             "DESCRIPTION": "Integre com o Twilio Voice"
+          },
+          "WHATSAPP_CALL": {
+            "TITLE": "Ligação do WhatsApp",
+            "DESCRIPTION": "Receba chamadas de voz no seu número do WhatsApp"
           }
         }
       },

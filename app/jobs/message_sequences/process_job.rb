@@ -36,7 +36,7 @@ class MessageSequences::ProcessJob < ApplicationJob
       if Time.current >= (reference_time + step_wait_duration)
         # Verifica se o envio está dentro do horário permitido, caso restrição esteja ativa
         if sequence.restrict_execution_time?
-          account_timezone = sequence.account.timezone.presence || 'UTC'
+          account_timezone = sequence.account.reporting_timezone.presence || 'UTC'
           current_hour = Time.current.in_time_zone(account_timezone).hour
           
           # Se estiver fora do horário, a mensagem não é enviada agora e será avaliada no próximo minuto

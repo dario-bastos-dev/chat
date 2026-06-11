@@ -17,6 +17,10 @@ class ConversationApi extends ApiClient {
   exportConversations(queryPayload) {
     return axios.post(`${this.url}/export`, queryPayload);
   }
+
+  getUnreadCounts() {
+    return axios.get(`${this.url}/unread_counts`);
+  }
 }
 
 export default new ConversationApi();

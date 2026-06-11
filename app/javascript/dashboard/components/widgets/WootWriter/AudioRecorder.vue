@@ -4,7 +4,7 @@ import { ref, onMounted, onUnmounted, defineEmits, defineExpose } from 'vue';
 import WaveSurfer from 'wavesurfer.js';
 import RecordPlugin from 'wavesurfer.js/dist/plugins/record.js';
 import { format, intervalToDuration } from 'date-fns';
-import { convertAudio } from './utils/mp3ConversionUtils';
+import { convertAudio } from './utils/audioConversionUtils';
 
 const props = defineProps({
   audioRecordFormat: {

@@ -129,6 +129,7 @@ Rails.application.routes.draw do
               get :search
               post :filter
               post :export
+              get :unread_counts, to: 'conversations/unread_counts#index'
             end
             scope module: :conversations do
               resources :messages, only: [:index, :create, :destroy, :update] do
@@ -629,6 +630,7 @@ Rails.application.routes.draw do
       post 'voice/call/:phone', to: 'voice#call_twiml', as: :voice_call
       post 'voice/status/:phone', to: 'voice#status', as: :voice_status
       post 'voice/conference_status/:phone', to: 'voice#conference_status', as: :voice_conference_status
+      post 'voice/recording_status/:phone', to: 'voice#recording_status', as: :voice_recording_status
     end
   end
 
