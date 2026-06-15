@@ -23,6 +23,7 @@ const handleDelete = campaign => emit('delete', campaign);
     <CampaignCard
       v-for="campaign in campaigns"
       :key="campaign.id"
+      :campaign-id="campaign.id"
       :title="campaign.title"
       :message="campaign.message"
       :is-enabled="campaign.enabled"

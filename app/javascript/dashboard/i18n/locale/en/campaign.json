@@ -193,6 +193,21 @@
             "ERROR": "Scheduled time is required"
           },
           "SCHEDULE_CAMPAIGN": "Schedule campaign",
+          "TARGET_TYPE": {
+            "LABEL": "Send to:",
+            "CONTACTS": "Contacts",
+            "CONVERSATIONS": "Conversations"
+          },
+          "CADENCE_INTERVAL": {
+            "LABEL": "Interval between sends (seconds)",
+            "PLACEHOLDER": "E.g.: 2"
+          },
+          "PAUSE_AFTER": {
+            "LABEL": "Pause after (number of sends)",
+            "PLACEHOLDER": "E.g.: 100",
+            "HINT": "Optional. Leave empty to send without pauses."
+          },
+          "AUDIENCE_ESTIMATE": "Estimate: {count} recipient(s) will be reached",
           "BUTTONS": {
             "CREATE": "Create",
             "CANCEL": "Cancel"
@@ -252,6 +267,25 @@
             "ERROR": "Scheduled time is required"
           },
           "SCHEDULE_CAMPAIGN": "Schedule campaign",
+          "TARGET_TYPE": {
+            "LABEL": "Send to:",
+            "CONTACTS": "Contacts",
+            "CONVERSATIONS": "Conversations"
+          },
+          "ATTACHMENT": {
+            "LABEL": "Attachment (Image, Audio or PDF)",
+            "HINT": "Optional. The file will be sent with the message as a caption."
+          },
+          "CADENCE_INTERVAL": {
+            "LABEL": "Interval between sends (seconds)",
+            "PLACEHOLDER": "E.g.: 2"
+          },
+          "PAUSE_AFTER": {
+            "LABEL": "Pause after (number of sends)",
+            "PLACEHOLDER": "E.g.: 100",
+            "HINT": "Optional. Leave empty to send without pauses."
+          },
+          "AUDIENCE_ESTIMATE": "Estimate: {count} recipient(s) will be reached",
           "BUTTONS": {
             "CREATE": "Create",
             "CANCEL": "Cancel"
@@ -262,6 +296,13 @@
           }
         }
       }
+    },
+    "STATUS": {
+      "PAUSED": "Paused",
+      "RESUMED": "Campaign resumed successfully",
+      "RESUME_ERROR": "Error resuming campaign",
+      "STOPPED": "Campaign stopped successfully",
+      "STOP_ERROR": "Error stopping campaign"
     },
     "CONFIRM_DELETE": {
       "TITLE": "Are you sure to delete?",

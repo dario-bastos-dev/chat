@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useVuelidate } from '@vuelidate/core';
 import { required, minLength, requiredIf } from '@vuelidate/validators';
 import { useMapGetter } from 'dashboard/composables/store';
+import CampaignsAPI from 'dashboard/api/campaigns';
 
 import Input from 'dashboard/components-next/input/Input.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
@@ -23,7 +24,7 @@ const formState = {
   inboxes: useMapGetter('inboxes/getWhatsAppLiteInboxes'),
 };
 
-const initialState = {
+const getInitialState = () => ({
   title: '',
   inboxId: null,
   message: '',
@@ -32,9 +33,14 @@ const initialState = {
   targetType: 'contacts',
   isScheduled: false,
   file: null,
-};
+  cadenceInterval: 2,
+  pauseAfter: null,
+});
 
-const state = reactive({ ...initialState });
+const state = reactive(getInitialState());
+
+const audienceEstimate = ref(0);
+const isLoadingEstimate = ref(false);
 
 const rules = {
   title: { required, minLength: minLength(1) },
@@ -92,7 +98,7 @@ const formatToUTCString = localDateTime =>
   localDateTime ? new Date(localDateTime).toISOString() : null;
 
 const resetState = () => {
-  Object.assign(state, initialState);
+  Object.assign(state, getInitialState());
   v$.value.$reset();
 };
 
@@ -105,12 +111,45 @@ const handleFileUpload = event => {
   }
 };
 
+let estimateTimeout = null;
+watch(
+  () => [state.selectedAudience, state.inboxId, state.targetType],
+  () => {
+    if (estimateTimeout) clearTimeout(estimateTimeout);
+    if (!state.inboxId || !state.selectedAudience?.length) {
+      audienceEstimate.value = 0;
+      return;
+    }
+    isLoadingEstimate.value = true;
+    estimateTimeout = setTimeout(async () => {
+      try {
+        const response = await CampaignsAPI.getAudienceEstimate({
+          inboxId: state.inboxId,
+          targetType: state.targetType,
+          labelIds: state.selectedAudience,
+        });
+        audienceEstimate.value = response.data.count;
+      } catch {
+        audienceEstimate.value = 0;
+      } finally {
+        isLoadingEstimate.value = false;
+      }
+    }, 500);
+  },
+  { deep: true }
+);
+
 const prepareCampaignDetails = () => {
   if (state.file) {
     const formData = new FormData();
     formData.append('campaign[title]', state.title);
     formData.append('campaign[message]', state.message);
     formData.append('campaign[inbox_id]', state.inboxId);
+    formData.append('campaign[cadence_interval]', state.cadenceInterval);
+
+    if (state.pauseAfter !== null && state.pauseAfter !== '') {
+      formData.append('campaign[pause_after]', state.pauseAfter);
+    }
     
     if (state.isScheduled && state.scheduledAt) {
       formData.append('campaign[scheduled_at]', formatToUTCString(state.scheduledAt));
@@ -132,6 +171,8 @@ const prepareCampaignDetails = () => {
     title: state.title,
     message: state.message,
     inbox_id: state.inboxId,
+    cadence_interval: state.cadenceInterval,
+    pause_after: state.pauseAfter !== null && state.pauseAfter !== '' ? state.pauseAfter : null,
     scheduled_at: state.isScheduled
       ? formatToUTCString(state.scheduledAt)
       : null,
@@ -204,9 +245,19 @@ const handleSubmit = async () => {
       />
     </div>
 
+    <div
+      v-if="audienceEstimate > 0"
+      class="flex items-center gap-2 px-3 py-2 rounded-lg bg-n-alpha-2"
+    >
+      <span class="i-lucide-users text-n-slate-11 size-4" />
+      <span class="text-sm text-n-slate-11">
+        {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.AUDIENCE_ESTIMATE', { count: audienceEstimate }) }}
+      </span>
+    </div>
+
     <div class="flex flex-col gap-2 mt-2 mb-2">
       <label class="text-sm font-medium text-n-slate-12">
-        Enviar para:
+        {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.TARGET_TYPE.LABEL') }}
       </label>
       <div class="flex gap-4">
         <label class="flex items-center gap-2 cursor-pointer">
@@ -217,7 +268,9 @@ const handleSubmit = async () => {
             value="contacts"
             class="size-4 accent-n-blue-9"
           />
-          <span class="text-sm text-n-slate-12">Contatos</span>
+          <span class="text-sm text-n-slate-12">
+            {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.TARGET_TYPE.CONTACTS') }}
+          </span>
         </label>
         <label class="flex items-center gap-2 cursor-pointer">
           <input
@@ -227,14 +280,35 @@ const handleSubmit = async () => {
             value="conversations"
             class="size-4 accent-n-blue-9"
           />
-          <span class="text-sm text-n-slate-12">Conversas</span>
+          <span class="text-sm text-n-slate-12">
+            {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.TARGET_TYPE.CONVERSATIONS') }}
+          </span>
         </label>
       </div>
     </div>
 
+    <Input
+      v-model.number="state.cadenceInterval"
+      :label="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.CADENCE_INTERVAL.LABEL')"
+      :placeholder="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.CADENCE_INTERVAL.PLACEHOLDER')"
+      type="number"
+      min="1"
+    />
+
+    <Input
+      v-model.number="state.pauseAfter"
+      :label="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.PAUSE_AFTER.LABEL')"
+      :placeholder="t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.PAUSE_AFTER.PLACEHOLDER')"
+      type="number"
+      min="1"
+    />
+    <p class="text-xs text-n-slate-10 -mt-2">
+      {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.PAUSE_AFTER.HINT') }}
+    </p>
+
     <div class="flex flex-col gap-1">
       <label class="mb-0.5 text-sm font-medium text-n-slate-12">
-        Anexo (Imagem, Áudio ou PDF)
+        {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.ATTACHMENT.LABEL') }}
       </label>
       <input 
         type="file" 
@@ -243,7 +317,7 @@ const handleSubmit = async () => {
         @change="handleFileUpload" 
       />
       <p class="text-xs text-n-slate-10 mt-1">
-        Opcional. O arquivo será enviado com a mensagem como legenda.
+        {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.ATTACHMENT.HINT') }}
       </p>
     </div>
 

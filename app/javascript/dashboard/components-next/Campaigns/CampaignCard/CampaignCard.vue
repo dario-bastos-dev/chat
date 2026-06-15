@@ -1,8 +1,10 @@
 <script setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
 import { getInboxIconByType } from 'dashboard/helper/inbox';
+import { useStore } from 'dashboard/composables/store';
+import { useAlert } from 'dashboard/composables';
 
 import CardLayout from 'dashboard/components-next/CardLayout.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
@@ -10,6 +12,10 @@ import LiveChatCampaignDetails from './LiveChatCampaignDetails.vue';
 import SMSCampaignDetails from './SMSCampaignDetails.vue';
 
 const props = defineProps({
+  campaignId: {
+    type: Number,
+    default: 0,
+  },
   title: {
     type: String,
     default: '',
@@ -55,6 +61,9 @@ const props = defineProps({
 const emit = defineEmits(['edit', 'delete']);
 
 const { t } = useI18n();
+const store = useStore();
+
+const isLoading = ref(false);
 
 const STATUS_COMPLETED = 'completed';
 
@@ -64,16 +73,23 @@ const isActive = computed(() =>
   props.isLiveChatType ? props.isEnabled : props.status !== STATUS_COMPLETED
 );
 
-const statusTextColor = computed(() => ({
-  'text-n-teal-11': isActive.value,
-  'text-n-slate-12': !isActive.value,
-}));
+const statusTextColor = computed(() => {
+  if (props.status === 'paused') return 'text-n-amber-11';
+  return {
+    'text-n-teal-11': isActive.value,
+    'text-n-slate-12': !isActive.value,
+  };
+});
 
 const campaignStatus = computed(() => {
   if (props.isLiveChatType) {
     return props.isEnabled
       ? t('CAMPAIGN.LIVE_CHAT.CARD.STATUS.ENABLED')
       : t('CAMPAIGN.LIVE_CHAT.CARD.STATUS.DISABLED');
+  }
+
+  if (props.status === 'paused') {
+    return t('CAMPAIGN.STATUS.PAUSED');
   }
 
   if (props.status === STATUS_COMPLETED) {
@@ -92,6 +108,38 @@ const inboxIcon = computed(() => {
   const { medium, channel_type: type, provider } = props.inbox;
   return getInboxIconByType(type, medium, 'fill', provider);
 });
+
+const handleResume = async () => {
+  if (isLoading.value) return;
+  isLoading.value = true;
+  try {
+    await store.dispatch('campaigns/update', {
+      id: props.campaignId,
+      campaign_status: 'active',
+    });
+    useAlert(t('CAMPAIGN.STATUS.RESUMED'));
+  } catch {
+    useAlert(t('CAMPAIGN.STATUS.RESUME_ERROR'));
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const handleStop = async () => {
+  if (isLoading.value) return;
+  isLoading.value = true;
+  try {
+    await store.dispatch('campaigns/update', {
+      id: props.campaignId,
+      campaign_status: 'completed',
+    });
+    useAlert(t('CAMPAIGN.STATUS.STOPPED'));
+  } catch {
+    useAlert(t('CAMPAIGN.STATUS.STOP_ERROR'));
+  } finally {
+    isLoading.value = false;
+  }
+};
 </script>
 
 <template>
@@ -131,7 +179,27 @@ const inboxIcon = computed(() => {
         />
       </div>
     </div>
-    <div class="flex items-center justify-end w-20 gap-2">
+    <div class="flex items-center justify-end gap-2">
+      <Button
+        v-if="status === 'paused'"
+        variant="faded"
+        size="sm"
+        color="teal"
+        icon="i-lucide-play"
+        :disabled="isLoading"
+        :is-loading="isLoading"
+        @click="handleResume"
+      />
+      <Button
+        v-if="status === 'paused'"
+        variant="faded"
+        size="sm"
+        color="ruby"
+        icon="i-lucide-square"
+        :disabled="isLoading"
+        :is-loading="isLoading"
+        @click="handleStop"
+      />
       <Button
         v-if="isLiveChatType"
         variant="faded"

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useVuelidate } from '@vuelidate/core';
 import { required, minLength, requiredIf } from '@vuelidate/validators';
 import { useMapGetter } from 'dashboard/composables/store';
+import CampaignsAPI from 'dashboard/api/campaigns';
 
 import Input from 'dashboard/components-next/input/Input.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
@@ -26,7 +27,7 @@ const formState = {
   ),
 };
 
-const initialState = {
+const getInitialState = () => ({
   title: '',
   inboxId: null,
   templateId: null,
@@ -34,10 +35,15 @@ const initialState = {
   selectedAudience: [],
   targetType: 'contacts',
   isScheduled: false,
-};
+  cadenceInterval: 2,
+  pauseAfter: null,
+});
 
-const state = reactive({ ...initialState });
+const state = reactive(getInitialState());
 const templateParserRef = ref(null);
+
+const audienceEstimate = ref(0);
+const isLoadingEstimate = ref(false);
 
 const rules = {
   title: { required, minLength: minLength(1) },
@@ -120,11 +126,39 @@ const formatToUTCString = localDateTime =>
   localDateTime ? new Date(localDateTime).toISOString() : null;
 
 const resetState = () => {
-  Object.assign(state, initialState);
+  Object.assign(state, getInitialState());
   v$.value.$reset();
 };
 
 const handleCancel = () => emit('cancel');
+
+let estimateTimeout = null;
+watch(
+  () => [state.selectedAudience, state.inboxId, state.targetType],
+  () => {
+    if (estimateTimeout) clearTimeout(estimateTimeout);
+    if (!state.inboxId || !state.selectedAudience?.length) {
+      audienceEstimate.value = 0;
+      return;
+    }
+    isLoadingEstimate.value = true;
+    estimateTimeout = setTimeout(async () => {
+      try {
+        const response = await CampaignsAPI.getAudienceEstimate({
+          inboxId: state.inboxId,
+          targetType: state.targetType,
+          labelIds: state.selectedAudience,
+        });
+        audienceEstimate.value = response.data.count;
+      } catch {
+        audienceEstimate.value = 0;
+      } finally {
+        isLoadingEstimate.value = false;
+      }
+    }, 500);
+  },
+  { deep: true }
+);
 
 const prepareCampaignDetails = () => {
   // Find the selected template to get its content
@@ -148,6 +182,8 @@ const prepareCampaignDetails = () => {
     message: templateContent,
     template_params: templateParams,
     inbox_id: state.inboxId,
+    cadence_interval: state.cadenceInterval,
+    pause_after: state.pauseAfter !== null && state.pauseAfter !== '' ? state.pauseAfter : null,
     scheduled_at: state.isScheduled
       ? formatToUTCString(state.scheduledAt)
       : null,
@@ -251,9 +287,19 @@ watch(
       />
     </div>
 
+    <div
+      v-if="audienceEstimate > 0"
+      class="flex items-center gap-2 px-3 py-2 rounded-lg bg-n-alpha-2"
+    >
+      <span class="i-lucide-users text-n-slate-11 size-4" />
+      <span class="text-sm text-n-slate-11">
+        {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.AUDIENCE_ESTIMATE', { count: audienceEstimate }) }}
+      </span>
+    </div>
+
     <div class="flex flex-col gap-2 mt-2 mb-2">
       <label class="text-sm font-medium text-n-slate-12">
-        Enviar para:
+        {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.TARGET_TYPE.LABEL') }}
       </label>
       <div class="flex gap-4">
         <label class="flex items-center gap-2 cursor-pointer">
@@ -264,7 +310,9 @@ watch(
             value="contacts"
             class="size-4 accent-n-blue-9"
           />
-          <span class="text-sm text-n-slate-12">Contatos</span>
+          <span class="text-sm text-n-slate-12">
+            {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.TARGET_TYPE.CONTACTS') }}
+          </span>
         </label>
         <label class="flex items-center gap-2 cursor-pointer">
           <input
@@ -274,10 +322,31 @@ watch(
             value="conversations"
             class="size-4 accent-n-blue-9"
           />
-          <span class="text-sm text-n-slate-12">Conversas</span>
+          <span class="text-sm text-n-slate-12">
+            {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.TARGET_TYPE.CONVERSATIONS') }}
+          </span>
         </label>
       </div>
     </div>
+
+    <Input
+      v-model.number="state.cadenceInterval"
+      :label="t('CAMPAIGN.WHATSAPP.CREATE.FORM.CADENCE_INTERVAL.LABEL')"
+      :placeholder="t('CAMPAIGN.WHATSAPP.CREATE.FORM.CADENCE_INTERVAL.PLACEHOLDER')"
+      type="number"
+      min="1"
+    />
+
+    <Input
+      v-model.number="state.pauseAfter"
+      :label="t('CAMPAIGN.WHATSAPP.CREATE.FORM.PAUSE_AFTER.LABEL')"
+      :placeholder="t('CAMPAIGN.WHATSAPP.CREATE.FORM.PAUSE_AFTER.PLACEHOLDER')"
+      type="number"
+      min="1"
+    />
+    <p class="text-xs text-n-slate-10 -mt-2">
+      {{ t('CAMPAIGN.WHATSAPP.CREATE.FORM.PAUSE_AFTER.HINT') }}
+    </p>
 
     <Input
       v-if="state.isScheduled"

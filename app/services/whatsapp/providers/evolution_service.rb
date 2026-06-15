@@ -43,11 +43,12 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     quoted = quoted_context(message)
     body[:quoted] = quoted if quoted.present?
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/message/sendText/#{instance_name}",
       headers: api_headers,
       body: body.to_json,
-      timeout: 10  # Add timeout for better performance
+      timeout: 10
     )
 
     if response.success?
@@ -145,11 +146,12 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
 
     Rails.logger.info "[EVOLUTION DEBUG] Body: #{body.to_json}"
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/message/#{endpoint}/#{instance_name}",
       headers: api_headers,
       body: body.to_json,
-      timeout: 30 # Prevent blocking worker on slow media uploads
+      timeout: 30
     )
     
     Rails.logger.info "[EVOLUTION DEBUG] Response: #{response.code} / #{response.body}"
@@ -214,7 +216,8 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
 
     Rails.logger.info "[EVOLUTION] Fetching base64 media for keyId: #{key_id}"
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       url,
       headers: api_headers,
       body: body.to_json,
@@ -268,7 +271,8 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
       }
     }
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/instance/create",
       headers: api_headers,
       body: body.to_json
@@ -305,7 +309,8 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     url = "#{api_base_url}/settings/set/#{instance_name}"
     Rails.logger.info "[EVOLUTION] Calling Evolution API: #{url}"
     
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       url,
       headers: api_headers,
       body: settings.to_json
@@ -336,7 +341,8 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     url = "#{api_base_url}/webhook/set/#{instance_name}"
     Rails.logger.info "[EVOLUTION] Updating webhook config: #{url}"
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       url,
       headers: api_headers,
       body: webhook_config.to_json
@@ -358,7 +364,8 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     # Try both endpoints just in case (logout/delete)
     # Usually delete is enough
     
-    response = HTTParty.delete(
+    response = evolution_request(
+      :delete,
       "#{api_base_url}/instance/delete/#{instance_name}",
       headers: api_headers
     )
@@ -384,7 +391,7 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     Rails.logger.info "[EVOLUTION] Logging out instance: #{url}"
 
     begin
-      response = HTTParty.delete(url, headers: api_headers, timeout: 30)
+      response = evolution_request(:delete, url, headers: api_headers, timeout: 30)
       
       Rails.logger.info "[EVOLUTION] Logout response: #{response.code} - #{response.body}"
 
@@ -417,7 +424,7 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     Rails.logger.info "[EVOLUTION] Phone number: #{phone_number.inspect}"
 
     begin
-      response = HTTParty.get(url, headers: api_headers, timeout: 30)
+      response = evolution_request(:get, url, headers: api_headers, timeout: 30)
       
       Rails.logger.info "[EVOLUTION] HTTP Status: #{response.code}"
 
@@ -474,7 +481,8 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
   def get_connection_status
     return { success: false, error: 'Evolution API not configured' } unless evolution_configured?
 
-    response = HTTParty.get(
+    response = evolution_request(
+      :get,
       "#{api_base_url}/instance/connectionState/#{instance_name}",
       headers: api_headers
     )
@@ -519,7 +527,8 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     quoted = quoted_context(message)
     body[:quoted] = quoted if quoted.present?
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/message/#{media_type}/#{instance_name}",
       headers: api_headers,
       body: body.to_json,
@@ -564,5 +573,45 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     return nil unless original_message
 
     { key: { id: reply_to_id } }
+  end
+
+  class EvolutionResponse
+    attr_reader :code, :body, :parsed_response
+
+    def initialize(success, code, body, parsed_response)
+      @success = success
+      @code = code
+      @body = body
+      @parsed_response = parsed_response
+    end
+
+    def success?
+      @success
+    end
+  end
+
+  def evolution_request(method, path_or_url, headers: {}, body: nil, timeout: 30)
+    path = path_or_url
+    if path_or_url.start_with?(api_base_url)
+      path = path_or_url.sub(api_base_url, '').sub(/^\//, '')
+    end
+
+    conn = Whatsapp::Providers::EvolutionClient.connection(api_base_url)
+    response = conn.send(method, path) do |req|
+      req.headers = headers
+      req.body = body if body.present?
+      req.options.timeout = timeout
+    end
+
+    parsed_response = begin
+      JSON.parse(response.body)
+    rescue
+      {}
+    end
+
+    EvolutionResponse.new(response.success?, response.status, response.body, parsed_response)
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION CLIENT ERROR] #{e.class} - #{e.message}"
+    EvolutionResponse.new(false, 500, '', {})
   end
 end

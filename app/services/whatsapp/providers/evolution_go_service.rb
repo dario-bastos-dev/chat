@@ -40,7 +40,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       token: generated_token
     }
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/instance/create",
       headers: global_headers,
       body: create_body.to_json,
@@ -89,7 +90,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       ignoreStatus: true
     }
 
-    response = HTTParty.put(
+    response = evolution_request(
+      :put,
       "#{api_base_url}/instance/#{instance_id}/advanced-settings",
       headers: instance_headers,
       body: settings.to_json,
@@ -119,7 +121,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       natsEnable: 'disabled'
     }
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/instance/connect",
       headers: instance_headers,
       body: body.to_json,
@@ -136,7 +139,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   def delete_instance
     return { success: true } unless evolution_go_configured? && instance_id.present? && instance_token.present?
 
-    response = HTTParty.delete(
+    response = evolution_request(
+      :delete,
       "#{api_base_url}/instance/delete/#{instance_id}",
       headers: global_headers,
       timeout: 15
@@ -167,7 +171,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     # Must call start_connection first, then immediately get QR
     start_connection
 
-    response = HTTParty.get(
+    response = evolution_request(
+      :get,
       "#{api_base_url}/instance/qr",
       headers: instance_headers,
       timeout: 30
@@ -209,7 +214,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       subscribe: %w[MESSAGE CONNECTION READ_RECEIPT]
     }
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/instance/pair",
       headers: instance_headers,
       body: body.to_json,
@@ -256,7 +262,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     return { success: false, connected: false, logged_in: false, status: 'close' } unless evolution_go_configured? && instance_token.present?
 
     begin
-      response = HTTParty.get(
+      response = evolution_request(
+        :get,
         "#{api_base_url}/instance/status",
         headers: instance_headers,
         timeout: 15
@@ -302,7 +309,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       return { success: false, error: 'Evolution GO API not configured' }
     end
 
-    response = HTTParty.delete(
+    response = evolution_request(
+      :delete,
       "#{api_base_url}/instance/logout",
       headers: instance_headers,
       timeout: 15
@@ -340,7 +348,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     formatted_number = extract_phone_number(phone_number_or_jid)
     return nil if formatted_number.blank?
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/user/avatar",
       headers: instance_headers,
       body: { number: format_recipient_jid(formatted_number), preview: false }.to_json,
@@ -400,7 +409,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       messageId: external_id
     }
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/message/delete",
       headers: instance_headers,
       body: body.to_json,
@@ -484,7 +494,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     quoted = quoted_context(message)
     body[:quoted] = quoted if quoted.present?
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/send/text",
       headers: instance_headers,
       body: body.to_json,
@@ -550,7 +561,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     Rails.logger.info "[EVOLUTION_GO_DEBUG] Sending #{media_type} to #{phone_number} | Filename: #{attachment.file.filename.to_s} | FileType: #{file_type} | URL: #{file_url}"
     Rails.logger.info "[EVOLUTION_GO_DEBUG] Body: #{body.to_json}"
 
-    response = HTTParty.post(
+    response = evolution_request(
+      :post,
       "#{api_base_url}/send/media",
       headers: instance_headers,
       body: body.to_json,
@@ -645,5 +657,45 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     # If the value is > 100, it's likely already in milliseconds (legacy)
     # Otherwise, convert from seconds to ms
     val > 100 ? val : val * 1000
+  end
+
+  class EvolutionResponse
+    attr_reader :code, :body, :parsed_response
+
+    def initialize(success, code, body, parsed_response)
+      @success = success
+      @code = code
+      @body = body
+      @parsed_response = parsed_response
+    end
+
+    def success?
+      @success
+    end
+  end
+
+  def evolution_request(method, path_or_url, headers: {}, body: nil, timeout: 30)
+    path = path_or_url
+    if path_or_url.start_with?(api_base_url)
+      path = path_or_url.sub(api_base_url, '').sub(/^\//, '')
+    end
+
+    conn = Whatsapp::Providers::EvolutionClient.connection(api_base_url)
+    response = conn.send(method, path) do |req|
+      req.headers = headers
+      req.body = body if body.present?
+      req.options.timeout = timeout
+    end
+
+    parsed_response = begin
+      JSON.parse(response.body)
+    rescue
+      {}
+    end
+
+    EvolutionResponse.new(response.success?, response.status, response.body, parsed_response)
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION CLIENT ERROR] #{e.class} - #{e.message}"
+    EvolutionResponse.new(false, 500, '', {})
   end
 end

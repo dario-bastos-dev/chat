@@ -18,6 +18,9 @@ if resource.campaign_type == 'one_off'
   json.audience resource.audience
   json.conversations_count resource.conversations.count
   json.total_contacts resource.total_contacts
+  json.cadence_interval resource.cadence_interval
+  json.pause_after resource.pause_after
+  json.processed_deliveries resource.processed_deliveries
 end
 json.trigger_rules resource.trigger_rules
 json.trigger_only_during_business_hours resource.trigger_only_during_business_hours

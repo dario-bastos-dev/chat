@@ -193,6 +193,21 @@
             "ERROR": "Horário agendado é necessário"
           },
           "SCHEDULE_CAMPAIGN": "Agendar campanha",
+          "TARGET_TYPE": {
+            "LABEL": "Enviar para:",
+            "CONTACTS": "Contatos",
+            "CONVERSATIONS": "Conversas"
+          },
+          "CADENCE_INTERVAL": {
+            "LABEL": "Intervalo entre disparos (segundos)",
+            "PLACEHOLDER": "Ex: 2"
+          },
+          "PAUSE_AFTER": {
+            "LABEL": "Pausar após (quantidade de envios)",
+            "PLACEHOLDER": "Ex: 100",
+            "HINT": "Opcional. Deixe vazio para disparar sem pausas."
+          },
+          "AUDIENCE_ESTIMATE": "Estimativa: {count} destinatário(s) serão alcançados",
           "BUTTONS": {
             "CREATE": "Criar",
             "CANCEL": "Cancelar"
@@ -254,6 +269,25 @@
             "ERROR": "Horário agendado é necessário"
           },
           "SCHEDULE_CAMPAIGN": "Agendar campanha",
+          "TARGET_TYPE": {
+            "LABEL": "Enviar para:",
+            "CONTACTS": "Contatos",
+            "CONVERSATIONS": "Conversas"
+          },
+          "ATTACHMENT": {
+            "LABEL": "Anexo (Imagem, Áudio ou PDF)",
+            "HINT": "Opcional. O arquivo será enviado com a mensagem como legenda."
+          },
+          "CADENCE_INTERVAL": {
+            "LABEL": "Intervalo entre disparos (segundos)",
+            "PLACEHOLDER": "Ex: 2"
+          },
+          "PAUSE_AFTER": {
+            "LABEL": "Pausar após (quantidade de envios)",
+            "PLACEHOLDER": "Ex: 100",
+            "HINT": "Opcional. Deixe vazio para disparar sem pausas."
+          },
+          "AUDIENCE_ESTIMATE": "Estimativa: {count} destinatário(s) serão alcançados",
           "BUTTONS": {
             "CREATE": "Criar",
             "CANCEL": "Cancelar"
@@ -264,6 +298,13 @@
           }
         }
       }
+    },
+    "STATUS": {
+      "PAUSED": "Pausada",
+      "RESUMED": "Campanha retomada com sucesso",
+      "RESUME_ERROR": "Erro ao retomar a campanha",
+      "STOPPED": "Campanha encerrada com sucesso",
+      "STOP_ERROR": "Erro ao encerrar a campanha"
     },
     "CONFIRM_DELETE": {
       "TITLE": "Você tem certeza que deseja excluir?",

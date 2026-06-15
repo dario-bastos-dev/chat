@@ -53,7 +53,10 @@ class Campaign < ApplicationRecord
 
   enum campaign_type: { ongoing: 0, one_off: 1 }
   # TODO : enabled attribute is unneccessary . lets move that to the campaign status with additional statuses like draft, disabled etc.
-  enum campaign_status: { active: 0, completed: 1 }
+  enum campaign_status: { active: 0, completed: 1, paused: 2, processing: 3 }
+
+  validates :cadence_interval, presence: true, numericality: { greater_than_or_equal_to: 1 }
+  validates :pause_after, numericality: { greater_than: 0 }, allow_nil: true
 
   has_many :conversations, dependent: :nullify, autosave: true
   has_many_attached :attachments
@@ -63,11 +66,13 @@ class Campaign < ApplicationRecord
   after_commit :set_display_id, unless: :display_id?
   after_create_commit :dispatch_create_event
   after_update_commit :dispatch_update_event
+  after_update_commit :trigger_campaign_if_resumed
   after_destroy_commit :dispatch_destroy_event
 
   def trigger!
+    reload
     return unless one_off?
-    return if completed?
+    return unless active? || paused?
 
     execute_campaign
   end
@@ -117,7 +122,10 @@ class Campaign < ApplicationRecord
       trigger_rules: trigger_rules,
       audience: audience,
       account_id: account_id,
-      inbox_id: inbox_id
+      inbox_id: inbox_id,
+      cadence_interval: cadence_interval,
+      pause_after: pause_after,
+      processed_deliveries: processed_deliveries
     }
   end
 
@@ -197,7 +205,14 @@ class Campaign < ApplicationRecord
   end
 
   def prevent_completed_campaign_from_update
-    errors.add :status, 'The campaign is already completed' if !campaign_status_changed? && completed?
+    errors.add :status, 'The campaign is already completed' if completed? && !campaign_status_changed?
+  end
+
+  def trigger_campaign_if_resumed
+    return unless saved_change_to_campaign_status?
+    return unless active? && one_off? && scheduled_at.present? && scheduled_at <= Time.now.utc
+
+    Campaigns::TriggerOneoffCampaignJob.perform_later(self)
   end
 
   # creating db triggers

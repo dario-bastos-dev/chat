@@ -3,8 +3,7 @@ class Whatsapp::OneoffCampaignService
 
   def perform
     validate_campaign!
-    # marks campaign completed so that other jobs won't pick it up
-    campaign.completed!
+    campaign.processing!
     process_audience(extract_audience_labels)
   end
 
@@ -69,17 +68,46 @@ class Whatsapp::OneoffCampaignService
   def process_audience(audience_labels)
     audience_list = campaign.normalized_audience
     target_type = audience_list.find { |a| a.is_a?(Hash) && a['type'] == 'Target' }&.dig('value') || 'contacts'
+    already_processed = campaign.processed_deliveries || []
+    sent_count = 0
 
     if target_type == 'conversations'
-      conversations = campaign.account.conversations.where(inbox_id: campaign.inbox_id, status: :open).tagged_with(audience_labels, any: true)
-      Rails.logger.info "Processing #{conversations.count} conversations for campaign #{campaign.id}"
-      conversations.find_each { |conversation| process_conversation(conversation) }
+      scope = campaign.account.conversations.where(inbox_id: campaign.inbox_id, status: :open).tagged_with(audience_labels, any: true)
+      scope.find_each do |conversation|
+        next if already_processed.include?(conversation.id)
+
+        process_conversation(conversation)
+        already_processed << conversation.id
+        campaign.update_column(:processed_deliveries, already_processed)
+        sent_count += 1
+        if campaign.pause_after.present? && sent_count >= campaign.pause_after
+          campaign.update!(campaign_status: :paused)
+          Rails.logger.info "[CAMPAIGN #{campaign.id}] Paused after #{sent_count} deliveries"
+          return
+        end
+        ActiveRecord::Base.connection_pool.release_connection
+        sleep(campaign.cadence_interval || 2)
+      end
     else
-      contacts = campaign.account.contacts.tagged_with(audience_labels, any: true)
-      Rails.logger.info "Processing #{contacts.count} contacts for campaign #{campaign.id}"
-      contacts.find_each { |contact| process_contact(contact) }
+      scope = campaign.account.contacts.tagged_with(audience_labels, any: true)
+      scope.find_each do |contact|
+        next if already_processed.include?(contact.id)
+
+        process_contact(contact)
+        already_processed << contact.id
+        campaign.update_column(:processed_deliveries, already_processed)
+        sent_count += 1
+        if campaign.pause_after.present? && sent_count >= campaign.pause_after
+          campaign.update!(campaign_status: :paused)
+          Rails.logger.info "[CAMPAIGN #{campaign.id}] Paused after #{sent_count} deliveries"
+          return
+        end
+        ActiveRecord::Base.connection_pool.release_connection
+        sleep(campaign.cadence_interval || 2)
+      end
     end
 
+    campaign.update!(campaign_status: :completed)
     Rails.logger.info "Campaign #{campaign.id} processing completed"
   end
 
@@ -224,10 +252,6 @@ class Whatsapp::OneoffCampaignService
     # Send via Provider Service (Evolution or Evolution GO)
     phone_number = to.to_s.gsub(/^\+/, '')
     message_id = channel.provider_service.send_message(phone_number, message)
-
-    # Add a small delay to prevent rate limiting or stream errors from Evolution API / Minio
-    # when it tries to download the same attachment concurrently for multiple contacts
-    sleep(1.5)
 
     if message_id.present?
       Rails.logger.info "[WHATSAPP LITE CAMPAIGN] ✅ Message sent to #{to}. ID: #{message_id}"

@@ -133,6 +133,7 @@ RUN apk update && apk add --no-cache \
   imagemagick \
   git \
   vips \
+  jemalloc \
   && gem install bundler -v "$BUNDLER_VERSION"
 
 COPY --from=node /usr/local/bin/node /usr/local/bin/
@@ -157,5 +158,8 @@ WORKDIR /app
 # Fix permissions and line endings for entrypoints
 RUN chmod -R +x docker/entrypoints && \
     find docker/entrypoints -type f -exec sed -i 's/\r$//' {} +
+
+# Preload jemalloc to reduce memory bloat in Rails/Sidekiq
+ENV LD_PRELOAD=/usr/lib/libjemalloc.so.2
 
 EXPOSE 3000
