@@ -1,0 +1,59 @@
+<%#
+# New Account View
+# Custom template for creating a new account with an Import button and modal
+%>
+
+<% content_for(:title) { t("administrate.actions.new_resource", name: page.resource_name) } %>
+
+<header class="main-content__header" role="banner">
+  <h1 class="main-content__page-title">
+    <%= content_for(:title) %>
+  </h1>
+
+  <div style="display: flex; gap: 8px;">
+    <!-- Import Button triggering custom modal -->
+    <button type="button" class="button button--secondary" onclick="openImportModal()">Import</button>
+    <%= link_to t("administrate.actions.back"), :back, class: "button" %>
+  </div>
+</header>
+
+<section class="main-content__body">
+  <%= render "form", page: page %>
+</section>
+
+<!-- Import Modal Overlay -->
+<div id="import-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 9999; align-items: center; justify-content: center;">
+  <div style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+    <h2 style="margin-top: 0; font-size: 20px; font-weight: 600; margin-bottom: 16px; color: #1f2937;">Import Account JSON</h2>
+    
+    <%= form_with url: import_super_admin_accounts_path, method: :post, multipart: true, local: true do |f| %>
+      <div style="margin-bottom: 20px;">
+        <label for="import_file" style="display: block; font-weight: 500; margin-bottom: 8px; color: #374151;">Select JSON file:</label>
+        <%= f.file_field :import_file, accept: '.json', required: true, style: "display: block; width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" %>
+      </div>
+      
+      <div style="display: flex; justify-content: flex-end; gap: 12px;">
+        <button type="button" class="button button--secondary" onclick="closeImportModal()">Cancel</button>
+        <%= f.submit "Upload and Import", class: "button" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<script>
+  function openImportModal() {
+    document.getElementById('import-modal').style.display = 'flex';
+  }
+  
+  function closeImportModal() {
+    document.getElementById('import-modal').style.display = 'none';
+  }
+
+  // Close modal when clicking outside of it
+  window.onclick = function(event) {
+    var modal = document.getElementById('import-modal');
+    if (event.target == modal) {
+      closeImportModal();
+    }
+  }
+</script>

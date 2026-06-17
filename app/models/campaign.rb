@@ -63,7 +63,7 @@ class Campaign < ApplicationRecord
 
   before_validation :ensure_message_not_nil
   before_validation :ensure_correct_campaign_attributes
-  after_commit :set_display_id, unless: :display_id?
+  after_create_commit :load_attributes_created_by_db_triggers
   after_create_commit :dispatch_create_event
   after_update_commit :dispatch_update_event
   after_update_commit :trigger_campaign_if_resumed
@@ -108,7 +108,7 @@ class Campaign < ApplicationRecord
 
   def push_event_data
     {
-      id: id,
+      id: display_id,
       display_id: display_id,
       title: title,
       description: description,
@@ -117,16 +117,41 @@ class Campaign < ApplicationRecord
       enabled: enabled,
       campaign_status: campaign_status,
       campaign_type: campaign_type,
-      scheduled_at: scheduled_at,
+      scheduled_at: scheduled_at&.to_i,
       trigger_only_during_business_hours: trigger_only_during_business_hours,
       trigger_rules: trigger_rules,
       audience: audience,
       account_id: account_id,
       inbox_id: inbox_id,
+      inbox: inbox.present? ? {
+        id: inbox.id,
+        name: inbox.name,
+        channel_type: inbox.channel_type,
+        inbox_type: inbox.inbox_type,
+        medium: inbox.channel.try(:medium),
+        provider: inbox.channel.try(:provider)
+      } : nil,
+      sender: sender.present? ? {
+        id: sender.id,
+        name: sender.name,
+        available_name: sender.available_name,
+        avatar_url: sender.avatar_url,
+        type: 'agent'
+      } : nil,
+      conversations_count: conversations_count,
+      total_contacts: total_contacts,
       cadence_interval: cadence_interval,
       pause_after: pause_after,
       processed_deliveries: processed_deliveries
     }
+  end
+
+  def conversations_count
+    if one_off?
+      processed_deliveries.is_a?(Array) ? processed_deliveries.size : conversations.count
+    else
+      conversations.count
+    end
   end
 
   private
@@ -146,8 +171,9 @@ class Campaign < ApplicationRecord
     end
   end
 
-  def set_display_id
-    reload
+  def load_attributes_created_by_db_triggers
+    obj_from_db = self.class.find(id)
+    self[:display_id] = obj_from_db[:display_id]
   end
 
   def dispatch_create_event

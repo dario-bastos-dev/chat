@@ -65,6 +65,43 @@ class SuperAdmin::AccountsController < SuperAdmin::ApplicationController
     redirect_back(fallback_location: [namespace, requested_resource], notice: 'Account deletion is in progress.')
     # rubocop:enable Rails/I18nLocaleTexts
   end
+
+  def export
+    account = Account.find(params[:id])
+    exporter = AccountExporter.new(account: account)
+    data = exporter.perform
+
+    send_data JSON.pretty_generate(data),
+              filename: "chatwoot_export_account_#{account.id}_#{Time.now.to_i}.json",
+              type: "application/json"
+  end
+
+  def import
+    if params[:import_file].present?
+      file = params[:import_file]
+      data = JSON.parse(file.read)
+      importer = AccountImporter.new(data: data)
+      new_account_id = importer.perform
+
+      if new_account_id
+        # rubocop:disable Rails/I18nLocaleTexts
+        redirect_to super_admin_account_path(new_account_id), notice: "Account imported successfully! New Account ID: #{new_account_id}"
+        # rubocop:enable Rails/I18nLocaleTexts
+      else
+        # rubocop:disable Rails/I18nLocaleTexts
+        redirect_to new_super_admin_account_path, alert: "Import failed. Check logs for details."
+        # rubocop:enable Rails/I18nLocaleTexts
+      end
+    else
+      # rubocop:disable Rails/I18nLocaleTexts
+      redirect_to new_super_admin_account_path, alert: "Please upload a JSON file."
+      # rubocop:enable Rails/I18nLocaleTexts
+    end
+  rescue => e
+    # rubocop:disable Rails/I18nLocaleTexts
+    redirect_to new_super_admin_account_path, alert: "Failed to parse JSON file: #{e.message}"
+    # rubocop:enable Rails/I18nLocaleTexts
+  end
 end
 
 SuperAdmin::AccountsController.prepend_mod_with('SuperAdmin::AccountsController')

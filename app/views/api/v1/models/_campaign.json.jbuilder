@@ -16,7 +16,7 @@ json.campaign_type resource.campaign_type
 if resource.campaign_type == 'one_off'
   json.scheduled_at resource.scheduled_at.to_i
   json.audience resource.audience
-  json.conversations_count resource.conversations.count
+  json.conversations_count resource.conversations_count
   json.total_contacts resource.total_contacts
   json.cadence_interval resource.cadence_interval
   json.pause_after resource.pause_after

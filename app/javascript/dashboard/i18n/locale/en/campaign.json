@@ -274,7 +274,15 @@
           },
           "ATTACHMENT": {
             "LABEL": "Attachment (Image, Audio or PDF)",
-            "HINT": "Optional. The file will be sent with the message as a caption."
+            "HINT": "Optional. The file will be sent with the message as a caption.",
+            "TYPE_LABEL": "Attachment file type",
+            "TYPE_HINT": "Select how this attachment should be dispatched. Audios sent as audio will appear as a native voice message player.",
+            "TYPES": {
+              "IMAGE": "Image",
+              "VIDEO": "Video",
+              "AUDIO": "Audio",
+              "FILE": "Document / File"
+            }
           },
           "CADENCE_INTERVAL": {
             "LABEL": "Interval between sends (seconds)",

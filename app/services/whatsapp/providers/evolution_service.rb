@@ -588,6 +588,10 @@ class Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
     def success?
       @success
     end
+
+    def message
+      parsed_response&.dig('message') || parsed_response&.dig('error') || body.presence || "HTTP #{code}"
+    end
   end
 
   def evolution_request(method, path_or_url, headers: {}, body: nil, timeout: 30)

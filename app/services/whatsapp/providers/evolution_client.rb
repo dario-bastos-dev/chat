@@ -1,3 +1,5 @@
+require 'faraday/net_http_persistent'
+
 class Whatsapp::Providers::EvolutionClient
   def self.connection(api_base_url)
     @connections ||= {}

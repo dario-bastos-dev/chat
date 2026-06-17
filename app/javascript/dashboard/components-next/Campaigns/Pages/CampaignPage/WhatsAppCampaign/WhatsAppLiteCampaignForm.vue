@@ -33,6 +33,7 @@ const getInitialState = () => ({
   targetType: 'contacts',
   isScheduled: false,
   file: null,
+  attachmentFileType: 'file',
   cadenceInterval: 2,
   pauseAfter: null,
 });
@@ -108,6 +109,15 @@ const handleFileUpload = event => {
   const file = event.target.files[0];
   if (file) {
     state.file = file;
+    if (file.type.startsWith('image/')) {
+      state.attachmentFileType = 'image';
+    } else if (file.type.startsWith('audio/')) {
+      state.attachmentFileType = 'audio';
+    } else if (file.type.startsWith('video/')) {
+      state.attachmentFileType = 'video';
+    } else {
+      state.attachmentFileType = 'file';
+    }
   }
 };
 
@@ -146,6 +156,7 @@ const prepareCampaignDetails = () => {
     formData.append('campaign[message]', state.message);
     formData.append('campaign[inbox_id]', state.inboxId);
     formData.append('campaign[cadence_interval]', state.cadenceInterval);
+    formData.append('campaign[trigger_rules][attachment_file_type]', state.attachmentFileType);
 
     if (state.pauseAfter !== null && state.pauseAfter !== '') {
       formData.append('campaign[pause_after]', state.pauseAfter);
@@ -312,12 +323,30 @@ const handleSubmit = async () => {
       </label>
       <input 
         type="file" 
-        accept="image/*,audio/*,application/pdf"
+        accept="image/*,audio/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         class="block w-full text-sm text-n-slate-11 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-n-alpha-2 file:text-n-slate-12 hover:file:bg-n-alpha-3"
         @change="handleFileUpload" 
       />
       <p class="text-xs text-n-slate-10 mt-1">
         {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.ATTACHMENT.HINT') }}
+      </p>
+    </div>
+
+    <div v-if="state.file" class="flex flex-col gap-1">
+      <label class="mb-0.5 text-sm font-medium text-n-slate-12">
+        {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.ATTACHMENT.TYPE_LABEL') }}
+      </label>
+      <select
+        v-model="state.attachmentFileType"
+        class="block w-full text-sm rounded-md border-n-slate-3 bg-n-alpha-2 text-n-slate-12 p-2.5 focus:border-n-teal-11 focus:ring-n-teal-11 focus:outline-none"
+      >
+        <option value="image">{{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.ATTACHMENT.TYPES.IMAGE') }}</option>
+        <option value="video">{{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.ATTACHMENT.TYPES.VIDEO') }}</option>
+        <option value="audio">{{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.ATTACHMENT.TYPES.AUDIO') }}</option>
+        <option value="file">{{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.ATTACHMENT.TYPES.FILE') }}</option>
+      </select>
+      <p class="text-xs text-n-slate-10 mt-1">
+        {{ t('CAMPAIGN.WHATSAPP_LITE.CREATE.FORM.ATTACHMENT.TYPE_HINT') }}
       </p>
     </div>
 

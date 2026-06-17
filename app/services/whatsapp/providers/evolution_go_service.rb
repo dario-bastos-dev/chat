@@ -536,41 +536,60 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     file_url = attachment_url(attachment)
     file_type = attachment.file_type.to_s
 
-    media_type = case file_type
-                 when 'image' then 'image'
-                 when 'video' then 'video'
-                 when 'audio' then 'audio'
-                 else 'document'
-                 end
+    if file_type == 'audio'
+      body = {
+        number: format_recipient_jid(phone_number),
+        audio: file_url,
+        delay: message_delay
+      }
+      quoted = quoted_context(message)
+      body[:quoted] = quoted if quoted.present?
 
-    # Caption only for image, video, document (not audio)
-    caption = %w[image video file document].include?(file_type) ? (message.outgoing_content.presence || '') : nil
+      Rails.logger.info "[EVOLUTION_GO_DEBUG] Sending audio to #{phone_number} | URL: #{file_url}"
+      Rails.logger.info "[EVOLUTION_GO_DEBUG] Body: #{body.to_json}"
 
-    body = {
-      number: format_recipient_jid(phone_number),
-      type: media_type,
-      url: file_url,
-      filename: attachment.file.filename.to_s,
-      delay: message_delay
-    }
-    body[:caption] = caption if caption.present?
+      response = evolution_request(
+        :post,
+        "#{api_base_url}/send/audio",
+        headers: instance_headers,
+        body: body.to_json,
+        timeout: 30
+      )
+    else
+      media_type = case file_type
+                   when 'image' then 'image'
+                   when 'video' then 'video'
+                   else 'document'
+                   end
 
-    quoted = quoted_context(message)
-    body[:quoted] = quoted if quoted.present?
+      caption = %w[image video file document].include?(file_type) ? (message.outgoing_content.presence || '') : nil
 
-    Rails.logger.info "[EVOLUTION_GO_DEBUG] Sending #{media_type} to #{phone_number} | Filename: #{attachment.file.filename.to_s} | FileType: #{file_type} | URL: #{file_url}"
-    Rails.logger.info "[EVOLUTION_GO_DEBUG] Body: #{body.to_json}"
+      body = {
+        number: format_recipient_jid(phone_number),
+        type: media_type,
+        url: file_url,
+        filename: attachment.file.filename.to_s,
+        delay: message_delay
+      }
+      body[:caption] = caption if caption.present?
 
-    response = evolution_request(
-      :post,
-      "#{api_base_url}/send/media",
-      headers: instance_headers,
-      body: body.to_json,
-      timeout: 30
-    )
+      quoted = quoted_context(message)
+      body[:quoted] = quoted if quoted.present?
+
+      Rails.logger.info "[EVOLUTION_GO_DEBUG] Sending #{media_type} to #{phone_number} | Filename: #{attachment.file.filename.to_s} | FileType: #{file_type} | URL: #{file_url}"
+      Rails.logger.info "[EVOLUTION_GO_DEBUG] Body: #{body.to_json}"
+
+      response = evolution_request(
+        :post,
+        "#{api_base_url}/send/media",
+        headers: instance_headers,
+        body: body.to_json,
+        timeout: 30
+      )
+    end
 
     if response.success?
-      msg_id = response.parsed_response.dig('data', 'Info', 'ID')
+      msg_id = response.parsed_response.dig('data', 'Info', 'ID') || response.parsed_response.dig('data', 'key', 'id')
       Rails.logger.info "[EVOLUTION_GO] ✅ Media sent. ID: #{msg_id}"
       msg_id
     else
@@ -671,6 +690,10 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
     def success?
       @success
+    end
+
+    def message
+      parsed_response&.dig('message') || parsed_response&.dig('error') || body.presence || "HTTP #{code}"
     end
   end
 

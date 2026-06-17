@@ -132,7 +132,7 @@ export const mutations = {
     };
   },
 
-  [types.ADD_CAMPAIGN]: MutationHelpers.create,
+  [types.ADD_CAMPAIGN]: MutationHelpers.setSingleRecord,
   [types.SET_CAMPAIGNS]: MutationHelpers.set,
   [types.EDIT_CAMPAIGN]: MutationHelpers.update,
   [types.DELETE_CAMPAIGN]: MutationHelpers.destroy,

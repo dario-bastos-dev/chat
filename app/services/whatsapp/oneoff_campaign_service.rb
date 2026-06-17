@@ -75,12 +75,17 @@ class Whatsapp::OneoffCampaignService
       scope = campaign.account.conversations.where(inbox_id: campaign.inbox_id, status: :open).tagged_with(audience_labels, any: true)
       scope.find_each do |conversation|
         next if already_processed.include?(conversation.id)
+        next unless conversation.reload.open?
 
         process_conversation(conversation)
         already_processed << conversation.id
         campaign.update_column(:processed_deliveries, already_processed)
         sent_count += 1
-        if campaign.pause_after.present? && sent_count >= campaign.pause_after
+
+        remaining_count = already_processed.empty? ? scope.count : scope.where.not(id: already_processed).count
+        if remaining_count.zero?
+          break
+        elsif campaign.pause_after.present? && sent_count >= campaign.pause_after
           campaign.update!(campaign_status: :paused)
           Rails.logger.info "[CAMPAIGN #{campaign.id}] Paused after #{sent_count} deliveries"
           return
@@ -97,7 +102,11 @@ class Whatsapp::OneoffCampaignService
         already_processed << contact.id
         campaign.update_column(:processed_deliveries, already_processed)
         sent_count += 1
-        if campaign.pause_after.present? && sent_count >= campaign.pause_after
+
+        remaining_count = already_processed.empty? ? scope.count : scope.where.not(id: already_processed).count
+        if remaining_count.zero?
+          break
+        elsif campaign.pause_after.present? && sent_count >= campaign.pause_after
           campaign.update!(campaign_status: :paused)
           Rails.logger.info "[CAMPAIGN #{campaign.id}] Paused after #{sent_count} deliveries"
           return
@@ -113,9 +122,10 @@ class Whatsapp::OneoffCampaignService
 
   def process_conversation(conversation)
     contact = conversation.contact
-    Rails.logger.info "Processing conversation: #{conversation.id} for contact: #{contact.name} (#{contact.phone_number})"
+    to_phone = conversation.contact_inbox&.source_id.presence || contact.phone_number
+    Rails.logger.info "Processing conversation: #{conversation.id} for contact: #{contact.name} (#{to_phone})"
 
-    if contact.phone_number.blank?
+    if to_phone.blank?
       Rails.logger.info "Skipping conversation #{conversation.id} - no phone number"
       return
     end
@@ -126,7 +136,7 @@ class Whatsapp::OneoffCampaignService
       return
     end
 
-    send_whatsapp_template_message(to: contact.phone_number, contact: contact, conversation: conversation)
+    send_whatsapp_template_message(to: to_phone, contact: contact, conversation: conversation)
   end
 
   def send_whatsapp_template_message(to:, contact:, conversation: nil)
@@ -168,6 +178,9 @@ class Whatsapp::OneoffCampaignService
 
   # Infer Chatwoot file_type from a blob's content_type
   def infer_file_type(blob)
+    explicit_type = campaign.trigger_rules&.dig('attachment_file_type')
+    return explicit_type.to_sym if explicit_type.present? && %w[image audio video file].include?(explicit_type.to_s)
+
     content_type = blob.content_type.to_s
     case content_type
     when /\Aimage\// then :image
@@ -258,10 +271,12 @@ class Whatsapp::OneoffCampaignService
       message.update!(source_id: message_id)
     else
       Rails.logger.error "[WHATSAPP LITE CAMPAIGN] ❌ Failed to send message to #{to}"
+      message.update!(status: :failed, external_error: "Failed to send message via WhatsApp Lite Provider")
     end
   rescue StandardError => e
     Rails.logger.error "[WHATSAPP LITE CAMPAIGN] ❌ Error sending to #{to}: #{e.message}"
     Rails.logger.error "[WHATSAPP LITE CAMPAIGN] Backtrace: #{e.backtrace.first(5).join("\n")}"
+    message.update!(status: :failed, external_error: "Error: #{e.message}") if message.present?
     nil
   end
 
