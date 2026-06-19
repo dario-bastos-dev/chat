@@ -1,20 +1,26 @@
 # app/services/account_importer.rb
 class AccountImporter
-  attr_reader :data
+  attr_reader :data, :target_account
 
-  def initialize(data:)
+  def initialize(data:, target_account: nil)
     @data = data
+    @target_account = target_account
   end
 
   def perform
     new_account_id = nil
 
     ActiveRecord::Base.transaction do
-      # 1. Create target account with all original attributes (feature flags, limits, settings, etc)
+      # 1. Create/Update target account with all original attributes (feature flags, limits, settings, etc)
       account_attrs = data['account'].except('id', 'created_at', 'updated_at')
       account_attrs['name'] = data['account']['name'] + " (Migrada)"
       
-      new_account = Account.create!(account_attrs)
+      if target_account
+        target_account.update!(account_attrs)
+        new_account = target_account
+      else
+        new_account = Account.create!(account_attrs)
+      end
       new_account_id = new_account.id
 
       user_mapping = {}
@@ -126,7 +132,36 @@ class AccountImporter
 
       # 10. Import Inboxes and Members
       data['inboxes']&.each do |inbox_data|
-        channel = Channel::Api.create!(account_id: new_account_id)
+        channel_class = inbox_data['channel_type']&.safe_constantize
+        channel_details = inbox_data['channel_details'] || {}
+        
+        # Remove IDs, timestamps e tokens únicos para evitar colisões
+        keys_to_exclude = ['id', 'created_at', 'updated_at', 'website_token', 'hmac_token', 'identifier', 'secret']
+        channel_attrs = channel_details.except(*keys_to_exclude)
+        channel_attrs['account_id'] = new_account_id
+
+        # Tratamento especial de segurança para canal de E-mail
+        if channel_class == Channel::Email
+          channel_attrs.delete('forward_to_email')
+          if Channel::Email.exists?(email: channel_attrs['email'])
+            channel_attrs['email'] = "migrated-#{SecureRandom.hex(4)}-#{channel_attrs['email']}"
+          end
+        end
+        
+        channel = nil
+        begin
+          if channel_class
+            # Tenta criar o canal original. Se for Evolution (Whatsapp), o callback correspondente fará a chamada externa.
+            # Se falhar (lançando erro ou dando abort), capturamos a exceção e criamos como canal de API.
+            channel = channel_class.create!(channel_attrs)
+          else
+            channel = Channel::Api.create!(account_id: new_account_id)
+          end
+        rescue => e
+          Rails.logger.warn "[IMPORT] Falha ao criar canal específico #{inbox_data['channel_type']}: #{e.message}. Criando como canal de API como fallback."
+          channel = Channel::Api.create!(account_id: new_account_id)
+        end
+
         new_inbox = Inbox.create!(
           name: inbox_data['name'],
           account_id: new_account_id,

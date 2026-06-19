@@ -68,38 +68,47 @@ class SuperAdmin::AccountsController < SuperAdmin::ApplicationController
 
   def export
     account = Account.find(params[:id])
-    exporter = AccountExporter.new(account: account)
-    data = exporter.perform
-
-    send_data JSON.pretty_generate(data),
-              filename: "chatwoot_export_account_#{account.id}_#{Time.now.to_i}.json",
-              type: "application/json"
+    Account::AccountExportJob.perform_later(account.id, current_user.email)
+    
+    # rubocop:disable Rails/I18nLocaleTexts
+    redirect_to super_admin_account_path(account), notice: "O processo de exportação foi iniciado em segundo plano. Você receberá um e-mail em #{current_user.email} com o link de download assim que for concluído."
+    # rubocop:enable Rails/I18nLocaleTexts
   end
 
   def import
     if params[:import_file].present?
       file = params[:import_file]
-      data = JSON.parse(file.read)
-      importer = AccountImporter.new(data: data)
-      new_account_id = importer.perform
+      
+      # Lê o JSON rapidamente para extrair o nome original da conta
+      json_data = JSON.parse(file.read)
+      file.rewind # Volta o ponteiro do arquivo para o início para podermos anexá-lo
+      
+      account_name = json_data.dig('account', 'name') || "Importada"
 
-      if new_account_id
-        # rubocop:disable Rails/I18nLocaleTexts
-        redirect_to super_admin_account_path(new_account_id), notice: "Account imported successfully! New Account ID: #{new_account_id}"
-        # rubocop:enable Rails/I18nLocaleTexts
-      else
-        # rubocop:disable Rails/I18nLocaleTexts
-        redirect_to new_super_admin_account_path, alert: "Import failed. Check logs for details."
-        # rubocop:enable Rails/I18nLocaleTexts
-      end
+      # Cria a conta temporária com nome descritivo
+      new_account = Account.create!(name: "#{account_name} (Importando...)")
+
+      # Anexa o arquivo JSON físico à conta temporária
+      new_account.account_import_file.attach(
+        io: file,
+        filename: file.original_filename,
+        content_type: 'application/json'
+      )
+
+      # Dispara o job assíncrono passando o ID da conta temporária e o e-mail do super admin
+      Account::AccountImportJob.perform_later(new_account.id, current_user.email)
+
+      # rubocop:disable Rails/I18nLocaleTexts
+      redirect_to super_admin_account_path(new_account), notice: "A importação da conta foi iniciada em segundo plano. Você receberá um e-mail em #{current_user.email} informando se o processo foi concluído com sucesso."
+      # rubocop:enable Rails/I18nLocaleTexts
     else
       # rubocop:disable Rails/I18nLocaleTexts
-      redirect_to new_super_admin_account_path, alert: "Please upload a JSON file."
+      redirect_to new_super_admin_account_path, alert: "Por favor, selecione um arquivo JSON."
       # rubocop:enable Rails/I18nLocaleTexts
     end
   rescue => e
     # rubocop:disable Rails/I18nLocaleTexts
-    redirect_to new_super_admin_account_path, alert: "Failed to parse JSON file: #{e.message}"
+    redirect_to new_super_admin_account_path, alert: "Falha ao analisar o arquivo JSON: #{e.message}"
     # rubocop:enable Rails/I18nLocaleTexts
   end
 end

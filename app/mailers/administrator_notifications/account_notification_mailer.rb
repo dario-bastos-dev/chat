@@ -55,6 +55,23 @@ class AdministratorNotifications::AccountNotificationMailer < AdministratorNotif
     send_notification(subject, to: email_to, action_url: file_url)
   end
 
+  def account_export_complete(file_url, email_to)
+    subject = "O arquivo de exportação da sua conta está pronto para download."
+    send_notification(subject, to: email_to, action_url: file_url)
+  end
+
+  def account_import_complete(account_id, email_to)
+    subject = "Importação de conta concluída com sucesso!"
+    @account = Account.find(account_id)
+    action_url = "#{ENV.fetch('FRONTEND_URL', nil)}/super_admin/accounts/#{account_id}"
+    send_notification(subject, to: email_to, action_url: action_url, meta: { 'account_name' => @account.name })
+  end
+
+  def account_import_failed(account_name, email_to, error_message)
+    subject = "Falha na importação da conta: #{account_name}"
+    send_notification(subject, to: email_to, meta: { 'account_name' => account_name, 'error_message' => error_message })
+  end
+
   def automation_rule_disabled(rule)
     subject = 'Automation rule disabled due to validation errors.'
     action_url = settings_url('automation/list')
