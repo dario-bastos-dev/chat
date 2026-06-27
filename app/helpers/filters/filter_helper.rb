@@ -72,8 +72,8 @@ module Filters::FilterHelper
     end
   end
 
-  def date_filter(current_filter, query_hash, filter_operator_value)
-    "(#{filter_config[:table_name]}.#{query_hash[:attribute_key]})::#{current_filter['data_type']} " \
+  def date_filter(_current_filter, query_hash, filter_operator_value)
+    "#{filter_config[:table_name]}.#{query_hash[:attribute_key]} " \
       "#{filter_operator_value} #{query_hash[:query_operator]}"
   end
 

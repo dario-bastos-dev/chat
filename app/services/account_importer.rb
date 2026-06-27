@@ -10,6 +10,13 @@ class AccountImporter
   def perform
     new_account_id = nil
 
+    # Desativa temporariamente o timeout de query na conexão atual para permitir importações grandes
+    begin
+      ActiveRecord::Base.connection.execute("SET statement_timeout = 0")
+    rescue => e
+      Rails.logger.warn "[IMPORT] Não foi possível definir statement_timeout = 0: #{e.message}"
+    end
+
     ActiveRecord::Base.transaction do
       # 1. Create/Update target account with all original attributes (feature flags, limits, settings, etc)
       account_attrs = data['account'].except('id', 'created_at', 'updated_at')

@@ -16,11 +16,15 @@ class Account::AccountImportJob < ApplicationJob
     # Remove o arquivo temporário de importação do storage
     @account.account_import_file.purge
 
-    # Envia e-mail de sucesso
-    mailer = AdministratorNotifications::AccountNotificationMailer.with(account: @account)
-    mailer.account_import_complete(@account.id, email_to).deliver_now
+    # Envia e-mail de sucesso com tratamento isolado para falhas de SMTP
+    begin
+      mailer = AdministratorNotifications::AccountNotificationMailer.with(account: @account)
+      mailer.account_import_complete(@account.id, email_to).deliver_now
+    rescue => mail_err
+      Rails.logger.error "[IMPORT JOB] Importação concluída, mas falhou ao enviar email de sucesso: #{mail_err.class} - #{mail_err.message}"
+    end
   rescue => e
-    # Registra o log do erro
+    # Registra o log do erro original
     Rails.logger.error "[IMPORT JOB ERROR] Ocorreu uma falha ao importar a conta: #{e.class} - #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
 
@@ -31,16 +35,20 @@ class Account::AccountImportJob < ApplicationJob
     end
     account_name ||= "Conta temporária"
 
-    # Destrói a conta temporária para não deixar lixo no banco de dados
+    # Destrói a conta temporária apenas se a falha ocorreu antes da conclusão da importação
     if @account.present? && !@account.destroyed?
-      @account.destroy
+      begin
+        @account.destroy
+      rescue => destroy_err
+        Rails.logger.error "[IMPORT JOB] Erro ao limpar conta temporária: #{destroy_err.message}"
+      end
     end
 
-    # Envia e-mail de falha
-    mailer = AdministratorNotifications::AccountNotificationMailer.new
-    mailer.account_import_failed(account_name, email_to, e.message).deliver_now
-
-    # Re-levanta o erro para o processador de jobs (Sidekiq)
-    raise e
+    # Envia e-mail de falha com tratamento isolado para falhas de SMTP
+    begin
+      AdministratorNotifications::AccountNotificationMailer.account_import_failed(account_name, email_to, e.message).deliver_now
+    rescue => mail_err
+      Rails.logger.error "[IMPORT JOB] Importação falhou e também ocorreu erro ao enviar o email de aviso: #{mail_err.class} - #{mail_err.message}"
+    end
   end
 end

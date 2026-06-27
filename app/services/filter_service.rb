@@ -93,6 +93,14 @@ class FilterService
       attribute_data_type,
       attribute_key
     )
+
+    if attribute_data_type == 'date' && @filter_values["value_#{current_index}"].is_a?(Date)
+      @filter_values["value_#{current_index}"] = date_to_utc_boundary(
+        @filter_values["value_#{current_index}"],
+        query_hash['filter_operator']
+      )
+    end
+
     operator = query_hash['filter_operator'] == 'is_less_than' ? '<' : '>'
     "#{operator} :value_#{current_index}"
   end
@@ -139,6 +147,17 @@ class FilterService
   end
 
   private
+
+  def date_to_utc_boundary(date, filter_operator)
+    tz_name = @account&.reporting_timezone.presence || 'UTC'
+    timezone = ActiveSupport::TimeZone[tz_name] || ActiveSupport::TimeZone['UTC']
+
+    if filter_operator == 'is_less_than'
+      timezone.parse(date.to_s).beginning_of_day.utc
+    else
+      timezone.parse(date.to_s).end_of_day.utc
+    end
+  end
 
   def standard_attribute_data_type(attribute_key)
     @filters.each_value do |section|
