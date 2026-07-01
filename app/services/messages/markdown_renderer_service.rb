@@ -13,7 +13,7 @@ class Messages::MarkdownRendererService
   }.freeze
 
   def initialize(content, channel_type, channel = nil)
-    @content = content
+    @content = content.is_a?(String) ? content.gsub("\r\n", "\n") : content
     @channel_type = channel_type
     @channel = channel
   end

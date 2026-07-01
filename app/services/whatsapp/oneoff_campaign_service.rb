@@ -152,22 +152,43 @@ class Whatsapp::OneoffCampaignService
       return
     end
 
+    # Process Liquid variables in template_params per contact
+    liquid_processor = Whatsapp::LiquidTemplateProcessorService.new(campaign: campaign, contact: contact)
+    processed_template_params = liquid_processor.process_template_params(campaign.template_params)
+
+    if processed_template_params.nil?
+      Rails.logger.info "Skipping contact #{contact.name} - liquid variables resolved to blank values"
+      return
+    end
+
     # WhatsApp Business uses templates
     processor = Whatsapp::TemplateProcessorService.new(
       channel: channel,
-      template_params: campaign.template_params
+      template_params: processed_template_params
     )
 
     name, namespace, lang_code, processed_parameters = processor.call
 
     return if name.blank?
 
-    channel.send_template(to, {
-                            name: name,
-                            namespace: namespace,
-                            lang_code: lang_code,
-                            parameters: processed_parameters
-                          }, nil)
+    # Create local conversation and message so the campaign shows up in Chatwoot
+    conversation = find_or_create_campaign_conversation(contact: contact, to: to, conversation: conversation)
+    message = create_campaign_message(conversation: conversation, contact: contact)
+
+    message_id = channel.send_template(to, {
+                                         name: name,
+                                         namespace: namespace,
+                                         lang_code: lang_code,
+                                         parameters: processed_parameters
+                                       }, message)
+
+    if message_id.present?
+      Rails.logger.info "[WHATSAPP BUSINESS CAMPAIGN] ✅ Message sent to #{to}. ID: #{message_id}"
+      message.update!(source_id: message_id)
+    else
+      Rails.logger.error "[WHATSAPP BUSINESS CAMPAIGN] ❌ Failed to send message to #{to}"
+      message.update!(status: :failed, external_error: 'Failed to send template message via WhatsApp Business')
+    end
 
   rescue StandardError => e
     Rails.logger.error "Failed to send WhatsApp template message to #{to}: #{e.message}"
@@ -319,5 +340,45 @@ class Whatsapp::OneoffCampaignService
         Rails.logger.error "[WHATSAPP API CAMPAIGN] ❌ Failed to attach blob: #{e.message}"
       end
     end
+  end
+
+  def find_or_create_campaign_conversation(contact:, to:, conversation: nil)
+    return conversation if conversation.present?
+
+    contact_inbox = ContactInbox.find_or_create_by!(
+      contact: contact,
+      inbox: campaign.inbox,
+      source_id: to.to_s.gsub(/^\+/, '')
+    )
+
+    conversation = Conversation.where(
+      contact_id: contact.id,
+      inbox_id: campaign.inbox.id
+    ).where.not(status: :resolved).order(created_at: :desc).first
+
+    conversation || Conversation.create!(
+      contact_id: contact.id,
+      inbox_id: campaign.inbox.id,
+      account: campaign.account,
+      contact_inbox: contact_inbox
+    )
+  end
+
+  def create_campaign_message(conversation:, contact:)
+    conversation.update!(campaign: campaign)
+
+    # Resolve Liquid variables in the campaign message body for this contact
+    resolved_content = Liquid::CampaignTemplateService.new(
+      campaign: campaign, contact: contact
+    ).call(campaign.message)
+
+    conversation.messages.create!(
+      account: campaign.account,
+      inbox: campaign.inbox,
+      message_type: :outgoing,
+      content: resolved_content,
+      additional_attributes: { campaign_id: campaign.id },
+      source_id: "campaign_pending_#{campaign.id}_#{SecureRandom.hex(4)}"
+    )
   end
 end
