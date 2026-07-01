@@ -109,4 +109,8 @@ class InboxPolicy < ApplicationPolicy
   def evolution_go_disconnect?
     @account_user.administrator?
   end
+
+  def set_inbound_calls?
+    @account_user.administrator?
+  end
 end

@@ -37,11 +37,10 @@ const transformInbox = ({
   channelType,
   phoneNumber,
   medium,
-  provider,
   ...rest
 }) => ({
   id,
-  icon: getInboxIconByType(channelType, medium, 'line', provider),
+  icon: getInboxIconByType(channelType, medium, 'line'),
   label: generateLabelForContactableInboxesList({
     name,
     email,
@@ -55,7 +54,6 @@ const transformInbox = ({
   phoneNumber,
   channelType,
   medium,
-  provider,
   ...rest,
 });
 
@@ -184,7 +182,10 @@ const MIN_SEARCH_LENGTH = 2;
 export const createContactSearcher = () => {
   let controller = null;
 
-  return async (query, { skipMinLength = false } = {}) => {
+  return async (
+    query,
+    { skipMinLength = false, reachableOnly = true } = {}
+  ) => {
     const trimmed = typeof query === 'string' ? query.trim() : '';
 
     controller?.abort();
@@ -196,16 +197,18 @@ export const createContactSearcher = () => {
     const { signal } = controller;
 
     try {
-  const {
-    data: { payload },
+      const {
+        data: { payload },
       } = await ContactAPI.search(trimmed, 1, 'name', '', { signal });
 
-  const camelCasedPayload = camelcaseKeys(payload, { deep: true });
-  // Filter contacts that have either phone_number or email
-  const filteredPayload = camelCasedPayload?.filter(
-    contact => contact.phoneNumber || contact.email
-  );
-  return filteredPayload || [];
+      const camelCasedPayload = camelcaseKeys(payload, { deep: true });
+      if (!reachableOnly) return camelCasedPayload || [];
+
+      // Filter contacts that have either phone_number or email
+      const filteredPayload = camelCasedPayload?.filter(
+        contact => contact.phoneNumber || contact.email
+      );
+      return filteredPayload || [];
     } catch (error) {
       // Return null for aborted requests so callers can distinguish
       // "request was cancelled" from "no results found"
