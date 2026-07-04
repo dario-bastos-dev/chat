@@ -463,7 +463,6 @@
       "SUCCESS": "Captain settings updated successfully.",
       "ERROR": "Failed to update Captain settings. Please try again."
     }
->>>>>>> theirs
   },
   "BILLING_SETTINGS": {
     "TITLE": "Billing",
