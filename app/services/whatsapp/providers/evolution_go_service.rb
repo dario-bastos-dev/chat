@@ -146,14 +146,13 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       timeout: 15
     )
 
-    # If successful OR the instance is already not found (404), clear local database state
+    # If successful OR the instance is already not found (404), update local status to disconnected.
+    # We preserve instance_token and instance_id locally so that subsequent recreation attempts
+    # are not blocked by the Job guard clause if they fail mid-process.
     if response.success? || response.code == 404
       Rails.logger.info "[EVOLUTION_GO] Instance #{instance_id} deleted successfully (or already nonexistent)"
 
-      # Clear instance credentials from provider_config
       config = whatsapp_channel.provider_config || {}
-      config.delete('instance_token')
-      config.delete('instance_id')
       config['connected'] = false
       config['connection_status'] = 'close'
       config.delete('business_name')
@@ -163,12 +162,9 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
       { success: true }
     else
-      # For other errors, we still try to clear local state so we don't block subsequent recreation attempts
-      Rails.logger.error "[EVOLUTION_GO] Delete instance API failed with code #{response.code}, clearing local credentials anyway"
+      Rails.logger.error "[EVOLUTION_GO] Delete instance API failed with code #{response.code}"
       
       config = whatsapp_channel.provider_config || {}
-      config.delete('instance_token')
-      config.delete('instance_id')
       config['connected'] = false
       config['connection_status'] = 'close'
       whatsapp_channel.update_column(:provider_config, config)
