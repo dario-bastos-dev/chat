@@ -2,8 +2,8 @@ class MessageSequences::ProcessJob < ApplicationJob
   queue_as :scheduled_jobs
 
   def perform
-    # 1. Processa todos os vínculos ativos e envia as mensagens programadas
-    ConversationMessageSequence.active.includes(:conversation, :message_sequence).find_each do |conv_seq|
+    # 1. Processa todos os vínculos ativos e prontos que devem receber as mensagens programadas
+    ConversationMessageSequence.ready_for_execution.includes(:conversation, :message_sequence).find_each do |conv_seq|
       conversation = conv_seq.conversation
       sequence = conv_seq.message_sequence
 
@@ -42,6 +42,20 @@ class MessageSequences::ProcessJob < ApplicationJob
           # Se estiver fora do horário, a mensagem não é enviada agora e será avaliada no próximo minuto
           next if current_hour < sequence.execution_start_hour || current_hour >= sequence.execution_end_hour
         end
+        # Verificação prévia da janela de conversação do canal apenas para mensagens e arquivos externos (ignora macros e templates)
+        if !next_step.execute_macro? && !next_step.send_template? && !conversation.can_reply?
+          conv_seq.update!(waiting_interaction: true)
+
+          # Insere uma nota privada informando o agente sobre a pausa da sequência
+          conversation.messages.create!(
+            account_id: conversation.account_id,
+            inbox_id: conversation.inbox_id,
+            message_type: :outgoing,
+            private: true,
+            content: I18n.t('message_sequences.paused_window', sequence_name: sequence.name)
+          )
+          next
+        end
 
         execute_step(conversation, next_step)
 
@@ -56,6 +70,23 @@ class MessageSequences::ProcessJob < ApplicationJob
   private
 
   def execute_step(conversation, step)
+    if step.execute_macro?
+      if step.macro.present?
+        user = step.message_sequence.created_by || step.message_sequence.account.users.first
+        Macros::ExecutionService.new(step.macro, conversation, user).perform
+      else
+        # Se o macro foi excluído, insere uma nota privada e avança para que o worker não trave
+        conversation.messages.create!(
+          account_id: conversation.account_id,
+          inbox_id: conversation.inbox_id,
+          message_type: :outgoing,
+          private: true,
+          content: I18n.t('message_sequences.macro_deleted', sequence_name: step.message_sequence.name)
+        )
+      end
+      return
+    end
+
     message_params = {
       account_id: conversation.account_id,
       inbox_id: conversation.inbox_id,
@@ -63,6 +94,23 @@ class MessageSequences::ProcessJob < ApplicationJob
       content: step.content,
       private: false
     }
+
+    if step.send_template? && step.template_params.present?
+      campaign_duck = MessageSequences::ProcessJob::CampaignDuck.new(
+        step.message_sequence.created_by || step.message_sequence.account.users.first,
+        conversation.inbox,
+        conversation.account
+      )
+      liquid_processor = Whatsapp::LiquidTemplateProcessorService.new(
+        campaign: campaign_duck,
+        contact: conversation.contact
+      )
+      processed_template_params = liquid_processor.process_template_params(step.template_params)
+
+      message_params[:additional_attributes] = {
+        template_params: processed_template_params
+      }
+    end
 
     message = conversation.messages.build(message_params)
 
@@ -83,5 +131,15 @@ class MessageSequences::ProcessJob < ApplicationJob
     end
 
     message.save!
+  end
+end
+
+class MessageSequences::ProcessJob::CampaignDuck
+  attr_reader :sender, :inbox, :account
+
+  def initialize(sender, inbox, account)
+    @sender = sender
+    @inbox = inbox
+    @account = account
   end
 end

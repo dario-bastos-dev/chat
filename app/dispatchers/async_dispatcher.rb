@@ -16,6 +16,7 @@ class AsyncDispatcher < BaseDispatcher
       DealListener.instance,
       HookListener.instance,
       InstallationWebhookListener.instance,
+      MessageSequenceListener.instance,
       NotificationListener.instance,
       ParticipationListener.instance,
       ReportingEventListener.instance,

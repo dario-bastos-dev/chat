@@ -82,6 +82,10 @@
         "PLACEHOLDER": "Your account name",
         "ERROR": ""
       },
+      "TIMEZONE": {
+        "LABEL": "Account timezone",
+        "PLACEHOLDER": "Select timezone"
+      },
       "DOMAIN": {
         "LABEL": "Incoming Email Domain",
         "PLACEHOLDER": "The domain where you will receive the emails",

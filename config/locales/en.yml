@@ -604,3 +604,6 @@ en:
       no_subscriptions_to_test: 'Select at least one subscription to test.'
       no_subscriptions_to_delete: 'Select at least one subscription to delete.'
       subscriptions_deleted: "Deleted %{count} subscription(s). The user's device(s) will re-register on next app launch."
+  message_sequences:
+    paused_window: "The message sequence \"%{sequence_name}\" was temporarily suspended because the messaging window of this channel expired. It will resume automatically when the contact replies."
+    macro_deleted: "The step of sequence \"%{sequence_name}\" tried to execute a macro that has been deleted. The step was ignored to continue the sequence."

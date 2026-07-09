@@ -15,7 +15,11 @@ class Webhooks::EvolutionGoController < ActionController::API
 
     return head :ok if channel.blank?
     return head :ok if channel.provider != 'evolution_go'
-    return head :ok if channel_is_inactive?(channel)
+
+    # Allow PairSuccess and CONNECTION events through even if the channel
+    # needs reauthorization — these events are what clear that state.
+    connection_event = %w[PairSuccess CONNECTION].include?(event.to_s)
+    return head :ok if !connection_event && channel_is_inactive?(channel)
 
     Rails.logger.info "[EVOLUTION_GO] Webhook: #{event} | Channel: #{channel.id}"
 

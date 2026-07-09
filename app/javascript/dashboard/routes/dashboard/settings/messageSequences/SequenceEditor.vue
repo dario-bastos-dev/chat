@@ -45,6 +45,8 @@
                     <option value="send_image">Enviar imagem</option>
                     <option value="send_document">Enviar documento</option>
                     <option value="send_audio">Enviar áudio</option>
+                    <option value="execute_macro">{{ $t('MESSAGE_SEQUENCES.STEPS.TYPE_MACRO') }}</option>
+                    <option value="send_template">{{ $t('MESSAGE_SEQUENCES.STEPS.TYPE_TEMPLATE') }}</option>
                   </select>
                 </div>
               </div>
@@ -107,6 +109,18 @@
                   class="block mb-1 text-xs text-n-slate-11"
                   >{{ $t('MESSAGE_SEQUENCES.STEPS.CONTENT') }}</label
                 >
+                <label
+                  v-else-if="step.step_type === 'execute_macro'"
+                  class="block mb-1 text-xs text-n-slate-11"
+                >
+                  {{ $t('MESSAGE_SEQUENCES.STEPS.MACRO_CONFIG') }}
+                </label>
+                <label
+                  v-else-if="step.step_type === 'send_template'"
+                  class="block mb-1 text-xs text-n-slate-11"
+                >
+                  {{ $t('MESSAGE_SEQUENCES.STEPS.TEMPLATE_CONFIG') }}
+                </label>
                 <label v-else class="block mb-1 text-xs text-n-slate-11">
                   Conteúdo do Arquivo
                 </label>
@@ -117,6 +131,77 @@
                   v-model="step.content"
                   class="w-full input border border-n-weak bg-white dark:bg-n-solid-1 rounded-md p-2 text-sm min-h-[80px] outline-none focus:ring-1 focus:ring-n-blue-11"
                 />
+
+                <div v-else-if="step.step_type === 'execute_macro'">
+                  <label class="block mb-1 text-xs text-n-slate-11">
+                    {{ $t('MESSAGE_SEQUENCES.STEPS.CHOOSE_MACRO') }}
+                  </label>
+                  <select
+                    v-model="step.macro_id"
+                    class="w-full p-2 text-sm border rounded-md input border-n-weak bg-white dark:bg-n-solid-1"
+                  >
+                    <option value="" disabled>{{ $t('MESSAGE_SEQUENCES.STEPS.SELECT_MACRO') }}</option>
+                    <option
+                      v-for="macro in macros"
+                      :key="macro.id"
+                      :value="macro.id"
+                    >
+                      {{ macro.name }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Send Template Option -->
+                <div v-else-if="step.step_type === 'send_template'" class="flex flex-col gap-3">
+                  <!-- Select Reference Inbox -->
+                  <div>
+                    <label class="block mb-1 text-xs text-n-slate-11">
+                      {{ $t('MESSAGE_SEQUENCES.STEPS.CHOOSE_INBOX') }}
+                    </label>
+                    <select
+                      v-model="step.template_inbox_id"
+                      class="w-full p-2 text-sm border rounded-md input border-n-weak bg-white dark:bg-n-solid-1"
+                      @change="onTemplateInboxChange(step)"
+                    >
+                      <option value="" disabled>{{ $t('MESSAGE_SEQUENCES.STEPS.SELECT_INBOX') }}</option>
+                      <option
+                        v-for="inbox in whatsappInboxes"
+                        :key="inbox.id"
+                        :value="inbox.id"
+                      >
+                        {{ inbox.name }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <!-- Select Template -->
+                  <div v-if="step.template_inbox_id">
+                    <label class="block mb-1 text-xs text-n-slate-11">
+                      {{ $t('MESSAGE_SEQUENCES.STEPS.CHOOSE_TEMPLATE') }}
+                    </label>
+                    <select
+                      v-model="step.template_id"
+                      class="w-full p-2 text-sm border rounded-md input border-n-weak bg-white dark:bg-n-solid-1"
+                      @change="e => onTemplateChange(step, e)"
+                    >
+                      <option value="" disabled>{{ $t('MESSAGE_SEQUENCES.STEPS.SELECT_TEMPLATE') }}</option>
+                      <option
+                        v-for="tpl in getInboxTemplates(step.template_inbox_id)"
+                        :key="tpl.id"
+                        :value="tpl.id"
+                      >
+                        {{ formatTemplateName(tpl.name) }} ({{ tpl.language }})
+                      </option>
+                    </select>
+                  </div>
+
+                  <!-- Template Parser component -->
+                  <WhatsAppTemplateParser
+                    v-if="step.template_inbox_id && getSelectedTemplate(step)"
+                    :ref="`templateParser_${index}`"
+                    :template="getSelectedTemplate(step)"
+                  />
+                </div>
 
                 <!-- Audio Input Options -->
                 <div v-else-if="step.step_type === 'send_audio'" class="flex flex-col gap-2">
@@ -485,11 +570,13 @@ import { mapGetters } from 'vuex';
 import { useAlert } from 'dashboard/composables';
 import LabelDropdown from 'shared/components/ui/label/LabelDropdown.vue';
 import AudioRecorder from 'dashboard/components/widgets/WootWriter/AudioRecorder.vue';
+import WhatsAppTemplateParser from 'dashboard/components-next/whatsapp/WhatsAppTemplateParser.vue';
 
 export default {
   components: {
     LabelDropdown,
     AudioRecorder,
+    WhatsAppTemplateParser,
   },
   data() {
     return {
@@ -515,6 +602,10 @@ export default {
             step_type: 'send_message',
             content: '',
             wait_time: '0:00:00:00',
+            macro_id: '',
+            template_inbox_id: null,
+            template_id: null,
+            template_params: null,
           },
         ],
         message_sequence_inboxes_attributes: [],
@@ -539,6 +630,23 @@ export default {
       if (!this.form.activation_tag) return [];
       return this.form.activation_tag.split(',').filter(t => t.trim());
     },
+    whatsappInboxes() {
+      return this.inboxes.filter(
+        inbox => inbox.channel_type === 'Channel::Whatsapp'
+      );
+    },
+  },
+  watch: {
+    inboxes: {
+      immediate: true,
+      handler() {
+        this.form.steps_attributes.forEach(step => {
+          if (step.step_type === 'send_template' && !step.template_inbox_id) {
+            this.resolveTemplateReference(step);
+          }
+        });
+      }
+    }
   },
   mounted() {
     this.$store.dispatch('labels/get');
@@ -621,10 +729,19 @@ export default {
             execution_start_hour: seq.execution_start_hour ?? 8,
             execution_end_hour: seq.execution_end_hour ?? 19,
             steps_attributes: seq.steps
-              ? seq.steps.map(s => ({
-                  ...s,
-                  wait_time: this.normalizeWaitTime(s.wait_time),
-                }))
+              ? seq.steps.map(s => {
+                  const step = {
+                    ...s,
+                    macro_id: s.macro_id || '',
+                    wait_time: this.normalizeWaitTime(s.wait_time),
+                    template_inbox_id: null,
+                    template_id: null,
+                  };
+                  if (step.step_type === 'send_template') {
+                    this.resolveTemplateReference(step);
+                  }
+                  return step;
+                })
               : [],
             message_sequence_inboxes_attributes: seq.inbox_ids
               ? seq.inbox_ids.map(id => ({ inbox_id: id }))
@@ -642,6 +759,10 @@ export default {
         step_type: 'send_message',
         content: '',
         wait_time: '0:00:00:00',
+        macro_id: '',
+        template_inbox_id: null,
+        template_id: null,
+        template_params: null,
       });
     },
     removeStep(index) {
@@ -712,6 +833,23 @@ export default {
           `steps_attributes[${index}][wait_time]`,
           step.wait_time || ''
         );
+        formData.append(
+          `steps_attributes[${index}][macro_id]`,
+          step.macro_id || ''
+        );
+
+        if (step.template_params) {
+          formData.append(`steps_attributes[${index}][template_params][name]`, step.template_params.name || '');
+          formData.append(`steps_attributes[${index}][template_params][namespace]`, step.template_params.namespace || '');
+          formData.append(`steps_attributes[${index}][template_params][category]`, step.template_params.category || 'UTILITY');
+          formData.append(`steps_attributes[${index}][template_params][language]`, step.template_params.language || 'en');
+          
+          if (step.template_params.processed_params) {
+            Object.keys(step.template_params.processed_params).forEach(key => {
+              formData.append(`steps_attributes[${index}][template_params][processed_params][${key}]`, step.template_params.processed_params[key]);
+            });
+          }
+        }
 
         if (step.file && step.file instanceof File) {
           formData.append(`steps_attributes[${index}][file]`, step.file);
@@ -735,6 +873,17 @@ export default {
 
       this.parseInboxes();
       this.reorderSteps();
+
+      // Atualiza os processedParams com os dados digitados no componente parser de template do WhatsApp
+      this.form.steps_attributes.forEach((step, idx) => {
+        if (step.step_type === 'send_template' && step.template_params) {
+          const parser = this.$refs[`templateParser_${idx}`];
+          const parserInstance = Array.isArray(parser) ? parser[0] : parser;
+          if (parserInstance) {
+            step.template_params.processed_params = parserInstance.processedParams || {};
+          }
+        }
+      });
 
       const payload = this.buildFormData();
 
@@ -790,6 +939,64 @@ export default {
       if (type === 'send_audio') return 'audio/*,video/mp4';
       if (type === 'send_document') return '.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv';
       return '*/*';
+    },
+    onTemplateInboxChange(step) {
+      step.template_id = '';
+      step.template_params = null;
+    },
+    onTemplateChange(step, event) {
+      const templateId = event.target.value;
+      step.template_id = templateId;
+      
+      const templates = this.getInboxTemplates(step.template_inbox_id);
+      const template = templates.find(t => t.id === templateId || t.name === templateId);
+
+      if (template) {
+        step.template_params = {
+          name: template.name,
+          namespace: template.namespace,
+          category: template.category || 'UTILITY',
+          language: template.language || 'en',
+          processed_params: {}
+        };
+      } else {
+        step.template_params = null;
+      }
+    },
+    getInboxTemplates(inboxId) {
+      const inbox = this.inboxes.find(i => i.id === inboxId);
+      return inbox ? (inbox.message_templates || []) : [];
+    },
+    getSelectedTemplate(step) {
+      if (!step.template_inbox_id || !step.template_id) return null;
+      const templates = this.getInboxTemplates(step.template_inbox_id);
+      return templates.find(t => t.id === step.template_id || t.name === step.template_id);
+    },
+    formatTemplateName(name) {
+      if (!name) return '';
+      return name
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase());
+    },
+    resolveTemplateReference(step) {
+      if (!step.template_params || !step.template_params.name) return;
+
+      const name = step.template_params.name;
+      const language = step.template_params.language;
+
+      const matchedInbox = this.whatsappInboxes.find(inbox => {
+        const templates = inbox.message_templates || [];
+        return templates.some(t => t.name === name);
+      });
+
+      if (matchedInbox) {
+        step.template_inbox_id = matchedInbox.id;
+        const templates = matchedInbox.message_templates || [];
+        const matchedTemplate = templates.find(t => t.name === name && (!language || t.language === language));
+        if (matchedTemplate) {
+          step.template_id = matchedTemplate.id || matchedTemplate.name;
+        }
+      }
     },
   },
 };

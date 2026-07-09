@@ -32,7 +32,17 @@
       "TYPE": "Action",
       "WAIT_TIME": "Inactivity Time",
       "CONTENT": "Content",
-      "ADD": "Add new message"
+      "ADD": "Add new message",
+      "TYPE_MACRO": "Execute Macro",
+      "MACRO_CONFIG": "Macro Configuration",
+      "CHOOSE_MACRO": "Choose Macro",
+      "SELECT_MACRO": "Select a macro",
+      "TYPE_TEMPLATE": "Send WhatsApp Template",
+      "TEMPLATE_CONFIG": "WhatsApp Template Configuration",
+      "CHOOSE_INBOX": "Reference WhatsApp Inbox",
+      "SELECT_INBOX": "Select an inbox",
+      "CHOOSE_TEMPLATE": "WhatsApp Template",
+      "SELECT_TEMPLATE": "Select a template"
     },
     "RULES": {
       "ACTIVATION": "Activation Mode",

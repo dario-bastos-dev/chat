@@ -48,6 +48,10 @@ class Webhooks::EvolutionGoEventsJob < ApplicationJob
     config['connected_at'] = Time.current.iso8601
 
     channel.update_column(:provider_config, config)
+
+    # Clear reauthorization alert when the channel reconnects via QR/pairing
+    channel.reauthorized! if channel.reauthorization_required?
+
     Rails.logger.info "[EVOLUTION_GO JOB] PairSuccess processed for channel #{channel.id}"
   end
 
@@ -60,6 +64,9 @@ class Webhooks::EvolutionGoEventsJob < ApplicationJob
     if status == 'open'
       config['connection_status'] = 'open'
       config['connected'] = true
+
+      # Clear reauthorization alert when connection is restored
+      channel.reauthorized! if channel.reauthorization_required?
     elsif %w[close closed].include?(status.to_s)
       config['connection_status'] = 'close'
       config['connected'] = false

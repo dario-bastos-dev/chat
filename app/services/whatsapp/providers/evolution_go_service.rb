@@ -146,11 +146,33 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       timeout: 15
     )
 
-    if response.success?
-      Rails.logger.info "[EVOLUTION_GO] Instance #{instance_id} deleted successfully"
+    # If successful OR the instance is already not found (404), clear local database state
+    if response.success? || response.code == 404
+      Rails.logger.info "[EVOLUTION_GO] Instance #{instance_id} deleted successfully (or already nonexistent)"
+
+      # Clear instance credentials from provider_config
+      config = whatsapp_channel.provider_config || {}
+      config.delete('instance_token')
+      config.delete('instance_id')
+      config['connected'] = false
+      config['connection_status'] = 'close'
+      config.delete('business_name')
+      config.delete('jid')
+      config.delete('connected_at')
+      whatsapp_channel.update_column(:provider_config, config)
+
       { success: true }
     else
-      Rails.logger.error "[EVOLUTION_GO] Delete instance failed: #{response.code} - #{response.body}"
+      # For other errors, we still try to clear local state so we don't block subsequent recreation attempts
+      Rails.logger.error "[EVOLUTION_GO] Delete instance API failed with code #{response.code}, clearing local credentials anyway"
+      
+      config = whatsapp_channel.provider_config || {}
+      config.delete('instance_token')
+      config.delete('instance_id')
+      config['connected'] = false
+      config['connection_status'] = 'close'
+      whatsapp_channel.update_column(:provider_config, config)
+
       { success: false, error: "HTTP #{response.code}: #{response.message}" }
     end
   rescue StandardError => e
@@ -242,23 +264,26 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     { success: false, error: e.message }
   end
 
-  def get_connection_status
-    # Primary source: provider_config updated by PairSuccess webhook
+  def get_connection_status(force_api_check: false)
     config = whatsapp_channel.reload.provider_config || {}
-    stored_connected = config['connected']
-    stored_status = config['connection_status']
 
-    if stored_connected == true && stored_status == 'open'
-      return {
-        success: true,
-        connected: true,
-        logged_in: true,
-        status: 'open',
-        business_name: config['business_name']
-      }
+    # Use cached state unless forced to check the API
+    unless force_api_check
+      stored_connected = config['connected']
+      stored_status = config['connection_status']
+
+      if stored_connected == true && stored_status == 'open'
+        return {
+          success: true,
+          connected: true,
+          logged_in: true,
+          status: 'open',
+          business_name: config['business_name']
+        }
+      end
     end
 
-    # Fallback: poll the API if webhook hasn't fired yet
+    # Poll the API directly
     return { success: false, connected: false, logged_in: false, status: 'close' } unless evolution_go_configured? && instance_token.present?
 
     begin
@@ -273,14 +298,14 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
         parsed = response.parsed_response
         data = parsed['data'] || {}
 
-        # Connected = instance online on EvoGO server
-        # LoggedIn = WhatsApp number actually authenticated (THIS is the real status)
         api_connected = data['Connected'] || data['connected'] || false
         logged_in = data['LoggedIn'] || data['loggedIn'] || false
         name = data['Name'] || data['name'] || ''
 
-        if logged_in
-          # Sync API state to provider_config
+        # Both Connected AND LoggedIn must be true for the number to be considered online
+        fully_connected = api_connected && logged_in
+
+        if fully_connected
           config['connected'] = true
           config['connection_status'] = 'open'
           config['business_name'] = name if name.present?
@@ -289,19 +314,42 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
         {
           success: true,
-          connected: logged_in,
+          connected: fully_connected,
           logged_in: logged_in,
           instance_online: api_connected,
-          status: logged_in ? 'open' : 'close',
+          status: fully_connected ? 'open' : 'close',
           name: name
         }
       else
-        { success: false, connected: false, logged_in: false, status: 'close' }
+        { success: false, connected: false, logged_in: false, status: 'close', error_code: response.code }
       end
     rescue StandardError => e
       Rails.logger.error "[EVOLUTION_GO] Status check error: #{e.message}"
       { success: false, connected: false, logged_in: false, status: 'close' }
     end
+  end
+
+  def reconnect_instance
+    return { success: false, error: 'Instance token not present' } unless instance_token.present?
+
+    response = evolution_request(
+      :post,
+      "#{api_base_url}/instance/reconnect",
+      headers: instance_headers,
+      timeout: 30
+    )
+
+    msg = response.parsed_response&.dig('message')
+    if response.success? && msg == 'success'
+      Rails.logger.info "[EVOLUTION_GO] Reconnection request sent successfully"
+      { success: true }
+    else
+      Rails.logger.error "[EVOLUTION_GO] Reconnection request failed: #{response.body}"
+      { success: false, error: response.message }
+    end
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] Reconnect error: #{e.class} - #{e.message}"
+    { success: false, error: e.message }
   end
 
   def logout

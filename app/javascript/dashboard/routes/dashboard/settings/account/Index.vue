@@ -16,6 +16,7 @@ import BuildInfo from './components/BuildInfo.vue';
 import AccountDelete from './components/AccountDelete.vue';
 import AudioTranscription from './components/AudioTranscription.vue';
 import SectionLayout from './components/SectionLayout.vue';
+import timeZoneData from '../inbox/helpers/timezones.json';
 
 export default {
   components: {
@@ -45,6 +46,11 @@ export default {
       domain: '',
       supportEmail: '',
       features: {},
+      timeZones: Object.entries(timeZoneData).map(([label, value]) => ({
+        label,
+        value,
+      })),
+      reportingTimezone: 'UTC',
     };
   },
   validations: {
@@ -100,7 +106,7 @@ export default {
   methods: {
     async initializeAccount() {
       try {
-        const { name, locale, id, domain, support_email, features } =
+        const { name, locale, id, domain, support_email, features, settings } =
           this.getAccount(this.accountId);
 
         const effectiveLocale = this.uiSettings?.locale || locale;
@@ -113,6 +119,7 @@ export default {
         this.domain = domain;
         this.supportEmail = support_email;
         this.features = features;
+        this.reportingTimezone = settings?.reporting_timezone || 'UTC';
       } catch (error) {
         // Ignore error
       }
@@ -130,13 +137,17 @@ export default {
           name: this.name,
           domain: this.domain,
           support_email: this.supportEmail,
+          reporting_timezone: this.reportingTimezone,
         });
         // If user locale is set, update the locale with user locale
         const updatedLocale = this.uiSettings?.locale || this.locale;
         if (updatedLocale) {
           this.$root.$i18n.locale = updatedLocale;
         }
-        this.getAccount(this.id).locale = this.locale;
+        const account = this.getAccount(this.id);
+        account.locale = this.locale;
+        if (!account.settings) account.settings = {};
+        account.settings.reporting_timezone = this.reportingTimezone;
         useAlert(this.$t('GENERAL_SETTINGS.UPDATE.SUCCESS'));
       } catch (error) {
         useAlert(this.$t('GENERAL_SETTINGS.UPDATE.ERROR'));
@@ -187,6 +198,20 @@ export default {
                 :value="lang.iso_639_1_code"
               >
                 {{ lang.name }}
+              </option>
+            </select>
+          </WithLabel>
+          <WithLabel
+            name="reporting-timezone"
+            :label="$t('GENERAL_SETTINGS.FORM.TIMEZONE.LABEL')"
+          >
+            <select v-model="reportingTimezone" class="!mb-0 text-sm">
+              <option
+                v-for="timezone in timeZones"
+                :key="timezone.value"
+                :value="timezone.value"
+              >
+                {{ timezone.label }}
               </option>
             </select>
           </WithLabel>

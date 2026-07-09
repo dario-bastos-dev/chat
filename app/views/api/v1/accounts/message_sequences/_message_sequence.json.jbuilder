@@ -11,6 +11,8 @@ json.steps message_sequence.steps.order(:position) do |step|
   json.step_type step.step_type
   json.content step.content
   json.wait_time step.wait_time
+  json.macro_id step.macro_id
+  json.template_params step.template_params
   
   if step.file.attached?
     json.file do
