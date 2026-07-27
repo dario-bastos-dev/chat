@@ -85,7 +85,7 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     settings = {
       alwaysOnline: ['true', true].include?(config['always_online']),
       readMessages: ['true', true].include?(config['read_messages']),
-      rejectCall: true,
+      rejectCall: false,
       ignoreGroups: true,
       ignoreStatus: true
     }

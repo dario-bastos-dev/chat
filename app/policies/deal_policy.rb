@@ -42,11 +42,13 @@ class DealPolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
+      account_scope = scope.where(account_id: @account.id)
+
       if @account_user.administrator?
-        scope.all
+        account_scope
       else
-        scope.where(assignee_id: @user.id)
-             .or(scope.where(assignee_id: nil))
+        account_scope.where(assignee_id: @user.id)
+                      .or(account_scope.where(assignee_id: nil))
       end
     end
   end
