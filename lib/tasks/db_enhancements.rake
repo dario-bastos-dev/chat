@@ -1,3 +1,23 @@
+# A full `rails db:migrate` run (e.g. on a brand new install) executes every
+# pending migration back-to-back on a single Postgres connection. Any
+# migration that alters a table's columns and then queries that table (or
+# an unrelated table whose shape changed earlier in the same run) via
+# ActiveRecord can hit `PG::FeatureNotSupported: cached plan must not
+# change result type`, because Postgres/the pg gem cache prepared
+# statement plans per-connection and don't know the result shape changed.
+# Rather than patching every individual migration that happens to run into
+# this, clear the connection's prepared statement cache after each
+# migration step so every migration always queries against a fresh plan.
+ActiveSupport.on_load(:active_record) do
+  ActiveRecord::Migration.prepend(Module.new do
+    def exec_migration(conn, direction)
+      super
+    ensure
+      conn.clear_cache! if conn.respond_to?(:clear_cache!)
+    end
+  end)
+end
+
 # We are hooking config loader to run automatically everytime migration is executed
 Rake::Task['db:migrate'].enhance do
   if ActiveRecord::Base.connection.table_exists? 'installation_configs'

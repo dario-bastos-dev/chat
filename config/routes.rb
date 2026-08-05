@@ -52,6 +52,7 @@ Rails.application.routes.draw do
             resource :contact_merge, only: [:create]
           end
           resource :bulk_actions, only: [:create]
+          resource :onboarding, only: [:update]
           resources :agents, only: [:index, :create, :update, :destroy] do
             post :bulk_create, on: :collection
           end
@@ -270,6 +271,11 @@ Rails.application.routes.draw do
 
             resource :csat_template, only: [:show, :create], controller: 'inbox_csat_templates' do
               post :analyze, on: :collection
+            end
+
+            resources :message_templates, only: [:index, :create, :destroy],
+                                          controller: 'inbox_message_templates', param: :name do
+              post :media, on: :collection
             end
           end
 
