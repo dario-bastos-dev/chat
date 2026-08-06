@@ -4,26 +4,23 @@
 #
 # Table name: deals
 #
-#  id                  :bigint           not null, primary key
-#  title               :string(500)      not null
-#  value               :decimal(15, 2)   default(0.0)
-#  currency            :string(3)        default("BRL")
-#  status              :string(50)       default("open")
-#  lost_reason         :string(255)
-#  custom_attributes   :jsonb            default({})
-#  last_activity_at    :datetime
-#  won_at              :datetime
-#  lost_at             :datetime
-#  expected_close_date :date
-#  position            :integer          default(0)
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
-#  account_id          :bigint           not null
-#  pipeline_id         :bigint           not null
-#  stage_id            :bigint           not null
-#  contact_id          :bigint           not null
-#  inbox_id            :bigint
-#  assignee_id         :bigint
+#  id                :bigint           not null, primary key
+#  title             :string(500)      not null
+#  status            :string(50)       default("open")
+#  lost_reason       :string(255)
+#  custom_attributes :jsonb            default({})
+#  last_activity_at  :datetime
+#  won_at            :datetime
+#  lost_at           :datetime
+#  position          :integer          default(0)
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  account_id        :bigint           not null
+#  pipeline_id       :bigint           not null
+#  stage_id          :bigint           not null
+#  contact_id        :bigint           not null
+#  inbox_id          :bigint
+#  assignee_id       :bigint
 #
 # Indexes
 #

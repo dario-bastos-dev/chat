@@ -215,7 +215,8 @@
           <div
             v-if="showBulkActionsDropdown"
             class="absolute right-0 top-full mt-1.5 z-50 min-w-[160px] bg-n-solid-2 border border-n-weak rounded-xl shadow-xl p-1.5 flex flex-col gap-0.5 text-left"
-                   <!-- Opção Mover (Etapa e Pipeline) -->
+          >
+            <!-- Opção Mover (Etapa e Pipeline) -->
             <button
               class="flex items-center gap-2 w-full px-2.5 py-2 text-xs font-medium text-n-slate-12 hover:bg-n-alpha-1 rounded-lg transition-colors cursor-pointer border-0 bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="selectedDealIds.length === 0"

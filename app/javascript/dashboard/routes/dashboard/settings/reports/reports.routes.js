@@ -23,7 +23,10 @@ import CsatResponses from './CsatResponses.vue';
 import BotReports from './BotReports.vue';
 import LiveReports from './LiveReports.vue';
 import SLAReports from './SLAReports.vue';
-const CrmReports = () => import('./CrmReports.vue');
+// NOTA: a rota de Relatórios CRM (`crm_reports`) foi desativada porque os
+// endpoints `/api/v1/accounts/:id/crm/reports/*` ainda não existem no backend e
+// o componente caía em dados mockados. Reativar na Fase 3, junto do
+// Crm::ReportsController. Ver CrmReports.vue e api/crmReports.js.
 
 const meta = {
   featureFlag: FEATURE_FLAGS.REPORTS,
@@ -168,12 +171,6 @@ export default {
           name: 'bot_reports',
           meta,
           component: BotReports,
-        },
-        {
-          path: 'crm',
-          name: 'crm_reports',
-          meta,
-          component: CrmReports,
         },
       ],
     },

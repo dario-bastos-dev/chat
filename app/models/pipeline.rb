@@ -4,12 +4,15 @@
 #
 # Table name: pipelines
 #
-#  id          :bigint           not null, primary key
-#  name        :string           not null
-#  is_default  :boolean          default(FALSE)
-#  created_at  :datetime         not null
-#  updated_at  :datetime         not null
-#  account_id  :bigint           not null
+#  id               :bigint           not null, primary key
+#  name             :string           not null
+#  is_default       :boolean          default(FALSE)
+#  lost_reasons     :jsonb            default([])
+#  visibility       :string           default("public")
+#  allowed_team_ids :jsonb            default([])
+#  created_at       :datetime         not null
+#  updated_at       :datetime         not null
+#  account_id       :bigint           not null
 #
 # Indexes
 #
