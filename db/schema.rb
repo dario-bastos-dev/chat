@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_06_190000) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_06_200000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -911,6 +911,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_06_190000) do
     t.integer "position", default: 0
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "cached_label_list", default: ""
     t.index ["account_id", "assignee_id", "status"], name: "idx_deals_by_assignee"
     t.index ["account_id", "pipeline_id", "stage_id", "status"], name: "idx_deals_kanban_listing"
     t.index ["account_id", "pipeline_id", "stage_id"], name: "idx_deals_open_only", where: "((status)::text = 'open'::text)"

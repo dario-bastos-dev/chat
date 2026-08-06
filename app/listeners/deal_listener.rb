@@ -9,20 +9,17 @@ class DealListener < BaseListener
     end
   end
 
+  # Roda a cada mensagem recebida, entao precisa ser barato. Antes era um UPDATE
+  # por negocio aberto, e cada um disparava os callbacks e o evento deal.updated
+  # em cascata. Um unico update_all resolve os dois campos de uma vez.
   def message_created(event)
     message = event.data[:message]
-    conversation = message.conversation
-    
-    # Update last_activity_at for all linked deals
-    conversation.deals.open_deals.each do |deal|
-      deal.update(last_activity_at: message.created_at)
-      
-      # If deal was rotting, remove the flag since there is activity
-      if deal.custom_attributes['is_rotting']
-        deal.custom_attributes['is_rotting'] = false
-        deal.save
-      end
-    end
+    deals = message.conversation.deals.open_deals
+
+    deals.update_all(
+      last_activity_at: message.created_at,
+      custom_attributes: Arel.sql("custom_attributes || '{\"is_rotting\": false}'::jsonb")
+    )
   end
 
   def conversation_resolved(event)

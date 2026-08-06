@@ -77,6 +77,14 @@ class Deal < ApplicationRecord
   scope :by_assignee, ->(assignee_id) { where(assignee_id: assignee_id) }
   scope :ordered_by_position, -> { order(position: :asc) }
 
+  # Le a coluna de cache direto, como Conversation#cached_label_list_array.
+  # `label_list` do acts_as_taggable_on consulta `taggings` a cada chamada, via
+  # add_custom_context, mesmo com o cache preenchido — o que dava uma query por
+  # negocio na listagem do Kanban.
+  def cached_label_list_array
+    (cached_label_list || '').split(',').map(&:strip).reject(&:blank?)
+  end
+
   # Check if deal is rotting (no activity for X days)
   def rotting?
     return false unless stage.rotting_days.present?

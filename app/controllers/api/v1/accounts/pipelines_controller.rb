@@ -1,13 +1,35 @@
 # frozen_string_literal: true
 
 class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
-  before_action :fetch_pipeline, only: [:show, :update, :destroy]
+  DEFAULT_DEALS_PER_STAGE = 20
+  MAX_DEALS_PER_STAGE = 100
+
+  before_action :fetch_pipeline, only: [:show, :update, :destroy, :board]
 
   def index
     @pipelines = policy_scope(Pipeline).includes(:stages)
+    @deal_counts = open_deal_counts_by_stage
   end
 
-  def show; end
+  def show
+    @deal_counts = open_deal_counts_by_stage(@pipeline.id)
+  end
+
+  # Payload inicial do Kanban: as primeiras N oportunidades de cada etapa mais o
+  # total real da coluna. O total precisa vir do banco, senao o contador reflete
+  # apenas o que coube na pagina.
+  def board
+    scope = Deals::Finder.new(scope: policy_scope(Deal), params: board_filters).perform
+
+    @stages = @pipeline.stages.ordered
+    @total_counts = scope.group(:stage_id).count
+    @deals_by_stage = @stages.index_with do |stage|
+      scope.where(stage_id: stage.id)
+           .includes(:contact, :assignee, :stage, :pipeline)
+           .ordered_by_position
+           .limit(deals_per_stage)
+    end
+  end
 
   def create
     authorize Pipeline
@@ -46,6 +68,24 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
 
   def fetch_pipeline
     @pipeline = policy_scope(Pipeline).find(params[:id])
+  end
+
+  # Uma unica query agregada no lugar de um COUNT por etapa e por funil, que
+  # antes vinham dos metodos deals_count/total_deals_count dos models.
+  def open_deal_counts_by_stage(pipeline_id = nil)
+    scope = policy_scope(Deal).where(status: 'open')
+    scope = scope.where(pipeline_id: pipeline_id) if pipeline_id
+    scope.group(:stage_id).count
+  end
+
+  def deals_per_stage
+    [(params[:per_stage].presence || DEFAULT_DEALS_PER_STAGE).to_i, MAX_DEALS_PER_STAGE].min
+  end
+
+  def board_filters
+    params.permit(:status, :assignee_id, :q, :label, :custom_field_key, :custom_field_value)
+          .to_h.symbolize_keys
+          .merge(pipeline_id: @pipeline.id)
   end
 
   def pipeline_params

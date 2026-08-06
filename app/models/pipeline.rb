@@ -37,14 +37,6 @@ class Pipeline < ApplicationRecord
 
   scope :default_pipeline, -> { where(is_default: true).first }
 
-  def total_value
-    0.0
-  end
-
-  def total_deals_count
-    deals.where(status: 'open').count
-  end
-
   private
 
   def ensure_at_least_one_default

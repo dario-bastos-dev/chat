@@ -204,6 +204,9 @@ Rails.application.routes.draw do
 
           # CRM Routes
           resources :pipelines do
+            member do
+              get :board
+            end
             resources :stages do
               collection do
                 put :reorder

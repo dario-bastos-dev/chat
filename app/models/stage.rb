@@ -37,14 +37,6 @@ class Stage < ApplicationRecord
 
   delegate :account, to: :pipeline
 
-  def deals_count
-    deals.where(status: 'open').count
-  end
-
-  def total_value
-    0.0
-  end
-
   private
 
   def set_default_position
