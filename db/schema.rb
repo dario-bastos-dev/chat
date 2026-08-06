@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_07_05_133600) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_06_190000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1512,18 +1512,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_05_133600) do
   add_foreign_key "channel_whatsapp_lid_mappings", "contacts", on_delete: :cascade
   add_foreign_key "channel_whatsapp_lid_mappings", "inboxes", on_delete: :cascade
   add_foreign_key "conversation_deals", "conversations"
-  add_foreign_key "conversation_deals", "deals"
+  add_foreign_key "conversation_deals", "deals", on_delete: :cascade
   add_foreign_key "conversation_message_sequences", "conversations"
   add_foreign_key "conversation_message_sequences", "message_sequences"
   add_foreign_key "deal_activities", "accounts"
-  add_foreign_key "deal_activities", "deals"
-  add_foreign_key "deal_activities", "users"
+  add_foreign_key "deal_activities", "deals", on_delete: :cascade
+  add_foreign_key "deal_activities", "users", on_delete: :nullify
   add_foreign_key "deals", "accounts"
   add_foreign_key "deals", "contacts", on_delete: :cascade
-  add_foreign_key "deals", "inboxes"
+  add_foreign_key "deals", "inboxes", on_delete: :nullify
   add_foreign_key "deals", "pipelines"
   add_foreign_key "deals", "stages"
-  add_foreign_key "deals", "users", column: "assignee_id"
+  add_foreign_key "deals", "users", column: "assignee_id", on_delete: :nullify
   add_foreign_key "inboxes", "portals"
   add_foreign_key "message_sequence_inboxes", "inboxes"
   add_foreign_key "message_sequence_inboxes", "message_sequences"
