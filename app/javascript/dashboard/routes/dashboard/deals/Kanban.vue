@@ -58,7 +58,7 @@
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Pesquisar por nome do lead..."
+                :placeholder="$t('CRM.FILTERS.SEARCH_PLACEHOLDER')"
                 class="w-full !py-1 text-sm !bg-transparent !border-0 !border-none !outline-none !focus:outline-none !focus:ring-0 !focus:border-none !focus-visible:outline-none !shadow-none text-n-slate-12 placeholder-n-slate-11 !h-full !p-0 !m-0 no-margin"
               />
             </div>
@@ -76,24 +76,24 @@
               >
                 <!-- Dropdown Header -->
                 <div class="flex items-center justify-between border-b border-n-weak pb-2">
-                  <span class="text-xs font-bold text-n-slate-12">Filtros do Kanban</span>
+                  <span class="text-xs font-bold text-n-slate-12">{{ $t('CRM.FILTERS.TITLE') }}</span>
                   <button
                     v-if="activeFilterCount > 0"
                     class="text-[11px] font-semibold text-n-ruby-9 hover:text-n-ruby-10 cursor-pointer"
                     @click="clearAllFilters"
                   >
-                    Limpar Filtros
+                    {{ $t('CRM.FILTERS.CLEAR') }}
                   </button>
                 </div>
 
                 <!-- Filter by Stage -->
                 <div class="flex flex-col gap-1.5">
-                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Filtrar por Etapa</label>
+                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">{{ $t('CRM.FILTERS.BY_STAGE') }}</label>
                   <select
                     v-model="filterStageId"
                     class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
                   >
-                    <option :value="null">Todas as Etapas</option>
+                    <option :value="null">{{ $t('CRM.FILTERS.ALL_STAGES') }}</option>
                     <option v-for="stage in stages" :key="stage.id" :value="stage.id">
                       {{ stage.name }}
                     </option>
@@ -102,12 +102,12 @@
 
                 <!-- Filter by Tags -->
                 <div class="flex flex-col gap-1.5">
-                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Filtrar por Tag/Etiqueta</label>
+                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">{{ $t('CRM.FILTERS.BY_TAG') }}</label>
                   <select
                     v-model="filterTag"
                     class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
                   >
-                    <option :value="null">Todas as Tags</option>
+                    <option :value="null">{{ $t('CRM.FILTERS.ALL_TAGS') }}</option>
                     <option v-for="tag in allLabels" :key="tag.id" :value="tag.title">
                       {{ tag.title }}
                     </option>
@@ -139,14 +139,14 @@
 
                 <!-- Filter by Custom Fields -->
                 <div class="flex flex-col gap-1.5" v-if="availableCustomFields.length > 0">
-                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Campo Personalizado</label>
+                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">{{ $t('CRM.FILTERS.CUSTOM_FIELD') }}</label>
                   <div class="flex gap-2">
                     <select
                       v-model="filterCustomFieldKey"
                       class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
                       @change="filterCustomFieldValue = ''"
                     >
-                      <option :value="null">Nenhum campo</option>
+                      <option :value="null">{{ $t('CRM.FILTERS.NO_FIELD') }}</option>
                       <option v-for="field in availableCustomFields" :key="field" :value="field">
                         {{ field }}
                       </option>
@@ -155,7 +155,7 @@
                       v-if="filterCustomFieldKey"
                       v-model="filterCustomFieldValue"
                       type="text"
-                      placeholder="Valor..."
+                      :placeholder="$t('CRM.FILTERS.VALUE_PLACEHOLDER')"
                       class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
                     />
                   </div>
@@ -171,7 +171,7 @@
             @click="showFilters = !showFilters"
           >
             <fluent-icon icon="filter" size="14" />
-            <span>Filtros</span>
+            <span>{{ $t('CRM.FILTERS.LABEL') }}</span>
             <span v-if="activeFilterCount > 0" class="flex items-center justify-center w-4 h-4 text-[9px] font-bold text-white bg-n-brand rounded-full shrink-0">
               {{ activeFilterCount }}
             </span>
@@ -184,7 +184,7 @@
           class="flex items-center gap-1 px-2 text-xs font-semibold text-n-ruby-9 hover:text-n-ruby-10 cursor-pointer shrink-0"
           @click="clearAllFilters"
         >
-          Limpar
+          {{ $t('CRM.FILTERS.CLEAR_SHORT') }}
         </button>
       </div>
 
@@ -239,7 +239,7 @@
             class="w-3.5 h-3.5 rounded border-n-weak text-n-brand focus:ring-n-brand cursor-pointer"
             :disabled="loadedDeals.length === 0"
           />
-          <span>Selecionar todos</span>
+          <span>{{ $t('CRM.BULK.SELECT_ALL') }}</span>
         </label>
 
         <!-- Botão Ações (Dropdown) -->
@@ -248,7 +248,7 @@
             class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-n-slate-12 bg-n-alpha-1 hover:bg-n-alpha-2 border border-n-weak rounded-lg transition-colors duration-150 cursor-pointer h-8"
             @click="toggleBulkActionsDropdown"
           >
-            <span>Ações</span>
+            <span>{{ $t('CRM.BULK.ACTIONS') }}</span>
             <fluent-icon icon="chevron-down" size="10" />
           </button>
           
@@ -263,7 +263,7 @@
               @click="openBulkMoveModal"
             >
               <fluent-icon icon="arrow-swap" size="12" class="text-n-slate-11" />
-              <span>Mover Etapa</span>
+              <span>{{ $t('CRM.BULK.MOVE_STAGE') }}</span>
             </button>
 
             <!-- Opção Exportar -->
@@ -273,7 +273,7 @@
               @click="exportDeals"
             >
               <fluent-icon icon="share" size="12" class="text-n-slate-11" />
-              <span>Exportar</span>
+              <span>{{ $t('CRM.BULK.EXPORT') }}</span>
             </button>
 
             <!-- Opção Importar -->
@@ -282,7 +282,7 @@
               @click="importDeals"
             >
               <fluent-icon icon="arrow-right-import" size="12" class="text-n-slate-11" />
-              <span>Importar</span>
+              <span>{{ $t('CRM.BULK.IMPORT') }}</span>
             </button>
 
             <!-- Divisor -->
@@ -295,7 +295,7 @@
               @click="deleteSelectedDeals"
             >
               <fluent-icon icon="delete" size="12" class="text-n-ruby-9" />
-              <span>Deletar</span>
+              <span>{{ $t('CRM.BULK.DELETE') }}</span>
             </button>
           </div>
         </div>
@@ -310,14 +310,14 @@
         />
 
         <span v-if="selectedDealIds.length > 0" class="text-xs text-n-brand font-medium bg-n-brand/10 px-2 py-0.5 rounded-full">
-          {{ selectedDealIds.length }} selecionado(s)
+          {{ $t('CRM.BULK.SELECTED', { count: selectedDealIds.length }) }}
         </span>
         <button
           v-if="selectedDealIds.length > 0"
           @click="clearSelection"
           class="text-xs text-n-slate-11 hover:text-n-slate-12 cursor-pointer font-medium border-0 bg-transparent"
         >
-          Cancelar
+          {{ $t('CRM.BULK.CANCEL') }}
         </button>
       </div>
     </div>
@@ -524,8 +524,16 @@
     <woot-delete-modal
       v-if="showDeleteModal"
       v-model:show="showDeleteModal"
-      :title="isBulkDelete ? 'Excluir Negócios' : 'Excluir Negócio'"
-      :message="isBulkDelete ? `Tem certeza que deseja excluir os ${selectedDealIds.length} negócio(s) selecionado(s)? Esta ação não pode ser desfeita.` : 'Tem certeza que deseja excluir este negócio? Esta ação não pode ser desfeita.'"
+      :title="
+        isBulkDelete
+          ? $t('CRM.BULK.DELETE_TITLE')
+          : $t('CRM.DEALS.DELETE_TITLE')
+      "
+      :message="
+        isBulkDelete
+          ? $t('CRM.BULK.DELETE_MESSAGE', { count: selectedDealIds.length })
+          : $t('CRM.DEALS.DELETE_CONFIRM')
+      "
       :confirm-text="$t('CRM.DELETE') || 'Excluir'"
       :reject-text="$t('CRM.CANCEL') || 'Cancelar'"
       :on-confirm="confirmDeleteDeal"
@@ -538,10 +546,10 @@
       :on-close="closeBulkMoveModal"
     >
       <div class="p-6 min-w-[400px] flex flex-col gap-4 bg-n-surface-2 text-n-slate-12">
-        <woot-modal-header header-title="Mover Negócios em Lote" />
+        <woot-modal-header :header-title="$t('CRM.BULK.MOVE_TITLE')" />
         
         <p class="text-xs text-n-slate-11 m-0">
-          Selecione a nova etapa e o pipeline para mover os <strong>{{ selectedDealIds.length }}</strong> negócio(s) selecionado(s):
+          {{ $t('CRM.BULK.MOVE_DESCRIPTION', { count: selectedDealIds.length }) }}
         </p>
 
         <!-- Dropdown / Acordeão de Pipelines e Etapas -->
@@ -853,11 +861,11 @@ export default {
       this.closeDeleteModal();
       try {
         await Promise.all(this.selectedDealIds.map(id => this.deleteDeal(id)));
-        this.$toast.success('Negócio(s) excluído(s) com sucesso.');
+        this.$toast.success(this.$t('CRM.BULK.DELETE_SUCCESS'));
         this.selectedDealIds = [];
         this.fetchBoardData();
       } catch (error) {
-        this.$toast.error('Ocorreu um erro ao deletar os negócios.');
+        this.$toast.error(this.$t('CRM.BULK.DELETE_ERROR'));
       }
     },
     clearSelection() {
@@ -955,7 +963,7 @@ export default {
     },
     async executeBulkMove(stageId) {
       this.closeBulkMoveModal();
-      this.$toast.info('Movendo negócios...');
+      this.$toast.info(this.$t('CRM.BULK.MOVING'));
       try {
         await Promise.all(
           this.selectedDealIds.map(id =>
@@ -965,11 +973,11 @@ export default {
             })
           )
         );
-        this.$toast.success('Negócio(s) movido(s) com sucesso!');
+        this.$toast.success(this.$t('CRM.BULK.MOVE_SUCCESS'));
         this.selectedDealIds = [];
         this.fetchBoardData();
       } catch (error) {
-        this.$toast.error('Erro ao mover os negócios.');
+        this.$toast.error(this.$t('CRM.BULK.MOVE_ERROR'));
       }
     },
     exportDeals() {
@@ -1002,7 +1010,7 @@ export default {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      this.$toast.success('Negócios exportados com sucesso!');
+      this.$toast.success(this.$t('CRM.BULK.EXPORT_SUCCESS'));
     },
     importDeals() {
       this.showBulkActionsDropdown = false;
@@ -1018,7 +1026,7 @@ export default {
           const text = e.target.result;
           const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
           if (lines.length <= 1) {
-            this.$toast.error('O arquivo CSV está vazio ou inválido.');
+            this.$toast.error(this.$t('CRM.IMPORT.EMPTY_FILE'));
             return;
           }
 
@@ -1027,18 +1035,18 @@ export default {
           const contactIdx = headers.indexOf('contato');
 
           if (titleIdx === -1) {
-            this.$toast.error('A coluna "Negócio" é obrigatória no CSV.');
+            this.$toast.error(this.$t('CRM.IMPORT.MISSING_TITLE_COLUMN'));
             return;
           }
 
           const pipeline = this.currentPipeline;
           const stageId = pipeline?.stages?.[0]?.id;
           if (!stageId) {
-            this.$toast.error('Nenhum funil ou etapa activa encontrada para importar.');
+            this.$toast.error(this.$t('CRM.IMPORT.NO_STAGE'));
             return;
           }
 
-          this.$toast.info('Iniciando importação de negócios...');
+          this.$toast.info(this.$t('CRM.IMPORT.STARTED'));
           let successCount = 0;
           let skipped = 0;
 
@@ -1075,14 +1083,14 @@ export default {
 
           if (skipped > 0) {
             this.$toast.info(
-              `${successCount} negócio(s) importado(s), ${skipped} linha(s) ignorada(s).`
+              this.$t('CRM.IMPORT.PARTIAL', { success: successCount, skipped })
             );
           } else {
-            this.$toast.success(`${successCount} negócio(s) importado(s) com sucesso!`);
+            this.$toast.success(this.$t('CRM.IMPORT.SUCCESS', { count: successCount }));
           }
           this.fetchBoardData();
         } catch (err) {
-          this.$toast.error('Erro ao ler ou processar o arquivo CSV.');
+          this.$toast.error(this.$t('CRM.IMPORT.READ_ERROR'));
         }
       };
       reader.readAsText(file);
