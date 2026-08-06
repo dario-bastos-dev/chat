@@ -32,13 +32,20 @@ class Api::V1::Accounts::StagesController < Api::V1::Accounts::BaseController
     end
   end
 
+  # O indice unico (pipeline_id, position) colide se as posicoes forem
+  # reatribuidas uma a uma, entao empurramos todas para uma faixa livre antes de
+  # normalizar. Mesma tecnica usada em PipelinesController#update.
   def reorder
     authorize Stage
-    
-    params[:stage_ids].each_with_index do |stage_id, index|
-      @pipeline.stages.find(stage_id).update!(position: index)
+
+    ActiveRecord::Base.transaction do
+      @pipeline.stages.update_all('position = position + 1000')
+
+      params[:stage_ids].each_with_index do |stage_id, index|
+        @pipeline.stages.find(stage_id).update_columns(position: index + 1)
+      end
     end
-    
+
     @stages = @pipeline.stages.ordered
     render :index
   end
@@ -54,6 +61,6 @@ class Api::V1::Accounts::StagesController < Api::V1::Accounts::BaseController
   end
 
   def stage_params
-    params.require(:stage).permit(:name, :position, :win_probability, :rotting_days)
+    params.require(:stage).permit(:name, :position, :win_probability, :rotting_days, :color, :stage_type)
   end
 end

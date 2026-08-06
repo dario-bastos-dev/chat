@@ -207,7 +207,7 @@
                     class="font-semibold text-n-slate-12 cursor-pointer hover:text-woot-500 transition-colors truncate block max-w-[200px]"
                     @click="openDealDrawer(deal)"
                   >
-                    {{ cleanTitle(deal.title) }}
+                    {{ deal.title }}
                   </span>
                 </BaseTableCell>
 
@@ -817,6 +817,7 @@ import {
   formatDealValue,
   DEFAULT_CRM_CURRENCY,
 } from 'dashboard/helper/crmCurrency';
+import { buildDefaultPipeline, STAGE_TYPE_COLORS } from './constants';
 
 export default {
   name: 'DealsIndex',
@@ -845,19 +846,7 @@ export default {
       bulkMoveExpandedPipelineId: null,
       dealToDelete: null,
       isBulkDelete: false,
-      newPipeline: {
-        name: '',
-        is_default: false,
-        stages: [
-          { name: 'Pendente', color: '#3b82f6', stage_type: 'not_started', position: 1, win_probability: 10 },
-          { name: 'Aberto', color: '#eab308', stage_type: 'active', position: 2, win_probability: 50 },
-          { name: 'Ganho', color: '#22c55e', stage_type: 'done', position: 3, win_probability: 100 },
-          { name: 'Perdido', color: '#ef4444', stage_type: 'closed', position: 4, win_probability: 0 },
-        ],
-        lost_reasons: [],
-        visibility: 'public',
-        allowed_team_ids: [],
-      },
+      newPipeline: buildDefaultPipeline(false),
       activeTab: 'stages',
       stageGroups: [
         { key: 'not_started', label: 'Entrada', dotColor: 'bg-n-brand' },
@@ -977,11 +966,7 @@ export default {
       return this.newPipeline.stages.filter(s => s.stage_type === groupKey);
     },
     getStageColor(stage) {
-      if (stage.color) return stage.color;
-      if (stage.stage_type === 'not_started') return '#3b82f6';
-      if (stage.stage_type === 'done') return '#22c55e';
-      if (stage.stage_type === 'closed') return '#ef4444';
-      return '#eab308';
+      return stage.color || STAGE_TYPE_COLORS[stage.stage_type] || STAGE_TYPE_COLORS.active;
     },
     updateGroupStages(groupKey, newStages) {
       const otherStages = this.newPipeline.stages.filter(s => s.stage_type !== groupKey);
@@ -1041,19 +1026,7 @@ export default {
     },
     closeCreateModal() {
       this.showCreateModal = false;
-      this.newPipeline = {
-        name: '',
-        is_default: false,
-        stages: [
-          { name: 'Pendente', color: '#3b82f6', stage_type: 'not_started', position: 1, win_probability: 10 },
-          { name: 'Aberto', color: '#eab308', stage_type: 'active', position: 2, win_probability: 50 },
-          { name: 'Ganho', color: '#22c55e', stage_type: 'done', position: 3, win_probability: 100 },
-          { name: 'Perdido', color: '#ef4444', stage_type: 'closed', position: 4, win_probability: 0 },
-        ],
-        lost_reasons: [],
-        visibility: 'public',
-        allowed_team_ids: [],
-      };
+      this.newPipeline = buildDefaultPipeline(false);
       this.activeTab = 'stages';
     },
     addLostReason() {
@@ -1099,9 +1072,6 @@ export default {
           error.message || this.$t('CRM.PIPELINES.CREATE_ERROR')
         );
       }
-    },
-    cleanTitle(title) {
-      return title || '';
     },
     currencyValue(value) {
       return formatDealValue(

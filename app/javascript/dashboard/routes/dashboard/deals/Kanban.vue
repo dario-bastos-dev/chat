@@ -389,7 +389,7 @@
               }"
               tabindex="0"
               role="button"
-              :aria-label="cleanTitle(deal.title)"
+              :aria-label="deal.title"
               @click="openDealDrawer(deal)"
               @keydown.enter="openDealDrawer(deal)"
               @keydown.space.prevent="openDealDrawer(deal)"
@@ -435,7 +435,7 @@
                   <span
                     class="text-sm font-medium text-n-slate-12 flex-1 mr-2 truncate"
                   >
-                    {{ cleanTitle(deal.title) }}
+                    {{ deal.title }}
                   </span>
                 </div>
                 <div class="flex items-center gap-1.5 mb-1.5">
@@ -808,12 +808,6 @@ export default {
       const label = this.allLabels?.find(l => l.title === title);
       return label ? label.color : '#3b82f6';
     },
-    goBack() {
-      this.$router.push({
-        name: 'deals_index',
-        params: { accountId: this.$route.params.accountId },
-      });
-    },
     togglePipelineDropdown() {
       this.showPipelineDropdown = !this.showPipelineDropdown;
     },
@@ -926,9 +920,6 @@ export default {
     onDealDeleted() {
       this.closeDealDrawer();
       this.fetchBoardData();
-    },
-    cleanTitle(title) {
-      return title || '';
     },
 
     formatDate(date) {
