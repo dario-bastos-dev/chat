@@ -14,6 +14,12 @@ class PipelinesAPI extends ApiClient {
     return axios.get(`${this.url}/${pipelineId}`);
   }
 
+  // Payload inicial do Kanban: primeiras N oportunidades de cada etapa e o
+  // total real da coluna.
+  board(pipelineId, filters = {}) {
+    return axios.get(`${this.url}/${pipelineId}/board`, { params: filters });
+  }
+
   create(data) {
     return axios.post(this.url, data);
   }

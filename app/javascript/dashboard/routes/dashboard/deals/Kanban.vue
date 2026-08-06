@@ -197,7 +197,7 @@
             :checked="isAllFilteredDealsSelected"
             @change="toggleSelectAllFiltered"
             class="w-3.5 h-3.5 rounded border-n-weak text-n-brand focus:ring-n-brand cursor-pointer"
-            :disabled="filteredDeals.length === 0"
+            :disabled="loadedDeals.length === 0"
           />
           <span>Selecionar todos</span>
         </label>
@@ -288,7 +288,7 @@
     <!-- Kanban Board — fills all remaining space -->
     <div v-else class="flex flex-1 gap-4 p-4 overflow-x-auto min-h-0 w-full max-w-full">
       <div
-        v-for="stage in stages"
+        v-for="stage in boardStages"
         :key="stage.id"
         class="flex flex-col shrink-0 rounded-xl border border-n-weak bg-n-solid-2 overflow-hidden"
         style="min-width: 280px; width: 280px;"
@@ -310,7 +310,7 @@
             <span
               class="text-xs font-medium text-n-slate-11 bg-n-alpha-1 px-1.5 py-0.5 rounded-full"
             >
-              {{ getDealsForStage(stage.id).length }}
+              {{ stage.total_count }}
             </span>
           </div>
         </div>
@@ -325,13 +325,14 @@
 
         <!-- Draggable cards area — stretches to fill column -->
         <draggable
-          :list="getDealsForStage(stage.id)"
+          v-model="stage.deals"
           :group="{ name: 'deals' }"
           item-key="id"
           :data-stage-id="stage.id"
           class="flex-1 p-2 space-y-2 overflow-y-auto"
           ghost-class="opacity-50"
           @end="onDragEnd"
+          @scroll.passive="onStageScroll($event, stage)"
         >
           <template #item="{ element: deal }">
             <div
@@ -413,6 +414,23 @@
             </div>
           </template>
         </draggable>
+
+        <!-- Carregar mais: o total vem do banco, entao a coluna sabe quantos
+             negocios ainda faltam mesmo sem te-los carregado -->
+        <button
+          v-if="stage.deals.length < stage.total_count"
+          class="w-full py-2 text-xs font-medium text-n-slate-11 hover:text-n-brand border-t border-n-weak transition-colors duration-150 cursor-pointer disabled:opacity-50"
+          :disabled="isStageLoading(stage.id)"
+          @click="loadMore(stage)"
+        >
+          {{
+            isStageLoading(stage.id)
+              ? $t('CRM.DEALS.LOADING_MORE')
+              : $t('CRM.DEALS.LOAD_MORE', {
+                  count: stage.total_count - stage.deals.length,
+                })
+          }}
+        </button>
 
         <!-- Add deal button -->
         <button
@@ -567,6 +585,7 @@ export default {
       bulkMoveExpandedPipelineId: null,
       showDeleteModal: false,
       isBulkDelete: false,
+      filterDebounce: null,
     };
   },
   computed: {
@@ -574,7 +593,9 @@ export default {
       currentPipeline: 'pipelines/getCurrentPipeline',
       allPipelines: 'pipelines/getPipelines',
       pipelineUIFlags: 'pipelines/getUIFlags',
-      deals: 'deals/getDeals',
+      boardStages: 'deals/getBoardStages',
+      boardTotal: 'deals/getBoardTotal',
+      isStageLoading: 'deals/isStageLoading',
       dealsUIFlags: 'deals/getUIFlags',
       allLabels: 'labels/getLabels',
     }),
@@ -585,18 +606,27 @@ export default {
       return this.currentPipeline?.stages || [];
     },
     isLoading() {
-      return !this.showDealDrawer && ((this.pipelineUIFlags.isFetching && this.allPipelines.length === 0) || (this.dealsUIFlags.isFetching && this.deals.length === 0));
+      return (
+        !this.showDealDrawer &&
+        this.dealsUIFlags.isFetching &&
+        this.boardStages.length === 0
+      );
     },
     totalDeals() {
-      return this.deals.filter(d => d.status === 'open').length;
+      return this.boardTotal;
     },
-
+    // Todos os negocios ja carregados no board, para selecao e exportacao.
+    loadedDeals() {
+      return this.boardStages.flatMap(stage => stage.deals);
+    },
+    // Os filtros rodam no backend; as chaves vem dos negocios ja carregados
+    // apenas para popular o seletor.
     availableCustomFields() {
       const fields = new Set();
-      this.deals.forEach(deal => {
-        if (deal.custom_attributes) {
-          Object.keys(deal.custom_attributes).forEach(key => fields.add(key));
-        }
+      this.loadedDeals.forEach(deal => {
+        Object.keys(deal.custom_attributes || {}).forEach(key =>
+          fields.add(key)
+        );
       });
       return Array.from(fields);
     },
@@ -607,55 +637,39 @@ export default {
       if (this.filterCustomFieldKey && this.filterCustomFieldValue) count++;
       return count;
     },
-    filteredDeals() {
-      return this.deals
-        .filter(deal => {
-          // Search by contact name (lead name)
-          if (this.searchQuery) {
-            const query = this.searchQuery.toLowerCase();
-            const contactName = (deal.contact?.name || '').toLowerCase();
-            if (!contactName.includes(query)) return false;
-          }
-
-          // Filter by Stage
-          if (this.filterStageId && deal.stage_id !== this.filterStageId && deal.stage?.id !== this.filterStageId) {
-            return false;
-          }
-
-          // Filter by Tags (labels)
-          if (this.filterTag) {
-            const dealLabels = deal.labels || [];
-            if (!dealLabels.includes(this.filterTag)) return false;
-          }
-
-          // Filter by Custom Fields
-          if (this.filterCustomFieldKey && this.filterCustomFieldValue) {
-            const customVal = String(deal.custom_attributes?.[this.filterCustomFieldKey] || '').toLowerCase();
-            const filterVal = this.filterCustomFieldValue.toLowerCase();
-            if (!customVal.includes(filterVal)) return false;
-          }
-
-          return true;
-        });
+    boardFilters() {
+      return {
+        q: this.searchQuery || undefined,
+        stage_id: this.filterStageId || undefined,
+        label: this.filterTag || undefined,
+        custom_field_key: this.filterCustomFieldKey || undefined,
+        custom_field_value: this.filterCustomFieldValue || undefined,
+      };
     },
     isAllFilteredDealsSelected() {
-      if (this.filteredDeals.length === 0) return false;
-      return this.filteredDeals.every(deal => this.selectedDealIds.includes(deal.id));
+      if (this.loadedDeals.length === 0) return false;
+      return this.loadedDeals.every(deal =>
+        this.selectedDealIds.includes(deal.id)
+      );
     },
   },
   watch: {
     pipelineId(newId, oldId) {
       if (newId && newId !== oldId) {
-        this.searchQuery = '';
-        this.filterStageId = null;
-        this.filterTag = null;
-        this.filterCustomFieldKey = null;
-        this.filterCustomFieldValue = '';
-        this.selectedDealIds = [];
+        this.clearAllFilters();
         this.showPipelineDropdown = false;
         this.showFilters = false;
         this.loadData();
       }
+    },
+    // Filtros rodam no backend: qualquer mudanca recarrega o board. O debounce
+    // evita uma requisicao por tecla digitada.
+    boardFilters: {
+      deep: true,
+      handler() {
+        clearTimeout(this.filterDebounce);
+        this.filterDebounce = setTimeout(() => this.fetchBoardData(), 300);
+      },
     },
   },
   mounted() {
@@ -664,6 +678,7 @@ export default {
     document.addEventListener('click', this.handleClickOutsideBulk);
   },
   beforeUnmount() {
+    clearTimeout(this.filterDebounce);
     document.removeEventListener('click', this.handleClickOutside);
     document.removeEventListener('click', this.handleClickOutsideBulk);
   },
@@ -671,7 +686,8 @@ export default {
     ...mapActions({
       fetchPipeline: 'pipelines/show',
       fetchPipelines: 'pipelines/get',
-      fetchDeals: 'deals/get',
+      fetchBoard: 'deals/fetchBoard',
+      loadMoreForStage: 'deals/loadMoreForStage',
       moveDeal: 'deals/move',
       fetchLabels: 'labels/get',
       deleteDeal: 'deals/delete',
@@ -684,7 +700,44 @@ export default {
         this.fetchPipelines(),
         this.fetchLabels(),
       ]);
-      await this.fetchDeals({ pipelineId: this.pipelineId, status: null });
+      await this.fetchBoardData();
+    },
+    async fetchBoardData() {
+      try {
+        await this.fetchBoard({
+          pipelineId: this.pipelineId,
+          filters: this.boardFilters,
+        });
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.DEALS.LOAD_ERROR'));
+      }
+    },
+    async loadMore(stage) {
+      try {
+        await this.loadMoreForStage({
+          stageId: stage.id,
+          filters: {
+            pipelineId: this.pipelineId,
+            q: this.searchQuery || undefined,
+            label: this.filterTag || undefined,
+            customFieldKey: this.filterCustomFieldKey || undefined,
+            customFieldValue: this.filterCustomFieldValue || undefined,
+          },
+        });
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.DEALS.LOAD_ERROR'));
+      }
+    },
+    // Carrega a proxima pagina ao chegar perto do fim da coluna.
+    onStageScroll(event, stage) {
+      const el = event.target;
+      const nearBottom =
+        el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+      if (!nearBottom) return;
+      if (stage.deals.length >= stage.total_count) return;
+      if (this.isStageLoading(stage.id)) return;
+
+      this.loadMore(stage);
     },
     getTagColor(title) {
       const label = this.allLabels?.find(l => l.title === title);
@@ -716,19 +769,14 @@ export default {
         },
       });
     },
-    getDealsForStage(stageId) {
-      return this.filteredDeals
-        .filter(deal => deal.stage_id === stageId || deal.stage?.id === stageId)
-        .sort((a, b) => a.position - b.position);
-    },
     toggleSelectAllFiltered() {
       if (this.isAllFilteredDealsSelected) {
         // Deselect only the currently filtered/displayed deals
-        const filteredIds = this.filteredDeals.map(deal => deal.id);
+        const filteredIds = this.loadedDeals.map(deal => deal.id);
         this.selectedDealIds = this.selectedDealIds.filter(id => !filteredIds.includes(id));
       } else {
         // Select all currently filtered/displayed deals (union with existing selection)
-        const filteredIds = this.filteredDeals.map(deal => deal.id);
+        const filteredIds = this.loadedDeals.map(deal => deal.id);
         const union = new Set([...this.selectedDealIds, ...filteredIds]);
         this.selectedDealIds = Array.from(union);
       }
@@ -748,7 +796,7 @@ export default {
         await Promise.all(this.selectedDealIds.map(id => this.deleteDeal(id)));
         this.$toast.success('Negócio(s) excluído(s) com sucesso.');
         this.selectedDealIds = [];
-        this.fetchDeals({ pipelineId: this.pipelineId, status: null });
+        this.fetchBoardData();
       } catch (error) {
         this.$toast.error('Ocorreu um erro ao deletar os negócios.');
       }
@@ -778,7 +826,7 @@ export default {
       } catch (error) {
         this.$toast.error(this.$t('CRM.DEALS.MOVE_ERROR'));
         // Reload deals on error
-        this.fetchDeals({ pipelineId: this.pipelineId, status: null });
+        this.fetchBoardData();
       }
     },
     openCreateDealModal(stageId = null) {
@@ -791,7 +839,7 @@ export default {
     },
     onDealCreated() {
       this.closeCreateDealModal();
-      this.fetchDeals({ pipelineId: this.pipelineId, status: null });
+      this.fetchBoardData();
     },
     openDealDrawer(deal) {
       this.selectedDeal = deal;
@@ -806,11 +854,11 @@ export default {
       }, 250);
     },
     onDealUpdated() {
-      this.fetchDeals({ pipelineId: this.pipelineId, status: null });
+      this.fetchBoardData();
     },
     onDealDeleted() {
       this.closeDealDrawer();
-      this.fetchDeals({ pipelineId: this.pipelineId, status: null });
+      this.fetchBoardData();
     },
     cleanTitle(title) {
       return title || '';
@@ -855,14 +903,14 @@ export default {
         );
         this.$toast.success('Negócio(s) movido(s) com sucesso!');
         this.selectedDealIds = [];
-        this.fetchDeals({ pipelineId: this.pipelineId, status: null });
+        this.fetchBoardData();
       } catch (error) {
         this.$toast.error('Erro ao mover os negócios.');
       }
     },
     exportDeals() {
       this.showBulkActionsDropdown = false;
-      const selectedDeals = this.deals.filter(d => this.selectedDealIds.includes(d.id));
+      const selectedDeals = this.loadedDeals.filter(d => this.selectedDealIds.includes(d.id));
       if (selectedDeals.length === 0) return;
 
       const headers = ['ID', 'Negocio', 'Contato', 'E-mail', 'Telefone', 'Pipeline', 'Etapa', 'Responsavel', 'Status', 'Criado Em'];
@@ -927,6 +975,7 @@ export default {
 
           this.$toast.info('Iniciando importação de negócios...');
           let successCount = 0;
+          let skipped = 0;
 
           for (let i = 1; i < lines.length; i++) {
             const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
@@ -935,12 +984,16 @@ export default {
 
             const contactName = contactIdx !== -1 ? cols[contactIdx] : 'Cliente Importado';
 
+            // Sem contato nao ha negocio valido. Antes o fallback pegava o
+            // contato de outro negocio da tela, ou o id 1, e vinculava a linha
+            // importada a alguem que nao tinha nada a ver com ela.
             let contactId = null;
             try {
               const newContact = await this.$store.dispatch('contacts/create', { name: contactName });
               contactId = newContact.id;
             } catch (err) {
-              contactId = this.deals[0]?.contact_id || 1;
+              skipped += 1;
+              continue;
             }
 
             try {
@@ -951,12 +1004,18 @@ export default {
               });
               successCount++;
             } catch (err) {
-              // Ignore row error
+              skipped += 1;
             }
           }
 
-          this.$toast.success(`${successCount} negócio(s) importado(s) com sucesso!`);
-          this.fetchDeals({ pipelineId: this.pipelineId, status: null });
+          if (skipped > 0) {
+            this.$toast.info(
+              `${successCount} negócio(s) importado(s), ${skipped} linha(s) ignorada(s).`
+            );
+          } else {
+            this.$toast.success(`${successCount} negócio(s) importado(s) com sucesso!`);
+          }
+          this.fetchBoardData();
         } catch (err) {
           this.$toast.error('Erro ao ler ou processar o arquivo CSV.');
         }
