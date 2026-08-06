@@ -98,13 +98,13 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
 
   def filter_params
     params.permit(:pipeline_id, :stage_id, :status, :assignee_id, :contact_id, :inbox_id,
-                  :q, :label, :custom_field_key, :custom_field_value)
+                  :q, :label, :custom_field_key, :custom_field_value, :min_value, :max_value)
           .to_h.symbolize_keys
   end
 
   def deal_params
     params.require(:deal).permit(
-      :title, :stage_id, :contact_id, :inbox_id,
+      :title, :value, :stage_id, :contact_id, :inbox_id,
       :assignee_id, :position,
       custom_attributes: {},
       labels: []

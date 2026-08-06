@@ -3,6 +3,9 @@ json.pipeline do
   json.name @pipeline.name
 end
 
+json.currency @currency
+json.weighted_forecast @weighted_forecast
+
 json.stages @stages do |stage|
   json.id stage.id
   json.name stage.name
@@ -14,6 +17,7 @@ json.stages @stages do |stage|
 
   # Total real da coluna no banco, independente de quantos vieram nesta pagina.
   json.total_count @total_counts[stage.id] || 0
+  json.total_value @total_values[stage.id] || 0
 
   json.deals @deals_by_stage[stage] do |deal|
     json.partial! 'api/v1/accounts/deals/deal', deal: deal

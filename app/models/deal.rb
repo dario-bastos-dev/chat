@@ -51,6 +51,7 @@ class Deal < ApplicationRecord
   has_many :conversations, through: :conversation_deals
 
   validates :title, presence: true, length: { maximum: 500 }
+  validates :value, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :account_id, presence: true
   validates :pipeline_id, presence: true
   validates :stage_id, presence: true
@@ -221,7 +222,11 @@ class Deal < ApplicationRecord
   end
 
   def dispatch_update_event
-    Rails.configuration.dispatcher.dispatch(DEAL_UPDATED, Time.zone.now, deal: self, changed_attributes: previous_changes)
+    # `as_json` e obrigatorio aqui: previous_changes carrega o BigDecimal de
+    # `value`, e o Sidekiq recusa argumentos que nao sejam tipos nativos de
+    # JSON, fazendo a atualizacao inteira estourar ao enfileirar o evento.
+    Rails.configuration.dispatcher.dispatch(DEAL_UPDATED, Time.zone.now, deal: self,
+                                                                        changed_attributes: previous_changes.as_json)
 
     # Dispatch specific events based on what changed
     dispatch_won_event if previous_changes.key?('status') && status == 'won'

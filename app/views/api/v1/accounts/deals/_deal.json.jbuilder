@@ -1,5 +1,6 @@
 json.id deal.id
 json.title deal.title
+json.value deal.value
 json.status deal.status
 json.lost_reason deal.lost_reason
 json.position deal.position

@@ -23,6 +23,9 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
 
     @stages = @pipeline.stages.ordered
     @total_counts = scope.group(:stage_id).count
+    @total_values = scope.group(:stage_id).sum(:value)
+    @weighted_forecast = weighted_forecast_for(scope)
+    @currency = Current.account.crm_currency
     @deals_by_stage = @stages.index_with do |stage|
       scope.where(stage_id: stage.id)
            .includes(:contact, :assignee, :stage, :pipeline)
@@ -78,12 +81,22 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
     scope.group(:stage_id).count
   end
 
+  # Forecast ponderado: soma de valor x probabilidade da etapa, apenas sobre
+  # negocios abertos. E a metrica que o `win_probability`, ate agora sem uso
+  # pratico, finalmente viabiliza.
+  def weighted_forecast_for(scope)
+    scope.where(status: 'open')
+         .joins(:stage)
+         .sum('deals.value * stages.win_probability / 100.0')
+  end
+
   def deals_per_stage
     [(params[:per_stage].presence || DEFAULT_DEALS_PER_STAGE).to_i, MAX_DEALS_PER_STAGE].min
   end
 
   def board_filters
-    params.permit(:status, :assignee_id, :q, :label, :custom_field_key, :custom_field_value)
+    params.permit(:status, :assignee_id, :q, :label, :custom_field_key, :custom_field_value,
+                  :min_value, :max_value)
           .to_h.symbolize_keys
           .merge(pipeline_id: @pipeline.id)
   end

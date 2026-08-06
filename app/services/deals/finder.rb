@@ -17,6 +17,7 @@ class Deals::Finder
     filtered = by_search(filtered)
     filtered = by_label(filtered)
     filtered = by_custom_field(filtered)
+    filtered = by_value_range(filtered)
     filtered
   end
 
@@ -43,6 +44,12 @@ class Deals::Finder
     return scope if @params[:label].blank?
 
     scope.tagged_with(@params[:label], on: :labels)
+  end
+
+  def by_value_range(scope)
+    scope = scope.where(deals: { value: @params[:min_value].to_f.. }) if @params[:min_value].present?
+    scope = scope.where(deals: { value: ..@params[:max_value].to_f }) if @params[:max_value].present?
+    scope
   end
 
   def by_custom_field(scope)
