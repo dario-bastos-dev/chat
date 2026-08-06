@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_05_133600) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -303,6 +303,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.datetime "scheduled_at", precision: nil
     t.boolean "trigger_only_during_business_hours", default: false
     t.jsonb "template_params"
+    t.integer "cadence_interval", default: 2, null: false
+    t.integer "pause_after"
+    t.jsonb "processed_deliveries", default: []
     t.index ["account_id"], name: "index_campaigns_on_account_id"
     t.index ["campaign_status"], name: "index_campaigns_on_campaign_status"
     t.index ["campaign_type"], name: "index_campaigns_on_campaign_type"
@@ -473,8 +476,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.boolean "smtp_enable_ssl_tls", default: false
     t.jsonb "provider_config", default: {}
     t.string "provider"
-    t.string "imap_authentication", default: "plain"
     t.boolean "verified_for_sending", default: false, null: false
+    t.string "imap_authentication", default: "plain"
     t.index ["email"], name: "index_channel_email_on_email", unique: true
     t.index ["forward_to_email"], name: "index_channel_email_on_forward_to_email", unique: true
   end
@@ -606,6 +609,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.index ["phone_number"], name: "index_channel_whatsapp_on_phone_number", unique: true
   end
 
+  create_table "channel_whatsapp_lid_mappings", force: :cascade do |t|
+    t.string "lid", null: false
+    t.string "phone_number", null: false
+    t.bigint "account_id", null: false
+    t.bigint "inbox_id", null: false
+    t.bigint "contact_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "lid"], name: "index_whatsapp_lid_mappings_on_account_and_lid", unique: true
+    t.index ["account_id", "phone_number"], name: "index_whatsapp_lid_mappings_on_account_and_phone"
+    t.index ["account_id"], name: "index_channel_whatsapp_lid_mappings_on_account_id"
+    t.index ["contact_id"], name: "index_channel_whatsapp_lid_mappings_on_contact_id"
+    t.index ["inbox_id", "contact_id"], name: "index_whatsapp_lid_mappings_on_inbox_and_contact"
+    t.index ["inbox_id"], name: "index_channel_whatsapp_lid_mappings_on_inbox_id"
+  end
+
   create_table "companies", force: :cascade do |t|
     t.string "name", null: false
     t.string "domain"
@@ -667,6 +686,31 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.index ["identifier", "account_id"], name: "uniq_identifier_per_account_contact", unique: true
     t.index ["name", "email", "phone_number", "identifier"], name: "index_contacts_on_name_email_phone_number_identifier", opclass: :gin_trgm_ops, using: :gin
     t.index ["phone_number", "account_id"], name: "index_contacts_on_phone_number_and_account_id"
+  end
+
+  create_table "conversation_deals", force: :cascade do |t|
+    t.bigint "conversation_id", null: false
+    t.bigint "deal_id", null: false
+    t.boolean "is_primary", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["conversation_id", "deal_id"], name: "index_conversation_deals_unique", unique: true
+    t.index ["conversation_id"], name: "index_conversation_deals_on_conversation_id"
+    t.index ["deal_id"], name: "index_conversation_deals_on_deal_id"
+  end
+
+  create_table "conversation_message_sequences", force: :cascade do |t|
+    t.bigint "conversation_id", null: false
+    t.bigint "message_sequence_id", null: false
+    t.boolean "active", default: true
+    t.integer "current_step", default: 0
+    t.datetime "last_step_executed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.boolean "waiting_interaction", default: false, null: false
+    t.index ["conversation_id", "message_sequence_id"], name: "idx_conv_msg_seq_uniq", unique: true
+    t.index ["conversation_id"], name: "index_conversation_message_sequences_on_conversation_id"
+    t.index ["message_sequence_id"], name: "index_conversation_message_sequences_on_message_sequence_id"
   end
 
   create_table "conversation_participants", force: :cascade do |t|
@@ -833,6 +877,55 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.index ["account_id"], name: "index_data_imports_on_account_id"
   end
 
+  create_table "deal_activities", force: :cascade do |t|
+    t.bigint "deal_id", null: false
+    t.bigint "account_id", null: false
+    t.bigint "user_id"
+    t.string "activity_type", limit: 50, null: false
+    t.text "description"
+    t.datetime "due_date"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_deal_activities_on_account_id"
+    t.index ["deal_id", "activity_type"], name: "idx_deal_activities_by_type"
+    t.index ["deal_id"], name: "index_deal_activities_on_deal_id"
+    t.index ["due_date"], name: "index_deal_activities_on_due_date"
+    t.index ["user_id"], name: "index_deal_activities_on_user_id"
+  end
+
+  create_table "deals", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "pipeline_id", null: false
+    t.bigint "stage_id", null: false
+    t.bigint "contact_id", null: false
+    t.bigint "inbox_id"
+    t.bigint "assignee_id"
+    t.string "title", limit: 500, null: false
+    t.string "status", limit: 50, default: "open"
+    t.string "lost_reason", limit: 255
+    t.jsonb "custom_attributes", default: {}
+    t.datetime "last_activity_at"
+    t.datetime "won_at"
+    t.datetime "lost_at"
+    t.integer "position", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "assignee_id", "status"], name: "idx_deals_by_assignee"
+    t.index ["account_id", "pipeline_id", "stage_id", "status"], name: "idx_deals_kanban_listing"
+    t.index ["account_id", "pipeline_id", "stage_id"], name: "idx_deals_open_only", where: "((status)::text = 'open'::text)"
+    t.index ["account_id"], name: "index_deals_on_account_id"
+    t.index ["assignee_id"], name: "index_deals_on_assignee_id"
+    t.index ["contact_id", "status"], name: "idx_deals_by_contact"
+    t.index ["contact_id"], name: "index_deals_on_contact_id"
+    t.index ["custom_attributes"], name: "idx_deals_custom_attrs_gin", using: :gin
+    t.index ["inbox_id"], name: "index_deals_on_inbox_id"
+    t.index ["last_activity_at"], name: "index_deals_on_last_activity_at"
+    t.index ["pipeline_id"], name: "index_deals_on_pipeline_id"
+    t.index ["stage_id"], name: "index_deals_on_stage_id"
+    t.index ["status"], name: "index_deals_on_status"
+  end
+
   create_table "email_templates", force: :cascade do |t|
     t.string "name", null: false
     t.text "body", null: false
@@ -904,6 +997,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.integer "sender_name_type", default: 0, null: false
     t.string "business_name"
     t.jsonb "csat_config", default: {}, null: false
+    t.integer "unread_reset_mode", default: 0, null: false
     t.index ["account_id"], name: "index_inboxes_on_account_id"
     t.index ["channel_id", "channel_type"], name: "index_inboxes_on_channel_id_and_channel_type"
     t.index ["portal_id"], name: "index_inboxes_on_portal_id"
@@ -985,6 +1079,52 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.index ["conversation_id"], name: "index_mentions_on_conversation_id"
     t.index ["user_id", "conversation_id"], name: "index_mentions_on_user_id_and_conversation_id", unique: true
     t.index ["user_id"], name: "index_mentions_on_user_id"
+  end
+
+  create_table "message_sequence_inboxes", force: :cascade do |t|
+    t.bigint "message_sequence_id", null: false
+    t.bigint "inbox_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["inbox_id"], name: "index_message_sequence_inboxes_on_inbox_id"
+    t.index ["message_sequence_id", "inbox_id"], name: "idx_msg_seq_inboxes_uniq", unique: true
+    t.index ["message_sequence_id"], name: "index_message_sequence_inboxes_on_message_sequence_id"
+  end
+
+  create_table "message_sequence_steps", force: :cascade do |t|
+    t.bigint "message_sequence_id", null: false
+    t.integer "position", null: false
+    t.integer "step_type", default: 0, null: false
+    t.text "content"
+    t.string "wait_time", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "macro_id"
+    t.jsonb "template_params"
+    t.index ["macro_id"], name: "index_message_sequence_steps_on_macro_id"
+    t.index ["message_sequence_id"], name: "index_message_sequence_steps_on_message_sequence_id"
+  end
+
+  create_table "message_sequences", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "created_by_id"
+    t.bigint "updated_by_id"
+    t.string "name", null: false
+    t.integer "activation_type", default: 0, null: false
+    t.string "activation_tag"
+    t.integer "inbox_scope", default: 0, null: false
+    t.boolean "active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "macro_id"
+    t.integer "macro_execution_time", default: 0
+    t.boolean "restrict_execution_time", default: false
+    t.integer "execution_start_hour", default: 8
+    t.integer "execution_end_hour", default: 19
+    t.index ["account_id"], name: "index_message_sequences_on_account_id"
+    t.index ["created_by_id"], name: "index_message_sequences_on_created_by_id"
+    t.index ["macro_id"], name: "index_message_sequences_on_macro_id"
+    t.index ["updated_by_id"], name: "index_message_sequences_on_updated_by_id"
   end
 
   create_table "messages", id: :serial, force: :cascade do |t|
@@ -1073,6 +1213,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.index ["secondary_actor_type", "secondary_actor_id"], name: "uniq_secondary_actor_per_account_notifications"
     t.index ["user_id", "account_id", "snoozed_until", "read_at"], name: "idx_notifications_performance"
     t.index ["user_id"], name: "index_notifications_on_user_id"
+  end
+
+  create_table "pipelines", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.boolean "is_default", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "lost_reasons", default: []
+    t.string "visibility", default: "public"
+    t.jsonb "allowed_team_ids", default: []
+    t.index ["account_id", "is_default"], name: "index_pipelines_on_account_id_and_is_default"
+    t.index ["account_id"], name: "index_pipelines_on_account_id"
   end
 
   create_table "platform_app_permissibles", force: :cascade do |t|
@@ -1175,6 +1328,23 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.index ["account_id", "metric", "date"], name: "index_rollup_timeseries"
   end
 
+  create_table "scheduled_messages", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "conversation_id", null: false
+    t.bigint "created_by_id", null: false
+    t.string "title", null: false
+    t.text "content", null: false
+    t.datetime "scheduled_at", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "template_params"
+    t.index ["account_id", "status", "scheduled_at"], name: "idx_sched_msgs_dispatch"
+    t.index ["account_id"], name: "index_scheduled_messages_on_account_id"
+    t.index ["conversation_id"], name: "index_scheduled_messages_on_conversation_id"
+    t.index ["created_by_id"], name: "index_scheduled_messages_on_created_by_id"
+  end
+
   create_table "sla_events", force: :cascade do |t|
     t.bigint "applied_sla_id", null: false
     t.bigint "conversation_id", null: false
@@ -1205,6 +1375,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.index ["account_id"], name: "index_sla_policies_on_account_id"
   end
 
+  create_table "stages", force: :cascade do |t|
+    t.bigint "pipeline_id", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "win_probability", default: 0
+    t.integer "rotting_days"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "color", default: "#1f93ff"
+    t.string "stage_type", default: "active"
+    t.index ["pipeline_id", "position"], name: "index_stages_on_pipeline_id_and_position", unique: true
+    t.index ["pipeline_id"], name: "index_stages_on_pipeline_id"
+  end
+
   create_table "taggings", id: :serial, force: :cascade do |t|
     t.integer "tag_id"
     t.string "taggable_type"
@@ -1215,6 +1399,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
     t.datetime "created_at", precision: nil
     t.index ["context"], name: "index_taggings_on_context"
     t.index ["tag_id", "taggable_id", "taggable_type", "context", "tagger_id", "tagger_type"], name: "taggings_idx", unique: true
+    t.index ["tag_id", "taggable_type", "taggable_id"], name: "index_taggings_on_tag_and_type_and_id"
     t.index ["tag_id"], name: "index_taggings_on_tag_id"
     t.index ["taggable_id", "taggable_type", "context"], name: "index_taggings_on_taggable_id_and_taggable_type_and_context"
     t.index ["taggable_id", "taggable_type", "tagger_id", "context"], name: "taggings_idy"
@@ -1323,7 +1508,36 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_093000) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "channel_whatsapp_lid_mappings", "accounts"
+  add_foreign_key "channel_whatsapp_lid_mappings", "contacts", on_delete: :cascade
+  add_foreign_key "channel_whatsapp_lid_mappings", "inboxes", on_delete: :cascade
+  add_foreign_key "conversation_deals", "conversations"
+  add_foreign_key "conversation_deals", "deals"
+  add_foreign_key "conversation_message_sequences", "conversations"
+  add_foreign_key "conversation_message_sequences", "message_sequences"
+  add_foreign_key "deal_activities", "accounts"
+  add_foreign_key "deal_activities", "deals"
+  add_foreign_key "deal_activities", "users"
+  add_foreign_key "deals", "accounts"
+  add_foreign_key "deals", "contacts", on_delete: :cascade
+  add_foreign_key "deals", "inboxes"
+  add_foreign_key "deals", "pipelines"
+  add_foreign_key "deals", "stages"
+  add_foreign_key "deals", "users", column: "assignee_id"
   add_foreign_key "inboxes", "portals"
+  add_foreign_key "message_sequence_inboxes", "inboxes"
+  add_foreign_key "message_sequence_inboxes", "message_sequences"
+  add_foreign_key "message_sequence_steps", "macros", on_delete: :nullify
+  add_foreign_key "message_sequence_steps", "message_sequences"
+  add_foreign_key "message_sequences", "accounts"
+  add_foreign_key "message_sequences", "macros"
+  add_foreign_key "message_sequences", "users", column: "created_by_id"
+  add_foreign_key "message_sequences", "users", column: "updated_by_id"
+  add_foreign_key "pipelines", "accounts"
+  add_foreign_key "scheduled_messages", "accounts"
+  add_foreign_key "scheduled_messages", "conversations"
+  add_foreign_key "scheduled_messages", "users", column: "created_by_id"
+  add_foreign_key "stages", "pipelines"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
       after(:insert).
