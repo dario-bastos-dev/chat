@@ -1,6 +1,9 @@
 json.id pipeline.id
 json.name pipeline.name
 json.is_default pipeline.is_default
+json.visibility pipeline.visibility
+json.lost_reasons pipeline.lost_reasons || []
+json.allowed_team_ids pipeline.allowed_team_ids || []
 json.total_value pipeline.total_value
 json.total_deals_count pipeline.total_deals_count
 json.created_at pipeline.created_at

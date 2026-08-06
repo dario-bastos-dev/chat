@@ -117,13 +117,14 @@ class Deal < ApplicationRecord
     dispatch_rotting_event
   end
 
+  # O evento `deal.stage_changed` sai do after_update_commit, que ja observa a
+  # mudanca de stage_id. Despachar aqui tambem duplicava o evento e gerava duas
+  # notas de atividade a cada arrasto no Kanban.
   def move_to_stage!(new_stage, new_position = nil)
-    old_stage_id = stage_id
     self.stage = new_stage
     self.position = new_position if new_position.present?
     self.last_activity_at = Time.current
     save!
-    dispatch_stage_changed_event(old_stage_id, new_stage.id)
   end
 
 

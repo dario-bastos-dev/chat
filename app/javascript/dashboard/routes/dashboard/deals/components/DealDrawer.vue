@@ -487,7 +487,18 @@
       <woot-modal-header :header-title="$t('CRM.DEALS.LOST_REASON_TITLE')" />
       <div class="flex flex-col gap-1.5">
         <label class="text-xs font-semibold text-n-slate-11 uppercase tracking-wider">{{ $t('CRM.DEALS.LOST_REASON') }} *</label>
+        <select
+          v-if="lostReasonOptions.length"
+          v-model="selectedLostReason"
+          class="w-full px-3 py-2 text-sm bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
+        >
+          <option v-for="reason in lostReasonOptions" :key="reason" :value="reason">
+            {{ reason }}
+          </option>
+          <option value="__other__">{{ $t('CRM.DEALS.LOST_REASON_OTHER') }}</option>
+        </select>
         <textarea
+          v-if="!lostReasonOptions.length || selectedLostReason === '__other__'"
           v-model="lostReason"
           :placeholder="$t('CRM.DEALS.LOST_REASON_PLACEHOLDER')"
           rows="3"
@@ -688,6 +699,7 @@ export default {
       showTagDropdown: false,
       expandedPipelineId: null,
       lostReason: '',
+      selectedLostReason: '',
       isUpdating: false,
       isCreatingActivity: false,
       isLinkingConversation: false,
@@ -720,6 +732,13 @@ export default {
     },
     hasDealAttributes() {
       return this.dealAttributes?.length > 0;
+    },
+    dealPipeline() {
+      const pipelineId = this.deal?.pipeline?.id ?? this.deal?.pipeline_id;
+      return this.allPipelines?.find(p => p.id === pipelineId);
+    },
+    lostReasonOptions() {
+      return (this.dealPipeline?.lost_reasons || []).filter(reason => reason?.trim());
     },
     processedDealAttributes() {
       if (!this.dealAttributes?.length) return [];
@@ -980,21 +999,28 @@ export default {
       }
     },
     openLostModal() {
+      this.selectedLostReason = this.lostReasonOptions[0] || '__other__';
       this.showLostModal = true;
     },
     closeLostModal() {
       this.showLostModal = false;
       this.lostReason = '';
+      this.selectedLostReason = '';
     },
     async markAsLost() {
-      if (!this.lostReason.trim()) {
+      const reason =
+        this.selectedLostReason && this.selectedLostReason !== '__other__'
+          ? this.selectedLostReason
+          : this.lostReason;
+
+      if (!reason.trim()) {
         this.$toast.error(this.$t('CRM.DEALS.LOST_REASON_REQUIRED'));
         return;
       }
 
       this.isUpdating = true;
       try {
-        await this.loseDeal({ id: this.deal.id, lostReason: this.lostReason });
+        await this.loseDeal({ id: this.deal.id, lostReason: reason });
         this.closeLostModal();
         this.$emit('updated');
         this.$toast.success(this.$t('CRM.DEALS.LOST_SUCCESS'));

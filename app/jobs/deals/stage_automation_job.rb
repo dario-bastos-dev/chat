@@ -38,11 +38,10 @@ class Deals::StageAutomationJob < ApplicationJob
     to_stage = Stage.find_by(id: @data[:to_stage_id])
     return unless to_stage
 
-    # Auto-win: if the deal moves to a stage with 100% win probability
-    if to_stage.win_probability == 100 && deal.status == 'open'
-      deal.mark_as_won!
-      return
-    end
+    # O ganho/perda e decidido exclusivamente pelo stage_type, em
+    # Deal#sync_status_with_stage_type. `win_probability` volta a ser apenas
+    # metrica de forecast: antes, uma etapa "Negociacao" com 100% marcava o
+    # negocio como ganho sem querer.
 
     # Create activity log for the stage move
     from_stage = Stage.find_by(id: @data[:from_stage_id])

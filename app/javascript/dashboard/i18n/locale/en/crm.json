@@ -94,6 +94,7 @@
       "LOST_REASON": "Lost Reason",
       "LOST_REASON_TITLE": "Why was this deal lost?",
       "LOST_REASON_PLACEHOLDER": "Describe why this deal was lost...",
+      "LOST_REASON_OTHER": "Other (describe below)",
       "LOST_REASON_REQUIRED": "Lost reason is required",
       "REOPEN": "Reopen Deal",
       "REOPEN_SUCCESS": "Deal reopened successfully!",

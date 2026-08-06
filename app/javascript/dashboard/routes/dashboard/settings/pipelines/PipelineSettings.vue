@@ -711,7 +711,12 @@ export default {
     editPipeline(pipeline) {
       this.isEditing = true;
       this.activeTab = 'stages';
-      this.currentPipeline = JSON.parse(JSON.stringify(pipeline));
+      this.currentPipeline = {
+        visibility: 'public',
+        lost_reasons: [],
+        allowed_team_ids: [],
+        ...JSON.parse(JSON.stringify(pipeline)),
+      };
       // Backfill missing stage_types to active by default
       if (this.currentPipeline.stages) {
         this.currentPipeline.stages.forEach(s => {
