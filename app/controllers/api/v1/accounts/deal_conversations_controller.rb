@@ -27,7 +27,7 @@ class Api::V1::Accounts::DealConversationsController < Api::V1::Accounts::BaseCo
   private
 
   def fetch_deal
-    @deal = Current.account.deals.find(params[:deal_id])
+    @deal = policy_scope(Deal).find(params[:deal_id])
   end
 
   def fetch_conversation_deal

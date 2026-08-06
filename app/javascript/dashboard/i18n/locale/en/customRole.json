@@ -39,7 +39,12 @@
       "CONVERSATION_PARTICIPATING_MANAGE": "Manage participating conversations and those assigned to them",
       "CONTACT_MANAGE": "Manage contacts",
       "REPORT_MANAGE": "Manage reports",
-      "KNOWLEDGE_BASE_MANAGE": "Manage knowledge base"
+      "KNOWLEDGE_BASE_MANAGE": "Manage knowledge base",
+      "DEAL_MANAGE": "Manage all deals",
+      "DEAL_TEAM_MANAGE": "Manage their own, unassigned and their team's deals",
+      "DEAL_UNASSIGNED_MANAGE": "Manage unassigned deals and those assigned to them",
+      "DEAL_OWN_MANAGE": "Manage only the deals assigned to them",
+      "PIPELINE_MANAGE": "Manage pipelines and stages"
     },
     "FORM": {
       "NAME": {

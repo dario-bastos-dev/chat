@@ -46,7 +46,7 @@ class Api::V1::Accounts::StagesController < Api::V1::Accounts::BaseController
   private
 
   def fetch_pipeline
-    @pipeline = Current.account.pipelines.find(params[:pipeline_id])
+    @pipeline = policy_scope(Pipeline).find(params[:pipeline_id])
   end
 
   def fetch_stage

@@ -12,10 +12,14 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
              .per(50)
   end
 
-  def show; end
+  def show
+    authorize @deal
+  end
 
   def create
+    authorize Deal
     @deal = Current.account.deals.new(deal_params.except(:labels))
+    @deal.stage = visible_stage!
     @deal.assignee = current_user if @deal.assignee_id.nil?
     ActiveRecord::Base.transaction do
       @deal.save!
@@ -44,12 +48,9 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
 
   def move
     authorize @deal
-    
-    new_stage = Current.account.pipelines
-                       .find(@deal.pipeline_id)
-                       .stages
-                       .find(params[:stage_id])
-    
+
+    new_stage = policy_scope(Pipeline).find(@deal.pipeline_id).stages.find(params[:stage_id])
+
     @deal.move_to_stage!(new_stage, params[:position])
     render :show
   end
@@ -82,6 +83,11 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
 
   def fetch_deal
     @deal = Current.account.deals.find(params[:id])
+  end
+
+  # Guards against creating a deal inside a pipeline the user cannot see.
+  def visible_stage!
+    Stage.joins(:pipeline).merge(policy_scope(Pipeline)).find(deal_params[:stage_id])
   end
 
   def filter_params

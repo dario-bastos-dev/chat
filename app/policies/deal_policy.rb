@@ -6,8 +6,7 @@ class DealPolicy < ApplicationPolicy
   end
 
   def show?
-    # Agents can see their own deals or if they're admin
-    @account_user.administrator? || record_belongs_to_user?
+    scope.exists?(id: record.id)
   end
 
   def create?
@@ -15,49 +14,64 @@ class DealPolicy < ApplicationPolicy
   end
 
   def update?
-    # Agents can update their own deals or if they're admin
-    @account_user.administrator? || record_belongs_to_user?
-  end
-
-  def destroy?
-    @account_user.administrator?
+    manageable?
   end
 
   def move?
-    # Agents can move their own deals or if they're admin
-    @account_user.administrator? || record_belongs_to_user?
-  end
-
-  def assign?
-    @account_user.administrator?
+    manageable?
   end
 
   def win?
-    @account_user.administrator? || record_belongs_to_user?
+    manageable?
   end
 
   def lose?
-    @account_user.administrator? || record_belongs_to_user?
+    manageable?
+  end
+
+  def assign?
+    administrator?
+  end
+
+  def destroy?
+    administrator?
   end
 
   class Scope < ApplicationPolicy::Scope
     def resolve
-      account_scope = scope.where(account_id: @account.id)
+      return account_scope if @account_user.administrator?
 
-      if @account_user.administrator?
-        account_scope
-      else
-        account_scope.where(assignee_id: @user.id)
-                      .or(account_scope.where(assignee_id: nil))
-      end
+      # Plain agents keep the historical reach: their own deals plus the
+      # unassigned pool. Custom roles narrow or widen this in the Enterprise
+      # overlay.
+      account_scope.where(assignee_id: [@user.id, nil])
+    end
+
+    private
+
+    def account_scope
+      scope.where(account_id: @account.id)
     end
   end
 
   private
 
-  def record_belongs_to_user?
-    return true if record.assignee_id.nil? # Unassigned deals can be accessed by anyone
-    
+  def administrator?
+    @account_user.administrator?
+  end
+
+  def manageable?
+    administrator? || own? || unassigned?
+  end
+
+  def own?
     record.assignee_id == @user.id
   end
+
+  def unassigned?
+    record.assignee_id.nil?
+  end
 end
+
+DealPolicy.prepend_mod_with('DealPolicy')
+DealPolicy::Scope.prepend_mod_with('DealPolicy::Scope')

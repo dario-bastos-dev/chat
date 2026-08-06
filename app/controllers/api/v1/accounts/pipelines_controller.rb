@@ -4,7 +4,7 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
   before_action :fetch_pipeline, only: [:show, :update, :destroy]
 
   def index
-    @pipelines = Current.account.pipelines.includes(:stages)
+    @pipelines = policy_scope(Pipeline).includes(:stages)
   end
 
   def show; end
@@ -45,7 +45,7 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
   private
 
   def fetch_pipeline
-    @pipeline = Current.account.pipelines.find(params[:id])
+    @pipeline = policy_scope(Pipeline).find(params[:id])
   end
 
   def pipeline_params
