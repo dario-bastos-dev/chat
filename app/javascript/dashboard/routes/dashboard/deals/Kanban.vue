@@ -114,6 +114,29 @@
                   </select>
                 </div>
 
+                <!-- Filter by Value Range -->
+                <div class="flex flex-col gap-1.5">
+                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">
+                    {{ $t('CRM.DEALS.FILTER_VALUE_RANGE') }}
+                  </label>
+                  <div class="flex gap-2">
+                    <input
+                      v-model.number="filterMinValue"
+                      type="number"
+                      min="0"
+                      :placeholder="$t('CRM.DEALS.FILTER_MIN')"
+                      class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
+                    />
+                    <input
+                      v-model.number="filterMaxValue"
+                      type="number"
+                      min="0"
+                      :placeholder="$t('CRM.DEALS.FILTER_MAX')"
+                      class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
+                    />
+                  </div>
+                </div>
+
                 <!-- Filter by Custom Fields -->
                 <div class="flex flex-col gap-1.5" v-if="availableCustomFields.length > 0">
                   <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">Campo Personalizado</label>
@@ -185,6 +208,23 @@
         <div class="flex items-center gap-1.5 text-sm">
           <span class="text-n-slate-11">{{ $t('CRM.TOTAL_DEALS') }}:</span>
           <span class="font-semibold text-n-slate-12">{{ totalDeals }}</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-sm">
+          <span class="text-n-slate-11">{{ $t('CRM.TOTAL_VALUE') }}:</span>
+          <span class="font-semibold text-n-slate-12">
+            {{ currencyValue(boardValue) }}
+          </span>
+        </div>
+        <div
+          class="flex items-center gap-1.5 text-sm"
+          :title="$t('CRM.DEALS.WEIGHTED_VALUE_HELP')"
+        >
+          <span class="text-n-slate-11">
+            {{ $t('CRM.DEALS.WEIGHTED_VALUE') }}:
+          </span>
+          <span class="font-semibold text-n-teal-11">
+            {{ currencyValue(weightedForecast) }}
+          </span>
         </div>
       </div>
 
@@ -313,6 +353,12 @@
               {{ stage.total_count }}
             </span>
           </div>
+          <span
+            v-if="Number(stage.total_value) > 0"
+            class="text-xs font-semibold text-n-slate-11 shrink-0"
+          >
+            {{ compactValue(stage.total_value) }}
+          </span>
         </div>
 
         <!-- Progress bar -->
@@ -402,7 +448,14 @@
                     {{ deal.contact?.name }}
                   </span>
                 </div>
-                <div class="flex items-center justify-end">
+                <div class="flex items-center justify-between gap-2">
+                  <span
+                    v-if="Number(deal.value) > 0"
+                    class="text-xs font-semibold text-n-slate-12"
+                  >
+                    {{ currencyValue(deal.value) }}
+                  </span>
+                  <span v-else />
                   <span
                     v-if="deal.last_activity_at"
                     class="text-[10px] text-n-slate-10"
@@ -556,6 +609,10 @@ import DealDrawer from './components/DealDrawer.vue';
 import KanbanSkeleton from './components/KanbanSkeleton.vue';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  formatDealValue,
+  formatDealValueCompact,
+} from 'dashboard/helper/crmCurrency';
 
 export default {
   name: 'DealsKanban',
@@ -579,6 +636,8 @@ export default {
       filterTag: null,
       filterCustomFieldKey: null,
       filterCustomFieldValue: '',
+      filterMinValue: null,
+      filterMaxValue: null,
       selectedDealIds: [],
       showBulkActionsDropdown: false,
       showBulkMoveModal: false,
@@ -595,6 +654,9 @@ export default {
       pipelineUIFlags: 'pipelines/getUIFlags',
       boardStages: 'deals/getBoardStages',
       boardTotal: 'deals/getBoardTotal',
+      boardValue: 'deals/getBoardValue',
+      boardCurrency: 'deals/getBoardCurrency',
+      weightedForecast: 'deals/getWeightedForecast',
       isStageLoading: 'deals/isStageLoading',
       dealsUIFlags: 'deals/getUIFlags',
       allLabels: 'labels/getLabels',
@@ -635,6 +697,7 @@ export default {
       if (this.filterStageId) count++;
       if (this.filterTag) count++;
       if (this.filterCustomFieldKey && this.filterCustomFieldValue) count++;
+      if (this.filterMinValue || this.filterMaxValue) count++;
       return count;
     },
     boardFilters() {
@@ -644,6 +707,8 @@ export default {
         label: this.filterTag || undefined,
         custom_field_key: this.filterCustomFieldKey || undefined,
         custom_field_value: this.filterCustomFieldValue || undefined,
+        min_value: this.filterMinValue || undefined,
+        max_value: this.filterMaxValue || undefined,
       };
     },
     isAllFilteredDealsSelected() {
@@ -810,6 +875,8 @@ export default {
       this.filterTag = null;
       this.filterCustomFieldKey = null;
       this.filterCustomFieldValue = '';
+      this.filterMinValue = null;
+      this.filterMaxValue = null;
       this.selectedDealIds = [];
     },
     async onDragEnd(event) {
@@ -870,6 +937,12 @@ export default {
         locale: ptBR,
       });
     },
+    currencyValue(value) {
+      return formatDealValue(value, this.boardCurrency);
+    },
+    compactValue(value) {
+      return formatDealValueCompact(value, this.boardCurrency);
+    },
     toggleBulkActionsDropdown() {
       this.showBulkActionsDropdown = !this.showBulkActionsDropdown;
     },
@@ -913,10 +986,11 @@ export default {
       const selectedDeals = this.loadedDeals.filter(d => this.selectedDealIds.includes(d.id));
       if (selectedDeals.length === 0) return;
 
-      const headers = ['ID', 'Negocio', 'Contato', 'E-mail', 'Telefone', 'Pipeline', 'Etapa', 'Responsavel', 'Status', 'Criado Em'];
+      const headers = ['ID', 'Negocio', 'Valor', 'Contato', 'E-mail', 'Telefone', 'Pipeline', 'Etapa', 'Responsavel', 'Status', 'Criado Em'];
       const rows = selectedDeals.map(d => [
         d.id,
         d.title || '',
+        d.value ?? 0,
         d.contact?.name || '',
         d.contact?.email || '',
         d.contact?.phone_number || '',

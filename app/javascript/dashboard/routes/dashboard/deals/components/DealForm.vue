@@ -22,6 +22,28 @@
           />
         </div>
 
+        <!-- Valor -->
+        <div class="flex flex-col gap-1.5">
+          <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">
+            {{ $t('CRM.DEALS.FORM.VALUE') }}
+          </label>
+          <div class="relative">
+            <span
+              class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-n-slate-11 pointer-events-none"
+            >
+              {{ currencySymbol }}
+            </span>
+            <input
+              v-model.number="form.value"
+              type="number"
+              min="0"
+              step="0.01"
+              class="w-full text-xs md:text-sm text-n-slate-12 bg-n-alpha-1 hover:bg-n-alpha-2 focus:bg-n-alpha-2 border border-n-weak focus:border-n-brand rounded-xl h-10 pl-10 pr-3 transition-all duration-150 outline-none placeholder:text-n-slate-9 focus:ring-2 focus:ring-n-brand/20"
+              :placeholder="$t('CRM.DEALS.FORM.VALUE_PLACEHOLDER')"
+            />
+          </div>
+        </div>
+
         <!-- Etapa -->
         <div class="flex flex-col gap-1.5 relative" ref="stageSelectorContainer">
           <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">{{ $t('CRM.DEALS.FORM.STAGE') }} *</label>
@@ -208,6 +230,7 @@ import { mapGetters, mapActions } from 'vuex';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import TagInput from 'dashboard/components-next/taginput/TagInput.vue';
 import ContactsAPI from 'dashboard/api/contacts';
+import { DEFAULT_CRM_CURRENCY } from 'dashboard/helper/crmCurrency';
 
 export default {
   name: 'DealForm',
@@ -234,6 +257,7 @@ export default {
     return {
       form: {
         title: '',
+        value: 0,
         stage_id: null,
         contact_id: null,
         assignee_id: null,
@@ -250,7 +274,17 @@ export default {
     ...mapGetters({
       agents: 'agents/getAgents',
       currentUser: 'getCurrentUser',
+      currentAccount: 'getCurrentAccount',
     }),
+    currencySymbol() {
+      const currency =
+        this.currentAccount?.settings?.crm_currency || DEFAULT_CRM_CURRENCY;
+      return (
+        new Intl.NumberFormat(undefined, { style: 'currency', currency })
+          .formatToParts(0)
+          .find(part => part.type === 'currency')?.value || currency
+      );
+    },
     selectedStageName() {
       const stage = this.pipeline?.stages?.find(s => s.id === this.form.stage_id);
       return stage ? stage.name : 'Selecionar etapa...';
@@ -290,6 +324,7 @@ export default {
       if (this.deal) {
         this.form = {
           title: this.deal.title,
+          value: Number(this.deal.value || 0),
           stage_id: this.deal.stage_id || this.deal.stage?.id,
           contact_id: this.deal.contact_id || this.deal.contact?.id,
           assignee_id: this.deal.assignee_id || this.deal.assignee?.id,

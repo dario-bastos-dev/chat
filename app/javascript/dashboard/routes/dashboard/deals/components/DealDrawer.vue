@@ -113,6 +113,32 @@
                 {{ $t('CRM.DEALS.DETAILS') }}
               </h3>
               <div class="grid grid-cols-2 gap-4 p-4 bg-n-alpha-1 border border-n-weak rounded-xl">
+                <!-- Valor (edicao inline) -->
+                <div class="flex flex-col gap-1 col-span-2">
+                  <span class="text-[11px] text-n-slate-11">
+                    {{ $t('CRM.DEALS.VALUE') }}
+                  </span>
+                  <input
+                    v-if="isEditingValue"
+                    ref="valueInput"
+                    v-model.number="editValueAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="w-full text-sm font-semibold text-n-slate-12 bg-n-alpha-2 border border-n-brand rounded-lg h-9 px-3 outline-none"
+                    @blur="saveValue"
+                    @keydown.enter="saveValue"
+                    @keydown.esc="cancelEditValue"
+                  />
+                  <button
+                    v-else
+                    class="text-left text-lg font-semibold text-n-slate-12 hover:text-n-brand transition-colors duration-150 cursor-pointer border-0 bg-transparent p-0"
+                    @click="startEditValue"
+                  >
+                    {{ formattedValue }}
+                  </button>
+                </div>
+
                 <div class="flex flex-col gap-1 relative" ref="stageSelectorContainer">
                   <span class="text-[11px] text-n-slate-11">{{ $t('CRM.DEALS.STAGE') }}</span>
                   <button
@@ -664,6 +690,10 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import LabelDropdown from 'shared/components/ui/label/LabelDropdown.vue';
 import AddLabel from 'shared/components/ui/dropdown/AddLabel.vue';
+import {
+  formatDealValue,
+  DEFAULT_CRM_CURRENCY,
+} from 'dashboard/helper/crmCurrency';
 
 export default {
   name: 'DealDrawer',
@@ -711,6 +741,8 @@ export default {
       },
       isEditingTitle: false,
       editTitleValue: '',
+      isEditingValue: false,
+      editValueAmount: 0,
       localDeal: null,
     };
   },
@@ -739,6 +771,15 @@ export default {
     },
     lostReasonOptions() {
       return (this.dealPipeline?.lost_reasons || []).filter(reason => reason?.trim());
+    },
+    accountCurrency() {
+      return (
+        this.$store.getters.getCurrentAccount?.settings?.crm_currency ||
+        DEFAULT_CRM_CURRENCY
+      );
+    },
+    formattedValue() {
+      return formatDealValue(this.deal?.value, this.accountCurrency);
     },
     processedDealAttributes() {
       if (!this.dealAttributes?.length) return [];
@@ -1155,6 +1196,36 @@ export default {
     cancelEditingTitle() {
       this.isEditingTitle = false;
       this.editTitleValue = '';
+    },
+    startEditValue() {
+      this.editValueAmount = Number(this.deal?.value || 0);
+      this.isEditingValue = true;
+      this.$nextTick(() => this.$refs.valueInput?.focus());
+    },
+    cancelEditValue() {
+      this.isEditingValue = false;
+    },
+    async saveValue() {
+      if (!this.isEditingValue) return;
+      this.isEditingValue = false;
+
+      const amount = Number(this.editValueAmount);
+      if (Number.isNaN(amount) || amount < 0) {
+        this.$toast.error(this.$t('CRM.DEALS.VALUE_INVALID'));
+        return;
+      }
+      if (amount === Number(this.deal?.value || 0)) return;
+
+      this.isUpdating = true;
+      try {
+        const updated = await this.updateDeal({ id: this.deal.id, value: amount });
+        this.localDeal = updated;
+        this.$emit('updated');
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.DEALS.VALUE_ERROR'));
+      } finally {
+        this.isUpdating = false;
+      }
     },
     async saveTitle() {
       const cleanNewTitle = this.editTitleValue.trim();

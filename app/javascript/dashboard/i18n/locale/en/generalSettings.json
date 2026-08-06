@@ -86,6 +86,10 @@
         "LABEL": "Account timezone",
         "PLACEHOLDER": "Select timezone"
       },
+      "CRM_CURRENCY": {
+        "LABEL": "CRM currency",
+        "HELP": "Currency used for deal values across the CRM. A single currency per account keeps stage totals and forecasts meaningful."
+      },
       "DOMAIN": {
         "LABEL": "Incoming Email Domain",
         "PLACEHOLDER": "The domain where you will receive the emails",

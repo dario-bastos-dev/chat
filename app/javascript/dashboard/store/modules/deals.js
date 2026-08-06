@@ -13,6 +13,8 @@ export const state = {
   board: {
     stages: [],
     loadingStageIds: [],
+    currency: 'BRL',
+    weightedForecast: 0,
   },
   meta: {
     currentPage: 1,
@@ -72,6 +74,18 @@ export const getters = {
       0
     );
   },
+  getBoardValue(_state) {
+    return _state.board.stages.reduce(
+      (sum, stage) => sum + Number(stage.total_value || 0),
+      0
+    );
+  },
+  getBoardCurrency(_state) {
+    return _state.board.currency;
+  },
+  getWeightedForecast(_state) {
+    return _state.board.weightedForecast;
+  },
 };
 
 export const actions = {
@@ -99,7 +113,7 @@ export const actions = {
         per_stage: DEALS_PER_STAGE,
         ...filters,
       });
-      commit(types.SET_DEAL_BOARD, response.data.stages || []);
+      commit(types.SET_DEAL_BOARD, response.data);
       return response.data;
     } finally {
       commit(types.SET_DEALS_UI_FLAG, { isFetching: false });
@@ -291,12 +305,14 @@ export const mutations = {
     _state.currentDeal = deal;
   },
 
-  [types.SET_DEAL_BOARD](_state, stages) {
-    _state.board.stages = stages.map(stage => ({
+  [types.SET_DEAL_BOARD](_state, payload) {
+    _state.board.stages = (payload.stages || []).map(stage => ({
       ...stage,
       deals: stage.deals || [],
     }));
     _state.board.loadingStageIds = [];
+    _state.board.currency = payload.currency || 'BRL';
+    _state.board.weightedForecast = Number(payload.weighted_forecast || 0);
   },
 
   [types.APPEND_STAGE_DEALS](_state, { stageId, deals }) {
@@ -323,6 +339,7 @@ export const mutations = {
 
       [moved] = stage.deals.splice(index, 1);
       stage.total_count = Math.max((stage.total_count || 1) - 1, 0);
+      stage.total_value = Number(stage.total_value || 0) - Number(moved.value || 0);
     });
 
     if (!moved) return;
@@ -337,6 +354,7 @@ export const mutations = {
     };
     target.deals.splice(position ?? target.deals.length, 0, updated);
     target.total_count = (target.total_count || 0) + 1;
+    target.total_value = Number(target.total_value || 0) + Number(moved.value || 0);
   },
 
   [types.REMOVE_DEAL_FROM_BOARD](_state, dealId) {
@@ -344,8 +362,9 @@ export const mutations = {
       const index = stage.deals.findIndex(deal => deal.id === dealId);
       if (index === -1) return;
 
-      stage.deals.splice(index, 1);
+      const [removed] = stage.deals.splice(index, 1);
       stage.total_count = Math.max((stage.total_count || 1) - 1, 0);
+      stage.total_value = Number(stage.total_value || 0) - Number(removed.value || 0);
     });
   },
 

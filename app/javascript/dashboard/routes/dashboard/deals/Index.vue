@@ -211,6 +211,13 @@
                   </span>
                 </BaseTableCell>
 
+                <!-- Valor -->
+                <BaseTableCell>
+                  <span class="font-medium text-n-slate-12 whitespace-nowrap">
+                    {{ currencyValue(deal.value) }}
+                  </span>
+                </BaseTableCell>
+
                 <!-- Contato -->
                 <BaseTableCell>
                   <span class="text-n-slate-11 truncate block max-w-[150px]">
@@ -806,6 +813,10 @@ import DealForm from './components/DealForm.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import { BaseTable, BaseTableRow, BaseTableCell } from 'dashboard/components-next/table';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
+import {
+  formatDealValue,
+  DEFAULT_CRM_CURRENCY,
+} from 'dashboard/helper/crmCurrency';
 
 export default {
   name: 'DealsIndex',
@@ -864,6 +875,7 @@ export default {
       deals: 'deals/getDeals',
       dealsUiFlags: 'deals/getUIFlags',
       agents: 'agents/getAgents',
+      currentAccount: 'getCurrentAccount',
     }),
     defaultPipeline() {
       return this.pipelines.find(p => p.is_default) || this.pipelines[0];
@@ -872,6 +884,7 @@ export default {
       return [
         '',
         'Negócio',
+        'Valor',
         'Contato',
         'Pipeline',
         'Etapa',
@@ -1089,6 +1102,12 @@ export default {
     },
     cleanTitle(title) {
       return title || '';
+    },
+    currencyValue(value) {
+      return formatDealValue(
+        value,
+        this.currentAccount?.settings?.crm_currency || DEFAULT_CRM_CURRENCY
+      );
     },
 
     getDealStageColor(deal) {
