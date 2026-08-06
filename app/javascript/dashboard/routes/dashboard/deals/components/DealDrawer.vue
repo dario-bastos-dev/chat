@@ -299,9 +299,21 @@
 
             <!-- Assignee -->
             <div class="mb-6 relative" ref="assigneeSelectorContainer">
-              <h3 class="text-xs font-semibold text-n-slate-11 uppercase tracking-wider mb-3">
-                {{ $t('CRM.DEALS.ASSIGNEE') }}
-              </h3>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-xs font-semibold text-n-slate-11 uppercase tracking-wider">
+                  {{ $t('CRM.DEALS.ASSIGNEE') }}
+                </h3>
+                <!-- Negócio sem responsável: qualquer agente que o enxerga
+                     pode assumir, sem precisar do dropdown de atribuição -->
+                <button
+                  v-if="!deal.assignee"
+                  class="text-xs font-semibold text-n-brand hover:underline cursor-pointer border-0 bg-transparent p-0 disabled:opacity-50"
+                  :disabled="isUpdating"
+                  @click="claimDeal"
+                >
+                  {{ $t('CRM.DEALS.CLAIM') }}
+                </button>
+              </div>
               <!-- Botão interativo do Responsável -->
               <button
                 class="w-full flex items-center justify-between gap-3 p-3 bg-n-alpha-1 hover:bg-n-alpha-2 border border-n-weak hover:border-n-brand rounded-xl cursor-pointer text-left transition-all duration-150 h-16 disabled:opacity-50"
@@ -1196,6 +1208,22 @@ export default {
     cancelEditingTitle() {
       this.isEditingTitle = false;
       this.editTitleValue = '';
+    },
+    async claimDeal() {
+      this.isUpdating = true;
+      try {
+        const updated = await this.updateDeal({
+          id: this.deal.id,
+          assignee_id: this.$store.getters.getCurrentUser?.id,
+        });
+        this.localDeal = updated;
+        this.$emit('updated');
+        this.$toast.success(this.$t('CRM.DEALS.CLAIM_SUCCESS'));
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.DEALS.CLAIM_ERROR'));
+      } finally {
+        this.isUpdating = false;
+      }
     },
     startEditValue() {
       this.editValueAmount = Number(this.deal?.value || 0);

@@ -45,6 +45,25 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
     head :ok
   end
 
+  # O import roda no backend, de forma assincrona, reaproveitando o DataImport
+  # que ja existia para contatos: parser CSV de verdade, dedupe de contato e um
+  # CSV de rejeitados com o motivo de cada linha.
+  def import
+    authorize Deal
+
+    if params[:import_file].blank?
+      render_could_not_create_error(I18n.t('errors.deals.import.missing_file'))
+      return
+    end
+
+    ActiveRecord::Base.transaction do
+      import = Current.account.data_imports.create!(data_type: 'deals')
+      import.import_file.attach(params[:import_file])
+    end
+
+    head :ok
+  end
+
   def move
     authorize @deal
 

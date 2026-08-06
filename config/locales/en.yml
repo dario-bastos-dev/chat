@@ -87,6 +87,11 @@ en:
     data_import:
       data_type:
         invalid: Invalid data type
+    deals:
+      import:
+        missing_file: File is blank
+        no_pipeline: No pipeline with stages available to import into
+        malformed: The CSV file could not be parsed
     contacts:
       import:
         failed: File is blank

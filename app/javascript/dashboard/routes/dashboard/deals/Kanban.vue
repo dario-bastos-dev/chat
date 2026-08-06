@@ -387,6 +387,13 @@
               :class="{
                 'border-l-2 !border-l-n-ruby-9': deal.is_rotting,
               }"
+              :title="
+                deal.is_rotting
+                  ? $t('CRM.DEALS.ROTTING_TOOLTIP', {
+                      days: stage.rotting_days,
+                    })
+                  : null
+              "
               tabindex="0"
               role="button"
               :aria-label="deal.title"
@@ -621,6 +628,8 @@ import {
   formatDealValue,
   formatDealValueCompact,
 } from 'dashboard/helper/crmCurrency';
+import { emitter } from 'shared/helpers/mitt';
+import { BUS_EVENTS } from 'shared/constants/busEvents';
 
 export default {
   name: 'DealsKanban',
@@ -653,6 +662,7 @@ export default {
       showDeleteModal: false,
       isBulkDelete: false,
       filterDebounce: null,
+      realtimeDebounce: null,
     };
   },
   computed: {
@@ -749,8 +759,11 @@ export default {
     this.loadData();
     document.addEventListener('click', this.handleClickOutside);
     document.addEventListener('click', this.handleClickOutsideBulk);
+    emitter.on(BUS_EVENTS.DEAL_CHANGED, this.onRemoteDealChange);
   },
   beforeUnmount() {
+    emitter.off(BUS_EVENTS.DEAL_CHANGED, this.onRemoteDealChange);
+    clearTimeout(this.realtimeDebounce);
     clearTimeout(this.filterDebounce);
     document.removeEventListener('click', this.handleClickOutside);
     document.removeEventListener('click', this.handleClickOutsideBulk);
@@ -766,6 +779,7 @@ export default {
       deleteDeal: 'deals/delete',
       updateDeal: 'deals/update',
       createDeal: 'deals/create',
+      importDealsFile: 'deals/importFile',
     }),
     async loadData() {
       await Promise.all([
@@ -774,6 +788,11 @@ export default {
         this.fetchLabels(),
       ]);
       await this.fetchBoardData();
+    },
+    // Uma rajada de eventos (import, movimentacao em lote) vira um refetch so.
+    onRemoteDealChange() {
+      clearTimeout(this.realtimeDebounce);
+      this.realtimeDebounce = setTimeout(() => this.fetchBoardData(), 1500);
     },
     async fetchBoardData() {
       try {
@@ -1018,83 +1037,15 @@ export default {
     },
     async handleCSVImport(event) {
       const file = event.target.files[0];
+      event.target.value = '';
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const text = e.target.result;
-          const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-          if (lines.length <= 1) {
-            this.$toast.error(this.$t('CRM.IMPORT.EMPTY_FILE'));
-            return;
-          }
-
-          const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim().toLowerCase());
-          const titleIdx = headers.indexOf('negocio') > -1 ? headers.indexOf('negocio') : headers.indexOf('negócio');
-          const contactIdx = headers.indexOf('contato');
-
-          if (titleIdx === -1) {
-            this.$toast.error(this.$t('CRM.IMPORT.MISSING_TITLE_COLUMN'));
-            return;
-          }
-
-          const pipeline = this.currentPipeline;
-          const stageId = pipeline?.stages?.[0]?.id;
-          if (!stageId) {
-            this.$toast.error(this.$t('CRM.IMPORT.NO_STAGE'));
-            return;
-          }
-
-          this.$toast.info(this.$t('CRM.IMPORT.STARTED'));
-          let successCount = 0;
-          let skipped = 0;
-
-          for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
-            const title = cols[titleIdx];
-            if (!title) continue;
-
-            const contactName = contactIdx !== -1 ? cols[contactIdx] : 'Cliente Importado';
-
-            // Sem contato nao ha negocio valido. Antes o fallback pegava o
-            // contato de outro negocio da tela, ou o id 1, e vinculava a linha
-            // importada a alguem que nao tinha nada a ver com ela.
-            let contactId = null;
-            try {
-              const newContact = await this.$store.dispatch('contacts/create', { name: contactName });
-              contactId = newContact.id;
-            } catch (err) {
-              skipped += 1;
-              continue;
-            }
-
-            try {
-              await this.createDeal({
-                title,
-                stage_id: stageId,
-                contact_id: contactId,
-              });
-              successCount++;
-            } catch (err) {
-              skipped += 1;
-            }
-          }
-
-          if (skipped > 0) {
-            this.$toast.info(
-              this.$t('CRM.IMPORT.PARTIAL', { success: successCount, skipped })
-            );
-          } else {
-            this.$toast.success(this.$t('CRM.IMPORT.SUCCESS', { count: successCount }));
-          }
-          this.fetchBoardData();
-        } catch (err) {
-          this.$toast.error(this.$t('CRM.IMPORT.READ_ERROR'));
-        }
-      };
-      reader.readAsText(file);
-      event.target.value = '';
+      try {
+        await this.importDealsFile(file);
+        this.$toast.success(this.$t('CRM.IMPORT.QUEUED'));
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.IMPORT.READ_ERROR'));
+      }
     },
     handleClickOutsideBulk(event) {
       const dropdown = this.$refs.bulkActionsDropdown;

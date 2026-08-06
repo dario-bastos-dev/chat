@@ -145,6 +145,10 @@ export const actions = {
     }
   },
 
+  importFile: async function importDealsFile(_ctx, file) {
+    await DealsAPI.importFile(file);
+  },
+
   show: async function showDeal({ commit }, dealId) {
     commit(types.SET_DEALS_UI_FLAG, { isFetching: true });
     try {

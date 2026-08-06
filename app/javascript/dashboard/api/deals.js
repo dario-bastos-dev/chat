@@ -34,6 +34,15 @@ class DealsAPI extends ApiClient {
     return axios.get(`${this.url}/${dealId}`);
   }
 
+  // O CSV é processado no backend, de forma assíncrona.
+  importFile(file) {
+    const formData = new FormData();
+    formData.append('import_file', file);
+    return axios.post(`${this.url}/import`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
+
   create(data) {
     return axios.post(this.url, { deal: data });
   }

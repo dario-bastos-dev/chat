@@ -143,7 +143,11 @@
       },
       "STATUS_OPEN": "Open",
       "DELETE_SUCCESS": "Deal deleted successfully.",
-      "CREATE_SUCCESS": "Deal created successfully."
+      "CREATE_SUCCESS": "Deal created successfully.",
+      "CLAIM": "Claim",
+      "CLAIM_SUCCESS": "Deal assigned to you.",
+      "CLAIM_ERROR": "Could not assign the deal to you.",
+      "ROTTING_TOOLTIP": "No activity for {days} days in this stage"
     },
     "ACTIVITIES": {
       "TITLE": "Activities",
@@ -216,7 +220,9 @@
       "STARTED": "Starting deal import...",
       "PARTIAL": "{success} deal(s) imported, {skipped} row(s) skipped.",
       "SUCCESS": "{count} deal(s) imported successfully.",
-      "READ_ERROR": "Error reading or processing the CSV file."
+      "READ_ERROR": "Error reading or processing the CSV file.",
+      "QUEUED": "Import started. You will be notified when it finishes.",
+      "HELP": "Expected columns: title (required), value, stage, contact_name, contact_email, contact_phone, assignee_email."
     },
     "FILTERS": {
       "TITLE": "Kanban filters",

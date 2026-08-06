@@ -215,6 +215,9 @@ Rails.application.routes.draw do
           end
 
           resources :deals do
+            collection do
+              post :import
+            end
             member do
               patch :move
               patch :assign
