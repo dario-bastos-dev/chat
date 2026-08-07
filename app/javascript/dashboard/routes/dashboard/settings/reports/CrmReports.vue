@@ -1,7 +1,7 @@
 <template>
-  <div class="crm-reports">
+  <div class="flex flex-col gap-6 p-4">
     <ReportHeader :header-title="$t('CRM.REPORTS.TITLE')">
-      <div class="header-actions">
+      <div class="flex items-center gap-2">
         <multiselect
           v-model="selectedPipeline"
           :options="pipelines"
@@ -10,7 +10,7 @@
           track-by="id"
           :allow-empty="true"
           :show-labels="false"
-          class="pipeline-select"
+          class="min-w-[200px]"
           @select="onPipelineChange"
           @remove="onPipelineChange"
         />
@@ -23,20 +23,18 @@
       </div>
     </ReportHeader>
 
-    <div class="reports-content">
+    <div class="flex flex-col gap-6">
       <!-- Date Filter -->
-      <div class="filter-section">
-        <ReportFilterSelector
-          :show-agents-filter="false"
-          :show-group-by-filter="true"
-          @filter-change="onFilterChange"
-        />
-      </div>
+      <ReportFilterSelector
+        :show-agents-filter="false"
+        :show-group-by-filter="true"
+        @filter-change="onFilterChange"
+      />
 
       <!-- Falha de carregamento: nunca substituir por dado fabricado -->
       <div
         v-if="hasError"
-        class="flex items-center gap-3 p-4 mb-4 border rounded-xl border-n-ruby-5 bg-n-ruby-3 text-n-ruby-11"
+        class="flex items-center gap-3 p-4 border rounded-xl border-n-ruby-5 bg-n-ruby-3 text-n-ruby-11"
       >
         <span class="i-ph-warning-circle size-5 shrink-0" />
         <div class="flex flex-col gap-1">
@@ -44,7 +42,7 @@
             {{ $t('CRM.REPORTS.LOAD_ERROR') }}
           </span>
           <button
-            class="text-xs font-semibold underline cursor-pointer border-0 bg-transparent p-0 text-left"
+            class="p-0 text-xs font-semibold text-left bg-transparent border-0 underline cursor-pointer"
             @click="fetchAllData"
           >
             {{ $t('CRM.REPORTS.RETRY') }}
@@ -53,232 +51,272 @@
       </div>
 
       <!-- Summary Cards -->
-      <div class="summary-section">
-        <h3 class="section-title">{{ $t('CRM.REPORTS.SUMMARY') }}</h3>
-        <div v-if="isLoading" class="loading-state">
+      <section class="flex flex-col gap-3">
+        <h3 class="m-0 text-sm font-semibold text-n-slate-12">
+          {{ $t('CRM.REPORTS.SUMMARY') }}
+        </h3>
+        <div v-if="isLoading" class="flex items-center justify-center py-10">
           <spinner size="medium" />
         </div>
-        <div v-else class="summary-cards">
-          <div class="summary-card">
-            <div class="card-icon total">
-              <span class="i-ph-handshake size-6" />
-            </div>
-            <div class="card-content">
-              <span class="card-value">{{ summary.totalDeals || 0 }}</span>
-              <span class="card-label">{{
-                $t('CRM.REPORTS.TOTAL_DEALS')
-              }}</span>
-            </div>
-          </div>
-
-          <div class="summary-card">
-            <div class="card-icon value">
-              <span class="i-ph-currency-circle-dollar size-6" />
-            </div>
-            <div class="card-content">
-              <span class="card-value">{{
-                formatCurrency(summary.totalValue)
-              }}</span>
-              <span class="card-label">{{
-                $t('CRM.REPORTS.TOTAL_VALUE')
-              }}</span>
-            </div>
-          </div>
-
-          <div class="summary-card">
-            <div class="card-icon won">
-              <span class="i-ph-trophy size-6" />
-            </div>
-            <div class="card-content">
-              <span class="card-value">{{ summary.wonDeals || 0 }}</span>
-              <span class="card-label">{{ $t('CRM.REPORTS.WON_DEALS') }}</span>
-            </div>
-          </div>
-
-          <div class="summary-card">
-            <div class="card-icon lost">
-              <span class="i-ph-x-circle size-6" />
-            </div>
-            <div class="card-content">
-              <span class="card-value">{{ summary.lostDeals || 0 }}</span>
-              <span class="card-label">{{ $t('CRM.REPORTS.LOST_DEALS') }}</span>
-            </div>
-          </div>
-
-          <div class="summary-card">
-            <div class="card-icon rate">
-              <span class="i-ph-chart-pie size-6" />
-            </div>
-            <div class="card-content">
-              <span class="card-value">{{ summary.winRate || 0 }}%</span>
-              <span class="card-label">{{ $t('CRM.REPORTS.WIN_RATE') }}</span>
-            </div>
-          </div>
-
-          <div class="summary-card">
-            <div class="card-icon avg">
-              <span class="i-ph-clock size-6" />
-            </div>
-            <div class="card-content">
-              <span class="card-value"
-                >{{ summary.avgCycleTime || 0 }}
-                {{ $t('CRM.REPORTS.DAYS') }}</span
-              >
-              <span class="card-label">{{
-                $t('CRM.REPORTS.AVG_CYCLE_TIME')
-              }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Charts Section -->
-      <div class="charts-section">
-        <!-- Funnel Chart -->
-        <div class="chart-card funnel-chart">
-          <h4 class="chart-title">{{ $t('CRM.REPORTS.FUNNEL_TITLE') }}</h4>
-          <div v-if="isLoading" class="chart-loading">
-            <spinner size="small" />
-          </div>
-          <div v-else class="funnel-container">
+        <div
+          v-else
+          class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
+        >
+          <div
+            v-for="card in summaryCards"
+            :key="card.key"
+            class="flex items-center gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-2"
+          >
             <div
-              v-for="(stage, index) in funnelData"
-              :key="stage.id"
-              class="funnel-stage"
-              :style="{ width: getFunnelWidth(stage, index) + '%' }"
+              class="flex items-center justify-center rounded-lg size-10 shrink-0"
+              :class="card.iconClass"
             >
+              <span :class="[card.icon, 'size-5']" />
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="text-lg font-semibold truncate text-n-slate-12">
+                {{ card.value }}
+              </span>
+              <span class="text-xs truncate text-n-slate-11">
+                {{ card.label }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Funnel -->
+      <section
+        class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-2"
+      >
+        <h4 class="m-0 text-sm font-semibold text-n-slate-12">
+          {{ $t('CRM.REPORTS.FUNNEL_TITLE') }}
+        </h4>
+        <div v-if="isLoading" class="flex items-center justify-center py-10">
+          <spinner size="small" />
+        </div>
+        <p v-else-if="!funnelData.length" class="m-0 text-sm text-n-slate-11">
+          {{ $t('CRM.REPORTS.NO_DATA') }}
+        </p>
+        <div v-else class="flex flex-col gap-2">
+          <div
+            v-for="(stage, index) in funnelData"
+            :key="stage.id"
+            class="flex items-center gap-3"
+          >
+            <!-- Rótulo em coluna fixa: antes ficava sobre a barra -->
+            <div class="flex flex-col w-40 shrink-0">
+              <span class="text-xs font-medium truncate text-n-slate-12">
+                {{ stage.name }}
+              </span>
+              <span class="text-[11px] text-n-slate-11">
+                {{ formatCurrency(stage.value) }}
+              </span>
+            </div>
+            <div class="flex-1 h-7 rounded-md bg-n-alpha-1">
               <div
-                class="stage-bar"
-                :style="{ backgroundColor: getStageColor(index) }"
+                class="flex items-center justify-end h-full px-2 transition-all duration-300 rounded-md min-w-8"
+                :style="{
+                  width: `${getFunnelWidth(stage, index)}%`,
+                  backgroundColor: getStageColor(index),
+                }"
               >
-                <span class="stage-count">{{ stage.count }}</span>
-              </div>
-              <div class="stage-info">
-                <span class="stage-name">{{ stage.name }}</span>
-                <span class="stage-value">{{
-                  formatCurrency(stage.value)
-                }}</span>
+                <span class="text-xs font-semibold text-white">
+                  {{ stage.count }}
+                </span>
               </div>
             </div>
           </div>
         </div>
+      </section>
 
-        <!-- Deals Over Time Chart -->
-        <div class="chart-card timeline-chart">
-          <h4 class="chart-title">{{ $t('CRM.REPORTS.DEALS_OVER_TIME') }}</h4>
-          <div v-if="isLoading" class="chart-loading">
+      <!-- Charts -->
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section
+          class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-2"
+        >
+          <h4 class="m-0 text-sm font-semibold text-n-slate-12">
+            {{ $t('CRM.REPORTS.DEALS_OVER_TIME') }}
+          </h4>
+          <div v-if="isLoading" class="flex items-center justify-center h-64">
             <spinner size="small" />
           </div>
-          <div v-else class="chart-container">
+          <!-- Altura explícita: o canvas do Chart.js colapsava sem ela -->
+          <div v-else class="relative h-64">
             <canvas ref="dealsChart" />
           </div>
-        </div>
+        </section>
 
-        <!-- Won vs Lost Chart -->
-        <div class="chart-card pie-chart">
-          <h4 class="chart-title">{{ $t('CRM.REPORTS.WON_VS_LOST') }}</h4>
-          <div v-if="isLoading" class="chart-loading">
+        <section
+          class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-2"
+        >
+          <h4 class="m-0 text-sm font-semibold text-n-slate-12">
+            {{ $t('CRM.REPORTS.WON_VS_LOST') }}
+          </h4>
+          <div v-if="isLoading" class="flex items-center justify-center h-64">
             <spinner size="small" />
           </div>
-          <div v-else class="chart-container">
+          <div v-else class="relative h-64">
             <canvas ref="wonLostChart" />
           </div>
-        </div>
+        </section>
+      </div>
 
-        <!-- Agent Performance -->
-        <div class="chart-card agent-chart">
-          <h4 class="chart-title">{{ $t('CRM.REPORTS.AGENT_PERFORMANCE') }}</h4>
-          <div v-if="isLoading" class="chart-loading">
-            <spinner size="small" />
-          </div>
-          <div v-else class="agent-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>{{ $t('CRM.REPORTS.AGENT') }}</th>
-                  <th>{{ $t('CRM.REPORTS.TOTAL_DEALS') }}</th>
-                  <th>{{ $t('CRM.REPORTS.WON_DEALS') }}</th>
-                  <th>{{ $t('CRM.REPORTS.TOTAL_VALUE') }}</th>
-                  <th>{{ $t('CRM.REPORTS.WIN_RATE') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="agent in agentPerformance" :key="agent.id">
-                  <td class="agent-cell">
+      <!-- Agent Performance -->
+      <section
+        class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-2"
+      >
+        <h4 class="m-0 text-sm font-semibold text-n-slate-12">
+          {{ $t('CRM.REPORTS.AGENT_PERFORMANCE') }}
+        </h4>
+        <div v-if="isLoading" class="flex items-center justify-center py-10">
+          <spinner size="small" />
+        </div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-sm border-collapse">
+            <thead>
+              <tr class="border-b border-n-weak">
+                <th class="px-3 py-2 font-medium text-left text-n-slate-11">
+                  {{ $t('CRM.REPORTS.AGENT') }}
+                </th>
+                <th class="px-3 py-2 font-medium text-right text-n-slate-11">
+                  {{ $t('CRM.REPORTS.TOTAL_DEALS') }}
+                </th>
+                <th class="px-3 py-2 font-medium text-right text-n-slate-11">
+                  {{ $t('CRM.REPORTS.WON_DEALS') }}
+                </th>
+                <th class="px-3 py-2 font-medium text-right text-n-slate-11">
+                  {{ $t('CRM.REPORTS.TOTAL_VALUE') }}
+                </th>
+                <th class="px-3 py-2 font-medium text-right text-n-slate-11">
+                  {{ $t('CRM.REPORTS.WIN_RATE') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="agent in agentPerformance"
+                :key="agent.id"
+                class="border-b border-n-weak/50 last:border-0"
+              >
+                <td class="px-3 py-2">
+                  <div class="flex items-center gap-2 min-w-0">
                     <thumbnail
                       :src="agent.thumbnail"
                       :username="agent.name"
                       size="24px"
                     />
-                    <span>{{ agent.name }}</span>
-                  </td>
-                  <td>{{ agent.totalDeals }}</td>
-                  <td>{{ agent.wonDeals }}</td>
-                  <td>{{ formatCurrency(agent.totalValue) }}</td>
-                  <td>
-                    <span
-                      class="win-rate-badge"
-                      :class="getWinRateClass(agent.winRate)"
-                    >
-                      {{ agent.winRate }}%
+                    <span class="truncate text-n-slate-12">
+                      {{ agent.name }}
                     </span>
-                  </td>
-                </tr>
-                <tr v-if="agentPerformance.length === 0">
-                  <td colspan="5" class="empty-row">
-                    {{ $t('CRM.REPORTS.NO_DATA') }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- Top Deals -->
-      <div class="top-deals-section">
-        <h3 class="section-title">{{ $t('CRM.REPORTS.TOP_DEALS') }}</h3>
-        <div v-if="isLoading" class="loading-state">
-          <spinner size="small" />
-        </div>
-        <div v-else class="deals-table">
-          <table>
-            <thead>
-              <tr>
-                <th>{{ $t('CRM.DEALS.TITLE') }}</th>
-                <th>{{ $t('CRM.DEALS.CONTACT') }}</th>
-                <th>{{ $t('CRM.DEALS.VALUE') }}</th>
-                <th>{{ $t('CRM.DEALS.STAGE') }}</th>
-                <th>{{ $t('CRM.DEALS.ASSIGNEE') }}</th>
-                <th>{{ $t('CRM.DEALS.STATUS_WON') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="deal in topDeals"
-                :key="deal.id"
-                @click="goToDeal(deal)"
-              >
-                <td class="deal-title-cell">{{ deal.title }}</td>
-                <td>{{ deal.contact?.name || '-' }}</td>
-                <td class="value-cell">{{ formatCurrency(deal.value) }}</td>
-                <td>{{ deal.stage?.name || '-' }}</td>
-                <td>{{ deal.assignee?.name || $t('CRM.DEALS.UNASSIGNED') }}</td>
-                <td>
-                  <span class="status-badge" :class="deal.status">
-                    {{ getStatusLabel(deal.status) }}
+                  </div>
+                </td>
+                <td class="px-3 py-2 text-right text-n-slate-12">
+                  {{ agent.totalDeals }}
+                </td>
+                <td class="px-3 py-2 text-right text-n-slate-12">
+                  {{ agent.wonDeals }}
+                </td>
+                <td
+                  class="px-3 py-2 text-right whitespace-nowrap text-n-slate-12"
+                >
+                  {{ formatCurrency(agent.totalValue) }}
+                </td>
+                <td class="px-3 py-2 text-right">
+                  <span
+                    class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full"
+                    :class="winRateBadgeClass(agent.winRate)"
+                  >
+                    {{ agent.winRate }}%
                   </span>
                 </td>
               </tr>
-              <tr v-if="topDeals.length === 0">
-                <td colspan="6" class="empty-row">
+              <tr v-if="agentPerformance.length === 0">
+                <td colspan="5" class="px-3 py-6 text-center text-n-slate-11">
                   {{ $t('CRM.REPORTS.NO_DATA') }}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
+
+      <!-- Top Deals -->
+      <section
+        class="flex flex-col gap-3 p-4 border rounded-xl border-n-weak bg-n-solid-2"
+      >
+        <h3 class="m-0 text-sm font-semibold text-n-slate-12">
+          {{ $t('CRM.REPORTS.TOP_DEALS') }}
+        </h3>
+        <div v-if="isLoading" class="flex items-center justify-center py-10">
+          <spinner size="small" />
+        </div>
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-sm border-collapse">
+            <thead>
+              <tr class="border-b border-n-weak">
+                <th class="px-3 py-2 font-medium text-left text-n-slate-11">
+                  {{ $t('CRM.DEALS.TITLE') }}
+                </th>
+                <th class="px-3 py-2 font-medium text-left text-n-slate-11">
+                  {{ $t('CRM.DEALS.CONTACT') }}
+                </th>
+                <th class="px-3 py-2 font-medium text-right text-n-slate-11">
+                  {{ $t('CRM.DEALS.VALUE') }}
+                </th>
+                <th class="px-3 py-2 font-medium text-left text-n-slate-11">
+                  {{ $t('CRM.DEALS.STAGE') }}
+                </th>
+                <th class="px-3 py-2 font-medium text-left text-n-slate-11">
+                  {{ $t('CRM.DEALS.ASSIGNEE') }}
+                </th>
+                <th class="px-3 py-2 font-medium text-left text-n-slate-11">
+                  {{ $t('CRM.DEALS.STATUS') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="deal in topDeals"
+                :key="deal.id"
+                class="border-b cursor-pointer border-n-weak/50 last:border-0 hover:bg-n-alpha-1"
+                @click="goToDeal(deal)"
+              >
+                <td class="px-3 py-2 font-medium text-n-slate-12">
+                  {{ deal.title }}
+                </td>
+                <td class="px-3 py-2 text-n-slate-11">
+                  {{ deal.contact?.name || '-' }}
+                </td>
+                <td
+                  class="px-3 py-2 font-semibold text-right whitespace-nowrap text-n-slate-12"
+                >
+                  {{ formatCurrency(deal.value) }}
+                </td>
+                <td class="px-3 py-2 text-n-slate-11">
+                  {{ deal.stage?.name || '-' }}
+                </td>
+                <td class="px-3 py-2 text-n-slate-11">
+                  {{ deal.assignee?.name || $t('CRM.DEALS.UNASSIGNED') }}
+                </td>
+                <td class="px-3 py-2">
+                  <span
+                    class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full"
+                    :class="statusBadgeClass(deal.status)"
+                  >
+                    {{ getStatusLabel(deal.status) }}
+                  </span>
+                </td>
+              </tr>
+              <tr v-if="topDeals.length === 0">
+                <td colspan="6" class="px-3 py-6 text-center text-n-slate-11">
+                  {{ $t('CRM.REPORTS.NO_DATA') }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </div>
 </template>
@@ -334,6 +372,52 @@ export default {
     ...mapGetters({
       pipelines: 'pipelines/getPipelines',
     }),
+    summaryCards() {
+      return [
+        {
+          key: 'total',
+          icon: 'i-ph-handshake',
+          iconClass: 'bg-n-brand/15 text-n-brand',
+          value: this.summary.totalDeals || 0,
+          label: this.$t('CRM.REPORTS.TOTAL_DEALS'),
+        },
+        {
+          key: 'value',
+          icon: 'i-ph-currency-circle-dollar',
+          iconClass: 'bg-n-teal-3 text-n-teal-11',
+          value: this.formatCurrency(this.summary.totalValue),
+          label: this.$t('CRM.REPORTS.TOTAL_VALUE'),
+        },
+        {
+          key: 'won',
+          icon: 'i-ph-trophy',
+          iconClass: 'bg-n-teal-3 text-n-teal-11',
+          value: this.summary.wonDeals || 0,
+          label: this.$t('CRM.REPORTS.WON_DEALS'),
+        },
+        {
+          key: 'lost',
+          icon: 'i-ph-x-circle',
+          iconClass: 'bg-n-ruby-3 text-n-ruby-11',
+          value: this.summary.lostDeals || 0,
+          label: this.$t('CRM.REPORTS.LOST_DEALS'),
+        },
+        {
+          key: 'rate',
+          icon: 'i-ph-chart-pie',
+          iconClass: 'bg-n-amber-3 text-n-amber-11',
+          value: `${this.summary.winRate || 0}%`,
+          label: this.$t('CRM.REPORTS.WIN_RATE'),
+        },
+        {
+          key: 'cycle',
+          icon: 'i-ph-clock',
+          iconClass: 'bg-n-alpha-2 text-n-slate-11',
+          value: `${this.summary.avgCycleTime || 0} ${this.$t('CRM.REPORTS.DAYS')}`,
+          label: this.$t('CRM.REPORTS.AVG_CYCLE_TIME'),
+        },
+      ];
+    },
   },
   watch: {
     selectedPipeline() {
@@ -595,10 +679,15 @@ export default {
       ];
       return colors[index % colors.length];
     },
-    getWinRateClass(rate) {
-      if (rate >= 70) return 'high';
-      if (rate >= 40) return 'medium';
-      return 'low';
+    winRateBadgeClass(rate) {
+      if (rate >= 70) return 'bg-n-teal-3 text-n-teal-11';
+      if (rate >= 40) return 'bg-n-amber-3 text-n-amber-11';
+      return 'bg-n-ruby-3 text-n-ruby-11';
+    },
+    statusBadgeClass(status) {
+      if (status === 'won') return 'bg-n-teal-3 text-n-teal-11';
+      if (status === 'lost') return 'bg-n-ruby-3 text-n-ruby-11';
+      return 'bg-n-brand/15 text-n-brand';
     },
     getStatusLabel(status) {
       const labels = {
@@ -611,299 +700,3 @@ export default {
   },
 };
 </script>
-
-<style lang="scss" scoped>
-.crm-reports {
-  padding: var(--space-normal);
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-small);
-}
-
-.pipeline-select {
-  min-width: 200px;
-}
-
-.reports-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-large);
-}
-
-.filter-section {
-  margin-bottom: var(--space-normal);
-}
-
-.section-title {
-  font-size: var(--font-size-medium);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-heading);
-  margin-bottom: var(--space-normal);
-}
-
-.loading-state,
-.chart-loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: var(--space-large);
-}
-
-// Summary Cards
-.summary-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--space-normal);
-}
-
-.summary-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-small);
-  padding: var(--space-normal);
-  background: var(--white);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-medium);
-  box-shadow: var(--shadow-small);
-}
-
-.card-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--border-radius-medium);
-  color: var(--white);
-
-  &.total {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-  }
-  &.value {
-    background: linear-gradient(135deg, #11998e, #38ef7d);
-  }
-  &.won {
-    background: linear-gradient(135deg, #56ab2f, #a8e063);
-  }
-  &.lost {
-    background: linear-gradient(135deg, #eb3349, #f45c43);
-  }
-  &.rate {
-    background: linear-gradient(135deg, #4facfe, #00f2fe);
-  }
-  &.avg {
-    background: linear-gradient(135deg, #fa709a, #fee140);
-  }
-}
-
-.card-content {
-  display: flex;
-  flex-direction: column;
-}
-
-.card-value {
-  font-size: var(--font-size-large);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-heading);
-}
-
-.card-label {
-  font-size: var(--font-size-small);
-  color: var(--color-body);
-}
-
-// Charts Section
-.charts-section {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-normal);
-
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-  }
-}
-
-.chart-card {
-  background: var(--white);
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius-medium);
-  padding: var(--space-normal);
-  box-shadow: var(--shadow-small);
-
-  &.funnel-chart {
-    grid-column: 1 / -1;
-  }
-
-  &.agent-chart {
-    grid-column: 1 / -1;
-  }
-}
-
-.chart-title {
-  font-size: var(--font-size-default);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-heading);
-  margin-bottom: var(--space-normal);
-}
-
-.chart-container {
-  height: 300px;
-}
-
-// Funnel Chart
-.funnel-container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-small);
-}
-
-.funnel-stage {
-  display: flex;
-  align-items: center;
-  gap: var(--space-small);
-  margin: 0 auto;
-  transition: width 0.3s ease;
-}
-
-.stage-bar {
-  height: 40px;
-  border-radius: var(--border-radius-small);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  transition: all 0.3s ease;
-
-  &:hover {
-    transform: scale(1.02);
-  }
-}
-
-.stage-count {
-  color: var(--white);
-  font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-medium);
-}
-
-.stage-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 150px;
-}
-
-.stage-name {
-  font-size: var(--font-size-small);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-heading);
-}
-
-.stage-value {
-  font-size: var(--font-size-mini);
-  color: var(--color-body);
-}
-
-// Tables
-.agent-table,
-.deals-table {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-
-  th,
-  td {
-    padding: var(--space-small);
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  th {
-    font-weight: var(--font-weight-medium);
-    color: var(--color-heading);
-    background: var(--s-50);
-  }
-
-  tr:hover {
-    background: var(--s-25);
-  }
-}
-
-.agent-cell {
-  display: flex;
-  align-items: center;
-  gap: var(--space-smaller);
-}
-
-.deal-title-cell {
-  max-width: 250px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.value-cell {
-  font-weight: var(--font-weight-bold);
-  color: var(--g-600);
-}
-
-.win-rate-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: var(--border-radius-small);
-  font-size: var(--font-size-mini);
-  font-weight: var(--font-weight-medium);
-
-  &.high {
-    background: var(--g-100);
-    color: var(--g-700);
-  }
-
-  &.medium {
-    background: var(--y-100);
-    color: var(--y-700);
-  }
-
-  &.low {
-    background: var(--r-100);
-    color: var(--r-700);
-  }
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: var(--border-radius-small);
-  font-size: var(--font-size-mini);
-  font-weight: var(--font-weight-medium);
-
-  &.open {
-    background: var(--b-100);
-    color: var(--b-700);
-  }
-
-  &.won {
-    background: var(--g-100);
-    color: var(--g-700);
-  }
-
-  &.lost {
-    background: var(--r-100);
-    color: var(--r-700);
-  }
-}
-
-.empty-row {
-  text-align: center;
-  color: var(--color-body);
-  padding: var(--space-large) !important;
-}
-
-.deals-table tr {
-  cursor: pointer;
-}
-</style>

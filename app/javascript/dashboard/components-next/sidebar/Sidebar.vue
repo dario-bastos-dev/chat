@@ -382,6 +382,30 @@ const menuItems = computed(() => {
         count: 'notifications/getUnreadCount',
       },
     },
+    ...(isCloudFeatureEnabled('crm')
+      ? [
+          {
+            name: 'CRM',
+            label: t('SIDEBAR.CRM'),
+            icon: 'i-lucide-kanban',
+            defaultChildName: defaultChildName.value,
+            children: [
+              {
+                name: 'Deals',
+                label: t('SIDEBAR.CRM_DEALS'),
+                to: accountScopedRoute('deals_index'),
+                activeOn: ['deals_index'],
+              },
+              ...pipelines.value.map(pipeline => ({
+                name: `Pipeline-${pipeline.id}`,
+                label: pipeline.name,
+                to: accountScopedRoute('deals_kanban', { pipelineId: pipeline.id }),
+                activeOn: ['deals_kanban'],
+              })),
+            ],
+          },
+        ]
+      : []),
     {
       name: 'Conversation',
       label: t('SIDEBAR.CONVERSATIONS'),
@@ -503,30 +527,6 @@ const menuItems = computed(() => {
         },
       ],
     },
-    ...(isCloudFeatureEnabled('crm')
-      ? [
-          {
-            name: 'CRM',
-            label: t('SIDEBAR.CRM'),
-            icon: 'i-lucide-kanban',
-            defaultChildName: defaultChildName.value,
-            children: [
-              {
-                name: 'Deals',
-                label: t('SIDEBAR.CRM_DEALS'),
-                to: accountScopedRoute('deals_index'),
-                activeOn: ['deals_index'],
-              },
-              ...pipelines.value.map(pipeline => ({
-                name: `Pipeline-${pipeline.id}`,
-                label: pipeline.name,
-                to: accountScopedRoute('deals_kanban', { pipelineId: pipeline.id }),
-                activeOn: ['deals_kanban'],
-              })),
-            ],
-          },
-        ]
-      : []),
     {
       name: 'Captain',
       icon: 'i-woot-captain',

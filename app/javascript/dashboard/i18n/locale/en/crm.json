@@ -80,6 +80,7 @@
       "FILTER_MIN": "Min",
       "FILTER_MAX": "Max",
       "STAGE": "Stage",
+      "STATUS": "Status",
       "PIPELINE": "Pipeline",
       "CONTACT": "Contact",
       "ASSIGNEE": "Assignee",
