@@ -105,8 +105,18 @@ export default {
       return this.isFeatureEnabledonAccount(this.accountId, FEATURE_FLAGS.CRM);
     },
   },
+  watch: {
+    'currentAccount.id'(id) {
+      if (id) {
+        this.initializeAccount();
+      }
+    },
+  },
   mounted() {
-    this.initializeAccount();
+    // Account already in the store (navigated in): seed immediately.
+    if (this.currentAccount.id) {
+      this.initializeAccount();
+    }
   },
   methods: {
     async initializeAccount() {

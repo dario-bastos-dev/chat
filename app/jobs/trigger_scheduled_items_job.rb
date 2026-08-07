@@ -25,6 +25,8 @@ class TriggerScheduledItemsJob < ApplicationJob
 
     # Job to process message sequences
     MessageSequences::ProcessJob.perform_later
+    # Job to trigger pending executions
+    AutomationRules::TriggerPendingExecutionsJob.perform_later
   end
 end
 

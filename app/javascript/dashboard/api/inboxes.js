@@ -33,8 +33,20 @@ class Inboxes extends CacheEnabledApiClient {
     return axios.post(`${this.url}/${inboxId}/sync_templates`);
   }
 
-  getMessageTemplates(inboxId) {
-    return axios.get(`${this.url}/${inboxId}/message_templates`);
+  getMessageTemplates(inboxId, params = {}, config = {}) {
+    return axios.get(`${this.url}/${inboxId}/message_templates`, {
+      ...config,
+      params,
+    });
+  }
+
+  updateWhatsappBusinessManagementToken(inboxId, businessManagementToken) {
+    return axios.put(
+      `${this.url}/${inboxId}/whatsapp_business_management_token`,
+      {
+        business_management_token: businessManagementToken,
+      }
+    );
   }
 
   createMessageTemplate(inboxId, template) {
@@ -119,6 +131,12 @@ class Inboxes extends CacheEnabledApiClient {
 
   disableWhatsappCalling(inboxId) {
     return axios.post(`${this.url}/${inboxId}/disable_whatsapp_calling`);
+  }
+
+  setInboundCalls(inboxId, enabled) {
+    return axios.post(`${this.url}/${inboxId}/set_inbound_calls`, {
+      inbound_calls_enabled: enabled,
+    });
   }
 }
 

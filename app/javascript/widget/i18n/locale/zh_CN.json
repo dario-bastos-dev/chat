@@ -149,5 +149,10 @@
   },
   "FOOTER_REPLY_TO": {
     "REPLY_TO": "回复："
+  },
+  "EMOJI_ICON_PICKER": {
+    "SEARCH_EMOJI": "Search emoji…",
+    "FREQUENTLY_USED": "Frequently used",
+    "NO_EMOJI": "没有适合你的搜索结果"
   }
 }

@@ -46,6 +46,7 @@ import portals from './modules/helpCenterPortals';
 import reports from './modules/reports';
 import sla from './modules/sla';
 import slaReports from './modules/SLAReports';
+import sidebarSortPreferences from './modules/sidebarSortPreferences';
 import summaryReports from './modules/summaryReports';
 import teamMembers from './modules/teamMembers';
 import teams from './modules/teams';
@@ -54,9 +55,11 @@ import webhooks from './modules/webhooks';
 import scheduledMessages from './modules/scheduledMessages';
 import messageSequences from './modules/messageSequences';
 import conversationSequences from './modules/conversationSequences';
+import captainAgentSessions from './captain/agentSessions';
 import captainAssistants from './captain/assistant';
 import captainDocuments from './captain/document';
 import captainResponses from './captain/response';
+import captainFaqSuggestions from './captain/faqSuggestions';
 import captainInboxes from './captain/inboxes';
 import captainBulkActions from './captain/bulkActions';
 import copilotThreads from './captain/copilotThreads';
@@ -115,6 +118,7 @@ export default createStore({
     reports,
     sla,
     slaReports,
+    sidebarSortPreferences,
     summaryReports,
     teamMembers,
     teams,
@@ -123,9 +127,11 @@ export default createStore({
     scheduledMessages,
     messageSequences,
     conversationSequences,
+    captainAgentSessions,
     captainAssistants,
     captainDocuments,
     captainResponses,
+    captainFaqSuggestions,
     captainInboxes,
     captainBulkActions,
     copilotThreads,

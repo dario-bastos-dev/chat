@@ -52,7 +52,9 @@ Rails.application.routes.draw do
             resource :contact_merge, only: [:create]
           end
           resource :bulk_actions, only: [:create]
-          resource :onboarding, only: [:update]
+          resource :onboarding, only: [:update] do
+            get :help_center_generation
+          end
           resources :agents, only: [:index, :create, :update, :destroy] do
             post :bulk_create, on: :collection
           end
@@ -61,6 +63,10 @@ Rails.application.routes.draw do
             resources :assistants do
               member do
                 post :playground
+                get :metrics
+                get :faq_stats
+                get :summary
+                get :drilldown
               end
               collection do
                 get :tools
@@ -68,7 +74,13 @@ Rails.application.routes.draw do
               resources :inboxes, only: [:index, :create, :destroy], param: :inbox_id
               resources :scenarios
             end
+            resources :agent_sessions, only: [:show]
             resources :assistant_responses
+            resources :faq_suggestions, only: [:index, :show, :update] do
+              post :approve, on: :member
+              post :dismiss, on: :member
+            end
+            resources :message_reports, only: [:create]
             resources :bulk_actions, only: [:create]
             resources :copilot_threads, only: [:index, :create] do
               resources :copilot_messages, only: [:index, :create]
@@ -161,6 +173,7 @@ Rails.application.routes.draw do
               post :update_last_seen
               post :unread
               post :custom_attributes
+              post :destroy_custom_attributes
               get :attachments
               get :inbox_assistant
               get :reporting_events if ChatwootApp.enterprise?
@@ -247,6 +260,19 @@ Rails.application.routes.draw do
               end
             end
           end
+
+          resources :data_imports, only: [:index, :show, :create] do
+            collection do
+              post :validate_source
+            end
+            member do
+              post :start
+              post :retry, action: :retry_import
+              post :abandon
+              get :error_logs
+              get :skip_logs
+            end
+          end
           resources :csat_survey_responses, only: [:index] do
             collection do
               get :metrics
@@ -263,15 +289,34 @@ Rails.application.routes.draw do
             end
           end
           resources :reporting_events, only: [:index] if ChatwootApp.enterprise?
+
+          if ChatwootApp.enterprise?
+            resources :calls, only: [:index]
+            resources :whatsapp_calls, only: [:show] do
+              member do
+                post :accept
+                post :reject
+                post :terminate
+                post :upload_recording
+              end
+              collection do
+                post :initiate
+              end
+            end
+          end
+
           resources :custom_attribute_definitions, only: [:index, :show, :create, :update, :destroy]
           resources :custom_filters, only: [:index, :show, :create, :update, :destroy]
+          resource :branded_email_layout, only: [:show, :update]
           resources :inboxes, only: [:index, :show, :create, :update, :destroy] do
             get :assignable_agents, on: :member
             get :campaigns, on: :member
             get :agent_bot, on: :member
+            get :message_templates, on: :member
             post :set_agent_bot, on: :member
             delete :avatar, on: :member
             post :sync_templates, on: :member
+            put :whatsapp_business_management_token, on: :member
             get :health, on: :member
             post :register_webhook, on: :member
             get :evolution_qrcode, on: :member
@@ -288,13 +333,18 @@ Rails.application.routes.draw do
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member
               end
+              post :enable_whatsapp_calling, on: :member
+              post :disable_whatsapp_calling, on: :member
+              post :set_inbound_calls, on: :member
             end
 
             resource :csat_template, only: [:show, :create], controller: 'inbox_csat_templates' do
               post :analyze, on: :collection
             end
 
-            resources :message_templates, only: [:index, :create, :destroy],
+            # Listing is served by the `message_templates` member action above; this only adds
+            # creation/deletion, so the paths differ by verb and never collide.
+            resources :message_templates, only: [:create, :destroy],
                                           controller: 'inbox_message_templates', param: :name do
               post :media, on: :collection
             end
@@ -454,6 +504,7 @@ Rails.application.routes.draw do
             post :verify
             post :backup_codes
           end
+          resources :sessions, only: [:index, :destroy]
         end
       end
 
@@ -516,6 +567,7 @@ Rails.application.routes.draw do
               get :conversations
               get :conversations_summary
               get :conversation_traffic
+              get :drilldown
               get :bot_metrics
               get :inbox_label_matrix
               get :first_response_time_distribution
@@ -542,9 +594,11 @@ Rails.application.routes.draw do
             member do
               post :checkout
               post :subscription
+              post :select_billing_currency
               get :limits
               post :toggle_deletion
               post :topup_checkout
+              get :topup_options
             end
           end
         end

@@ -2,10 +2,6 @@ class Api::V1::Accounts::InboxMessageTemplatesController < Api::V1::Accounts::Ba
   before_action :fetch_inbox
   before_action :validate_whatsapp_cloud_channel
 
-  def index
-    render json: { templates: @inbox.channel.message_templates || [] }
-  end
-
   def create
     result = @inbox.channel.provider_service.create_message_template(template_params)
     return render_creation_failure(result) unless result[:success]

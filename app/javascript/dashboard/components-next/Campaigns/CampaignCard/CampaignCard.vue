@@ -105,8 +105,13 @@ const campaignStatus = computed(() => {
 const inboxName = computed(() => props.inbox?.name || '');
 
 const inboxIcon = computed(() => {
-  const { medium, channel_type: type, provider } = props.inbox;
-  return getInboxIconByType(type, medium, 'fill', provider);
+  const {
+    medium,
+    channel_type: type,
+    voice_enabled: voiceEnabled,
+    provider,
+  } = props.inbox;
+  return getInboxIconByType(type, medium, 'fill', voiceEnabled, provider);
 });
 
 const handleResume = async () => {

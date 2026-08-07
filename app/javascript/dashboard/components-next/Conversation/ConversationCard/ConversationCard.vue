@@ -48,8 +48,8 @@ const inbox = computed(() => props.stateInbox);
 const inboxName = computed(() => inbox.value?.name);
 
 const inboxIcon = computed(() => {
-  const { channelType, medium, provider } = inbox.value;
-  return getInboxIconByType(channelType, medium, 'fill', provider);
+  const { channelType, medium, voiceEnabled, provider } = inbox.value;
+  return getInboxIconByType(channelType, medium, 'fill', voiceEnabled, provider);
 });
 
 const lastActivityAt = computed(() => {
@@ -126,6 +126,7 @@ const onCardClick = e => {
         v-show="!showMessagePreviewWithoutMeta"
         ref="cardMessagePreviewWithMetaRef"
         :conversation="conversation"
+        :contact="contact"
         :account-labels="accountLabels"
       />
     </div>

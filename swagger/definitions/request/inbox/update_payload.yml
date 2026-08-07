@@ -61,6 +61,16 @@ properties:
     type: string
     description: Business name for the inbox
     example: 'My Business'
+  branded_email_layout:
+    type:
+      - string
+      - 'null'
+    maxLength: 262144
+    description: |
+      Liquid HTML layout for outbound email replies. Must include `{{ content_for_layout }}` and be 262,144 characters or shorter.
+
+      Available for: `Email`
+    example: '<html><body>{{ content_for_layout }}</body></html>'
   channel:
     type: object
     properties:

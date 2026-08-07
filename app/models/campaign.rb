@@ -68,6 +68,8 @@ class Campaign < ApplicationRecord
   after_update_commit :dispatch_update_event
   after_update_commit :trigger_campaign_if_resumed
   after_destroy_commit :dispatch_destroy_event
+  after_commit :set_display_id, unless: :display_id?
+  after_destroy_commit :invalidate_filtered_unread_count_filters
 
   def trigger!
     reload
@@ -186,6 +188,19 @@ class Campaign < ApplicationRecord
 
   def dispatch_destroy_event
     Dispatcher.dispatch(Events::Types::CAMPAIGN_DELETED, Time.zone.now, campaign_data: push_event_data)
+  end
+
+  def invalidate_filtered_unread_count_filters
+    filters_changed = ::Conversations::UnreadCounts::FilteredCountInvalidator.new(account).conversation_changed!
+    dispatch_account_cache_invalidated if filters_changed
+  end
+
+  def dispatch_account_cache_invalidated
+    Rails.configuration.dispatcher.dispatch(ACCOUNT_CACHE_INVALIDATED, Time.zone.now, account: account, cache_keys: account.cache_keys)
+  end
+
+  def set_display_id
+    reload
   end
 
   def validate_campaign_inbox

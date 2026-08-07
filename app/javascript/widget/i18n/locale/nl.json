@@ -149,5 +149,10 @@
   },
   "FOOTER_REPLY_TO": {
     "REPLY_TO": "Antwoord op:"
+  },
+  "EMOJI_ICON_PICKER": {
+    "SEARCH_EMOJI": "Search emoji…",
+    "FREQUENTLY_USED": "Frequently used",
+    "NO_EMOJI": "Er zijn geen overeenkomende emoji's gevonden"
   }
 }

@@ -4,6 +4,8 @@ import { shouldBeUrl } from 'shared/helpers/Validators';
 import { useAlert } from 'dashboard/composables';
 import { useVuelidate } from '@vuelidate/core';
 import Avatar from 'next/avatar/Avatar.vue';
+import Banner from 'dashboard/components-next/banner/Banner.vue';
+import Icon from 'dashboard/components-next/icon/Icon.vue';
 import SettingIntroBanner from 'dashboard/components/widgets/SettingIntroBanner.vue';
 import SettingsToggleSection from 'dashboard/components-next/Settings/SettingsToggleSection.vue';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
@@ -26,6 +28,8 @@ import CollaboratorsPage from './settingsPage/CollaboratorsPage.vue';
 import BotConfiguration from './components/BotConfiguration.vue';
 import AccountHealth from './components/AccountHealth.vue';
 import MessageTemplatesPage from './settingsPage/MessageTemplatesPage.vue';
+import WhatsappManualMigrationDialog from './components/WhatsappManualMigrationDialog.vue';
+import WhatsappManualMigrationBanner from './components/WhatsappManualMigrationBanner.vue';
 import { FEATURE_FLAGS } from '../../../../featureFlags';
 import SenderNameExamplePreview from './components/SenderNameExamplePreview.vue';
 import LockToSingleConversationPreview from './components/LockToSingleConversationPreview.vue';
@@ -40,8 +44,14 @@ import InstanceSettings from './channels/evolution/InstanceSettings.vue';
 import EvolutionGoInstanceSettings from './channels/evolution_go/InstanceSettings.vue';
 import ColorPicker from 'dashboard/components-next/colorpicker/ColorPicker.vue';
 import SelectInput from 'dashboard/components-next/select/Select.vue';
+import Widget from 'dashboard/modules/widget-preview/components/Widget.vue';
+import AccessToken from 'dashboard/routes/dashboard/settings/profile/AccessToken.vue';
+import { copyTextToClipboard } from 'shared/helpers/clipboard';
+import { META_RESTRICTION_STATUS_URL } from 'dashboard/constants/globals';
+
 export default {
   components: {
+    Banner,
     BotConfiguration,
     CollaboratorsPage,
     ConfigurationPage,
@@ -72,6 +82,11 @@ export default {
     MessageTemplatesPage,
     InstanceSettings,
     EvolutionGoInstanceSettings,
+    WhatsappManualMigrationDialog,
+    WhatsappManualMigrationBanner,
+    Widget,
+    AccessToken,
+    Icon,
   },
   mixins: [inboxMixin],
   setup() {
@@ -103,6 +118,8 @@ export default {
       healthData: null,
       isLoadingHealth: false,
       healthError: null,
+      isRegisteringWebhook: false,
+      isTransferringWhatsAppToManual: false,
       widgetBubblePosition: 'right',
       widgetBubbleType: 'standard',
       widgetBubbleLauncherTitle: '',
@@ -113,6 +130,8 @@ export default {
     ...mapGetters({
       accountId: 'getCurrentAccountId',
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
+      isOnChatwootCloud: 'globalConfig/isOnChatwootCloud',
+      isMetaMessageSendingDisabled: 'globalConfig/isMetaMessageSendingDisabled',
       uiFlags: 'inboxes/getUIFlags',
       portals: 'portals/allPortals',
     }),
@@ -246,8 +265,21 @@ export default {
       return this.$store.getters['inboxes/getInbox'](this.currentInboxId);
     },
     inboxIcon() {
-      const { medium, channel_type: type } = this.inbox;
-      return getInboxIconByType(type, medium);
+      const {
+        medium,
+        channel_type: type,
+        voice_enabled: voiceEnabled,
+      } = this.inbox;
+      return getInboxIconByType(type, medium, 'line', voiceEnabled);
+    },
+    bannerMaxWidth() {
+      const narrowTabs = ['collaborators', 'bot-configuration'];
+      const wideIfWebWidget = ['configuration', 'inbox-settings'];
+      if (narrowTabs.includes(this.selectedTabKey)) return 'max-w-4xl';
+      if (wideIfWebWidget.includes(this.selectedTabKey)) {
+        return this.isAWebWidgetInbox ? 'max-w-7xl' : 'max-w-4xl';
+      }
+      return 'max-w-7xl';
     },
     inboxName() {
       if (this.isATwilioSMSChannel || this.isATwilioWhatsAppChannel) {
@@ -299,6 +331,12 @@ export default {
     instagramUnauthorized() {
       return this.isAnInstagramChannel && this.inbox.reauthorization_required;
     },
+    showInstagramRestrictionSettingsBanner() {
+      return this.isMetaMessageSendingDisabled && this.isAnInstagramChannel;
+    },
+    metaRestrictionStatusUrl() {
+      return META_RESTRICTION_STATUS_URL;
+    },
     tiktokUnauthorized() {
       return this.isATiktokChannel && this.inbox.reauthorization_required;
     },
@@ -335,6 +373,11 @@ export default {
       return (
         this.isAWhatsAppCloudChannel &&
         this.isEmbeddedSignupWhatsApp &&
+        (!this.isOnChatwootCloud ||
+          this.isFeatureEnabledonAccount(
+            this.accountId,
+            FEATURE_FLAGS.WHATSAPP_EMBEDDED_SIGNUP_FLOW
+          )) &&
         this.inbox.reauthorization_required
       );
     },
@@ -352,6 +395,18 @@ export default {
         this.healthData.throughput?.level === 'NOT_APPLICABLE'
       );
     },
+    showWhatsAppManualMigration() {
+      return (
+        this.isAWhatsAppCloudChannel &&
+        this.isEmbeddedSignupWhatsApp &&
+        this.healthData?.is_on_biz_app === false &&
+        this.healthError?.type !== 'authorization' &&
+        this.isFeatureEnabledonAccount(
+          this.accountId,
+          FEATURE_FLAGS.WHATSAPP_MANUAL_TRANSFER
+        )
+      );
+    },
     widgetBuilderStorageKey() {
       return `${LOCAL_STORAGE_KEYS.WIDGET_BUILDER}${this.inbox.id}`;
     },
@@ -363,6 +418,7 @@ export default {
         if (inboxChanged) {
           this.syncInboxData();
           this.setTabFromRouteParam();
+          this.openWhatsAppManualMigrationIfRequested();
         }
       }
     },
@@ -373,6 +429,7 @@ export default {
           this.fetchHealthData();
           this.$nextTick(() => {
             this.setTabFromRouteParam();
+            this.openWhatsAppManualMigrationIfRequested();
           });
         }
       },
@@ -381,8 +438,79 @@ export default {
   },
   mounted() {
     this.fetchSharedData();
+    this.openWhatsAppManualMigrationIfRequested();
   },
   methods: {
+    openWhatsAppManualMigrationDialog() {
+      this.$refs.whatsappManualMigrationDialog?.open();
+    },
+    openWhatsAppManualMigrationIfRequested() {
+      if (
+        this.showWhatsAppManualMigration &&
+        this.$route.query.migration === 'whatsapp_manual'
+      ) {
+        this.$nextTick(() => {
+          this.openWhatsAppManualMigrationDialog();
+        });
+      }
+    },
+    async transferWhatsAppToManualSetup(form) {
+      this.isTransferringWhatsAppToManual = true;
+      try {
+        const providerConfig = { ...(this.inbox.provider_config || {}) };
+        delete providerConfig.source;
+        const payload = {
+          id: this.inbox.id,
+          formData: false,
+          channel: {
+            provider_config: {
+              ...providerConfig,
+              phone_number_id: form.phoneNumberId,
+              business_account_id: form.wabaId,
+              api_key: form.accessToken,
+            },
+          },
+        };
+        await this.$store.dispatch('inboxes/updateInbox', payload);
+        useAlert(
+          this.$t('INBOX_MGMT.SETTINGS_POPUP.WHATSAPP_MANUAL_TRANSFER_SUCCESS')
+        );
+        this.$refs.whatsappManualMigrationDialog?.close();
+      } catch (error) {
+        useAlert(
+          this.$t('INBOX_MGMT.SETTINGS_POPUP.WHATSAPP_MANUAL_TRANSFER_ERROR')
+        );
+      } finally {
+        this.isTransferringWhatsAppToManual = false;
+      }
+    },
+    async copyWebhookSecret(value) {
+      await copyTextToClipboard(value);
+      useAlert(
+        this.$t(
+          'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_SECRET.COPY_SUCCESS'
+        )
+      );
+    },
+    async resetWebhookSecret() {
+      const response = await this.$store.dispatch(
+        'inboxes/resetSecret',
+        this.inbox.id
+      );
+      if (response) {
+        useAlert(
+          this.$t(
+            'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_SECRET.RESET_SUCCESS'
+          )
+        );
+      } else {
+        useAlert(
+          this.$t(
+            'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_SECRET.RESET_ERROR'
+          )
+        );
+      }
+    },
     fetchSharedData() {
       this.$store.dispatch('agents/get');
       this.$store.dispatch('teams/get');
@@ -441,9 +569,42 @@ export default {
         const response = await InboxHealthAPI.getHealthStatus(this.inbox.id);
         this.healthData = response.data;
       } catch (error) {
-        this.healthError = error.message || 'Failed to fetch health data';
+        const apiError = error.response?.data?.error;
+        this.healthError =
+          typeof apiError === 'object'
+            ? apiError
+            : {
+                type: 'generic',
+                message: apiError || error.message,
+              };
       } finally {
         this.isLoadingHealth = false;
+      }
+    },
+    goToWhatsAppConfiguration() {
+      const configurationTabIndex = this.tabs.findIndex(
+        tab => tab.key === 'configuration'
+      );
+      if (configurationTabIndex !== -1) {
+        this.onTabChange(configurationTabIndex);
+      }
+    },
+    async registerWebhook() {
+      if (!this.inbox) return;
+
+      try {
+        this.isRegisteringWebhook = true;
+        await InboxHealthAPI.registerWebhook(this.inbox.id);
+        useAlert(this.$t('INBOX_MGMT.ACCOUNT_HEALTH.WEBHOOK.REGISTER_SUCCESS'));
+        await this.fetchHealthData();
+      } catch (error) {
+        useAlert(
+          error.response?.data?.error ||
+            error.message ||
+            this.$t('INBOX_MGMT.ACCOUNT_HEALTH.WEBHOOK.REGISTER_ERROR')
+        );
+      } finally {
+        this.isRegisteringWebhook = false;
       }
     },
     handleFeatureFlag(e) {
@@ -623,119 +784,80 @@ export default {
         />
       </woot-tabs>
     </SettingIntroBanner>
-    <section class="mx-auto w-full max-w-6xl">
-      <MicrosoftReauthorize v-if="microsoftUnauthorized" :inbox="inbox" />
-      <FacebookReauthorize v-if="facebookUnauthorized" :inbox="inbox" />
-      <GoogleReauthorize v-if="googleUnauthorized" :inbox="inbox" />
-      <InstagramReauthorize v-if="instagramUnauthorized" :inbox="inbox" />
-      <TiktokReauthorize v-if="tiktokUnauthorized" :inbox="inbox" />
-      <WhatsappReauthorize
-        v-if="whatsappUnauthorized"
-        :whatsapp-registration-incomplete="whatsappRegistrationIncomplete"
-        :inbox="inbox"
-      />
-      <DuplicateInboxBanner
-        v-if="hasDuplicateInstagramInbox"
-        :content="$t('INBOX_MGMT.ADD.INSTAGRAM.DUPLICATE_INBOX_BANNER')"
-        class="mx-8 mt-5"
-      />
-      <div v-if="selectedTabKey === 'inbox-settings'" class="mx-8">
-        <SettingsSection
-          :title="$t('INBOX_MGMT.SETTINGS_POPUP.INBOX_UPDATE_TITLE')"
-          :sub-title="$t('INBOX_MGMT.SETTINGS_POPUP.INBOX_UPDATE_SUB_TEXT')"
-          :show-border="false"
+    <section class="w-full overflow-auto py-8">
+      <div class="max-w-7xl mx-auto w-full">
+        <MicrosoftReauthorize
+          v-if="microsoftUnauthorized"
+          :inbox="inbox"
+          class="mb-4"
+          :class="bannerMaxWidth"
+        />
+        <FacebookReauthorize
+          v-if="facebookUnauthorized"
+          :inbox="inbox"
+          class="mb-4"
+          :class="bannerMaxWidth"
+        />
+        <GoogleReauthorize
+          v-if="googleUnauthorized"
+          :inbox="inbox"
+          class="mb-4"
+          :class="bannerMaxWidth"
+        />
+        <InstagramReauthorize
+          v-if="instagramUnauthorized"
+          :inbox="inbox"
+          class="mb-4"
+          :class="bannerMaxWidth"
+        />
+        <TiktokReauthorize
+          v-if="tiktokUnauthorized"
+          :inbox="inbox"
+          class="mb-4"
+          :class="bannerMaxWidth"
+        />
+        <WhatsappReauthorize
+          v-if="whatsappUnauthorized"
+          :whatsapp-registration-incomplete="whatsappRegistrationIncomplete"
+          :inbox="inbox"
+          class="mb-4"
+          :class="bannerMaxWidth"
+        />
+        <DuplicateInboxBanner
+          v-if="hasDuplicateInstagramInbox"
+          :content="$t('INBOX_MGMT.ADD.INSTAGRAM.DUPLICATE_INBOX_BANNER')"
+          class="mx-6 mb-4"
+          :class="bannerMaxWidth"
+        />
+        <Banner
+          v-if="showInstagramRestrictionSettingsBanner"
+          color="amber"
+          class="mx-6 mb-4 max-w-4xl"
         >
-          <div class="flex flex-col gap-1 items-start mb-4">
-            <label class="mb-0.5 text-sm font-medium text-n-slate-12">
-              {{ $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_AVATAR.LABEL') }}
-            </label>
-            <Avatar
-              :src="avatarUrl"
-              :size="72"
-              :icon-name="inboxIcon"
-              name=""
-              allow-upload
-              rounded-full
-              @upload="handleImageUpload"
-              @delete="handleAvatarDelete"
+          <div class="flex items-start gap-3 text-start">
+            <Icon
+              icon="i-lucide-triangle-alert"
+              class="flex-shrink-0 size-4 mt-0.5"
             />
+            <span>
+              {{ $t('INBOX_MGMT.ADD.INSTAGRAM.SETTINGS_RESTRICTED_WARNING') }}
+              <a
+                :href="metaRestrictionStatusUrl"
+                class="link underline"
+                rel="noopener noreferrer nofollow"
+                target="_blank"
+              >
+                {{ $t('INBOX_MGMT.ADD.INSTAGRAM.STATUS_LINK') }}
+              </a>
+            </span>
           </div>
-          <woot-input
-            v-model="selectedInboxName"
-            class="pb-4"
-            :class="{ error: v$.selectedInboxName.$error }"
-            :label="inboxNameLabel"
-            :placeholder="inboxNamePlaceHolder"
-            :error="
-              v$.selectedInboxName.$error
-                ? $t('INBOX_MGMT.ADD.CHANNEL_NAME.ERROR')
-                : ''
-            "
-            @blur="v$.selectedInboxName.$touch"
-          />
-          <woot-input
-            v-if="isAPIInbox"
-            v-model="webhookUrl"
-            class="pb-4"
-            :class="{ error: v$.webhookUrl.$error }"
-            :label="
-              $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_URL.LABEL')
-            "
-            :placeholder="
-              $t(
-                'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_URL.PLACEHOLDER'
-              )
-            "
-            :error="
-              v$.webhookUrl.$error
-                ? $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WEBHOOK_URL.ERROR')
-                : ''
-            "
-            @blur="v$.webhookUrl.$touch"
-          />
-          <woot-input
-            v-if="isAWebWidgetInbox"
-            v-model="channelWebsiteUrl"
-            class="pb-4"
-            :label="$t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_DOMAIN.LABEL')"
-            :placeholder="
-              $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_DOMAIN.PLACEHOLDER')
-            "
-          />
-          <woot-input
-            v-if="isAWebWidgetInbox"
-            v-model="channelWelcomeTitle"
-            class="pb-4"
-            :label="
-              $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WELCOME_TITLE.LABEL')
-            "
-            :placeholder="
-              $t(
-                'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WELCOME_TITLE.PLACEHOLDER'
-              )
-            "
-          />
-
-          <Editor
-            v-if="isAWebWidgetInbox"
-            v-model="channelWelcomeTagline"
-            class="mb-4"
-            :label="
-              $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WELCOME_TAGLINE.LABEL')
-            "
-            :placeholder="
-              $t(
-                'INBOX_MGMT.ADD.WEBSITE_CHANNEL.CHANNEL_WELCOME_TAGLINE.PLACEHOLDER'
-              )
-            "
-            :max-length="255"
-            channel-type="Context::InboxSettings"
-          />
-
-          <label v-if="isAWebWidgetInbox" class="pb-4">
-            {{ $t('INBOX_MGMT.ADD.WEBSITE_CHANNEL.WIDGET_COLOR.LABEL') }}
-            <woot-color-picker v-model="inbox.widget_color" />
-          </label>
+        </Banner>
+        <WhatsappManualMigrationBanner
+          v-if="showWhatsAppManualMigration"
+          class="mx-6 mb-6"
+          :class="bannerMaxWidth"
+          @start="openWhatsAppManualMigrationDialog"
+        />
 
           <label v-if="isAWhatsAppChannel" class="pb-4">
             {{ $t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.LABEL') }}
@@ -1141,39 +1263,66 @@ export default {
         </div>
       </div>
 
-      <div v-if="selectedTabKey === 'collaborators'" class="mx-6 max-w-4xl">
-        <CollaboratorsPage :inbox="inbox" />
-      </div>
-      <div v-if="selectedTabKey === 'configuration'" class="mx-6 max-w-4xl">
-        <ConfigurationPage :inbox="inbox" />
-      </div>
-      <div v-if="selectedTabKey === 'csat'">
-        <CustomerSatisfactionPage :inbox="inbox" />
-      </div>
-      <div v-if="selectedTabKey === 'pre-chat-form'">
-        <PreChatFormSettings :inbox="inbox" />
-      </div>
-      <div v-if="selectedTabKey === 'business-hours'">
-        <WeeklyAvailability :inbox="inbox" />
-      </div>
-      <div v-if="selectedTabKey === 'bot-configuration'">
-        <BotConfiguration :inbox="inbox" />
-      </div>
-      <div v-if="selectedTabKey === 'whatsapp-health'">
-        <AccountHealth
-          :health-data="healthData"
-          :is-registering-webhook="isRegisteringWebhook"
-          @register-webhook="registerWebhook"
+        <div v-if="selectedTabKey === 'collaborators'" class="mx-6 max-w-4xl">
+          <CollaboratorsPage :inbox="inbox" />
+        </div>
+        <div
+          v-if="selectedTabKey === 'configuration'"
+          class="mx-6"
+          :class="isAWebWidgetInbox ? 'max-w-7xl' : 'max-w-4xl'"
+        >
+          <ConfigurationPage :inbox="inbox" />
+        </div>
+        <div
+          v-if="selectedTabKey === 'voice-configuration'"
+          class="mx-6 max-w-4xl"
+        >
+          <VoiceConfigurationPage :inbox="inbox" />
+        </div>
+        <div
+          v-if="selectedTabKey === 'calls-configuration'"
+          class="mx-6 max-w-4xl"
+        >
+          <WhatsappCallingPage :inbox="inbox" />
+        </div>
+        <div v-if="selectedTabKey === 'csat'">
+          <CustomerSatisfactionPage :inbox="inbox" />
+        </div>
+        <div v-if="selectedTabKey === 'pre-chat-form'">
+          <PreChatFormSettings :inbox="inbox" />
+        </div>
+        <div v-if="selectedTabKey === 'business-hours'">
+          <WeeklyAvailability :inbox="inbox" />
+        </div>
+        <div v-if="selectedTabKey === 'bot-configuration'">
+          <BotConfiguration :inbox="inbox" />
+        </div>
+        <div v-if="selectedTabKey === 'whatsapp-health'">
+          <AccountHealth
+            :health-data="healthData"
+            :health-error="healthError"
+            :is-embedded-signup="isEmbeddedSignupWhatsApp"
+            :is-registering-webhook="isRegisteringWebhook"
+            @register-webhook="registerWebhook"
+            @go-to-configuration="goToWhatsAppConfiguration"
+          />
+        </div>
+        <div v-if="selectedTabKey === 'whatsapp-templates'">
+          <MessageTemplatesPage :inbox="inbox" />
+        </div>
+        <div v-if="selectedTabKey === 'evolution-instance'">
+          <InstanceSettings :inbox="inbox" />
+        </div>
+        <div v-if="selectedTabKey === 'evolution-go-instance'">
+          <EvolutionGoInstanceSettings :inbox="inbox" />
+        </div>
+        <WhatsappManualMigrationDialog
+          v-if="showWhatsAppManualMigration"
+          ref="whatsappManualMigrationDialog"
+          :inbox="inbox"
+          :is-loading="isTransferringWhatsAppToManual"
+          @reconnect="transferWhatsAppToManualSetup"
         />
-      </div>
-      <div v-if="selectedTabKey === 'whatsapp-templates'">
-        <MessageTemplatesPage :inbox="inbox" />
-      </div>
-      <div v-if="selectedTabKey === 'evolution-instance'">
-        <InstanceSettings :inbox="inbox" />
-      </div>
-      <div v-if="selectedTabKey === 'evolution-go-instance'">
-        <EvolutionGoInstanceSettings :inbox="inbox" />
       </div>
     </section>
   </div>

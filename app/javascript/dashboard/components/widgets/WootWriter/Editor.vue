@@ -63,6 +63,7 @@ import {
   calculateMenuPosition,
   getEffectiveChannelType,
   stripUnsupportedFormatting,
+  createVariableInputRule,
 } from 'dashboard/helper/editorHelper';
 import {
   hasPressedEnterAndNotCmdOrShift,
@@ -307,6 +308,10 @@ const plugins = computed(() => {
       showMenu: showVariables,
       searchTerm: variableSearchTerm,
       isAllowed: () => !props.isPrivate,
+    }),
+    createVariableInputRule({
+      isPrivate: () => props.isPrivate,
+      getVariables: () => props.variables,
     }),
     createSuggestionPlugin({
       trigger: ':',

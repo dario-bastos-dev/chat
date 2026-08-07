@@ -4,18 +4,16 @@ import agentMgmt from './agentMgmt.json';
 import attributesMgmt from './attributesMgmt.json';
 import auditLogs from './auditLogs.json';
 import automation from './automation.json';
-import messageSequences from './messageSequences.json';
-import scheduledMessages from './scheduledMessages.json';
-import conversationSequences from './conversationSequences.json';
 import bulkActions from './bulkActions.json';
 import campaign from './campaign.json';
 import cannedMgmt from './cannedMgmt.json';
 import chatlist from './chatlist.json';
+import companies from './companies.json';
 import components from './components.json';
 import contact from './contact.json';
 import contactFilters from './contactFilters.json';
+import contentTemplates from './contentTemplates.json';
 import conversation from './conversation.json';
-import crm from './crm.json';
 import csatMgmt from './csatMgmt.json';
 import customRole from './customRole.json';
 import datePicker from './datePicker.json';
@@ -30,15 +28,25 @@ import integrations from './integrations.json';
 import labelsMgmt from './labelsMgmt.json';
 import login from './login.json';
 import macros from './macros.json';
+import mfa from './mfa.json';
+import onboarding from './onboarding.json';
 import report from './report.json';
 import resetPassword from './resetPassword.json';
 import search from './search.json';
 import setNewPassword from './setNewPassword.json';
+import sessionLimit from './sessionLimit.json';
 import settings from './settings.json';
 import signup from './signup.json';
 import sla from './sla.json';
+import snooze from './snooze.json';
 import teamsSettings from './teamsSettings.json';
+import webhooks from './webhooks.json';
 import whatsappTemplates from './whatsappTemplates.json';
+import yearInReview from './yearInReview.json';
+import messageSequences from './messageSequences.json';
+import scheduledMessages from './scheduledMessages.json';
+import conversationSequences from './conversationSequences.json';
+import crm from './crm.json';
 
 export default {
   ...advancedFilters,
@@ -51,11 +59,12 @@ export default {
   ...campaign,
   ...cannedMgmt,
   ...chatlist,
+  ...companies,
   ...components,
   ...contact,
   ...contactFilters,
+  ...contentTemplates,
   ...conversation,
-  ...crm,
   ...csatMgmt,
   ...customRole,
   ...datePicker,
@@ -70,16 +79,23 @@ export default {
   ...labelsMgmt,
   ...login,
   ...macros,
+  ...mfa,
+  ...onboarding,
   ...report,
   ...resetPassword,
   ...search,
   ...setNewPassword,
+  ...sessionLimit,
   ...settings,
   ...signup,
   ...sla,
+  ...snooze,
   ...teamsSettings,
+  ...webhooks,
   ...whatsappTemplates,
+  ...yearInReview,
   ...messageSequences,
   ...scheduledMessages,
   ...conversationSequences,
+  ...crm,
 };

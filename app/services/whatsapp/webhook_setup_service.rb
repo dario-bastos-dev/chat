@@ -28,6 +28,7 @@ class Whatsapp::WebhookSetupService
     raise ArgumentError, 'Channel is required' if @channel.blank?
     raise ArgumentError, 'WABA ID is required' if @waba_id.blank?
     raise ArgumentError, 'Access token is required' if @access_token.blank?
+    raise ArgumentError, 'Phone number ID is required' if @channel.provider_config['phone_number_id'].blank?
     raise ArgumentError, 'FRONTEND_URL environment variable is required for webhook setup' if ENV.fetch('FRONTEND_URL', nil).blank?
   end
 
@@ -59,12 +60,34 @@ class Whatsapp::WebhookSetupService
   def setup_webhook
     callback_url = build_callback_url
     verify_token = @channel.provider_config['webhook_verify_token']
+    phone_number_id = @channel.provider_config['phone_number_id']
 
-    @api_client.subscribe_waba_webhook(@waba_id, callback_url, verify_token)
-
+    @api_client.subscribe_phone_number_webhook(@waba_id, phone_number_id, callback_url, verify_token, subscribed_fields: subscribed_fields)
   rescue StandardError => e
     Rails.logger.error("[WHATSAPP] Webhook setup failed: #{e.message}")
     raise "Webhook setup failed: #{e.message}"
+  end
+
+  # Builds on WEBHOOK_DEFAULT_FIELDS so the base fields stay defined in one place;
+  # `calls` is added only when voice calling is enabled on the inbox.
+  def subscribed_fields
+    fields = Whatsapp::FacebookApiClient::WEBHOOK_DEFAULT_FIELDS.dup
+    fields << 'calls' if calls_enabled_on_waba?
+    fields
+  end
+
+  # `subscribed_fields` is a WABA-wide app subscription, so keep `calls` whenever this inbox or
+  # any sibling on the same WABA has voice on — otherwise a non-calling sibling's setup would
+  # rewrite the shared subscription and drop calls for a calling-enabled sibling.
+  def calls_enabled_on_waba?
+    return true if @channel.provider_config['calling_enabled']
+
+    Channel::Whatsapp
+      .where(provider: 'whatsapp_cloud')
+      .where.not(id: @channel.id)
+      .where("provider_config->>'business_account_id' = ?", @waba_id)
+      .where("provider_config->>'calling_enabled' = 'true'")
+      .exists?
   end
 
   def build_callback_url

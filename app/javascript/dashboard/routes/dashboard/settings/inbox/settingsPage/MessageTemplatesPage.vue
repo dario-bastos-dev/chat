@@ -26,7 +26,7 @@ const fetchTemplates = async () => {
   isLoading.value = true;
   try {
     const { data } = await InboxesAPI.getMessageTemplates(props.inbox.id);
-    templates.value = data.templates || [];
+    templates.value = data.payload || [];
   } catch (_) {
     useAlert(t('INBOX_MGMT.MESSAGE_TEMPLATES.FETCH_ERROR'));
   } finally {
