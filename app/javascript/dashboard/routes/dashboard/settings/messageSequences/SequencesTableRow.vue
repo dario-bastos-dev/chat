@@ -17,6 +17,9 @@ const activationLabel = computed(() => {
   if (props.sequence.activation_type === 'tag') {
     return `Tag: ${props.sequence.activation_tag}`;
   }
+  if (props.sequence.activation_type === 'manual') {
+    return t('MESSAGE_SEQUENCES.RULES.MANUAL');
+  }
   return t('MESSAGE_SEQUENCES.RULES.ALWAYS');
 });
 

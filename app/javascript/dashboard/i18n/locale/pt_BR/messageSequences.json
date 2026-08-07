@@ -43,6 +43,8 @@
       "ACTIVATION": "Modo de Ativação",
       "TAG": "Quando a conversa receber a tag definina",
       "ALWAYS": "Sempre ativa",
+      "MANUAL": "Ativação manual",
+      "MANUAL_HELP": "Esta sequência só será iniciada quando alguém a ativar manualmente pelo painel de sequências da conversa.",
       "INBOX": "Limitar Caixas de Entrada (Inboxes)",
       "ALL_INBOXES": "Todas as Inboxes",
       "SELECTED_INBOXES": "Somente as Inboxes selecionadas (IDs)"

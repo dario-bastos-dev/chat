@@ -25,7 +25,7 @@ class MessageSequence < ApplicationRecord
   has_many :inboxes, through: :message_sequence_inboxes
   has_many :conversation_message_sequences, dependent: :destroy
 
-  enum activation_type: { tag: 0, always_active: 1 }
+  enum activation_type: { tag: 0, always_active: 1, manual: 2 }
   enum inbox_scope: { all_inboxes: 0, selected_inboxes: 1 }
 
   validates :name, presence: true
