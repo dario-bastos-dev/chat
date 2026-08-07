@@ -41,6 +41,9 @@ class ActionCableConnector extends BaseActionCableConnector {
       'campaign.created': this.onCampaignCreated,
       'campaign.updated': this.onCampaignUpdated,
       'campaign.deleted': this.onCampaignDeleted,
+      'deal.created': this.onDealChanged,
+      'deal.updated': this.onDealChanged,
+      'deal.deleted': this.onDealChanged,
     };
   }
 
@@ -222,6 +225,14 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   onScheduledMessageDeleted = data => {
     this.app.$store.commit('scheduledMessages/DELETE_SCHEDULED_MESSAGE', data.id);
+  };
+
+  // O Kanban recarrega o board ao receber isto. Nao aplicamos o payload
+  // diretamente porque o card depende de contadores e totais agregados que so
+  // o backend sabe calcular.
+  // eslint-disable-next-line class-methods-use-this
+  onDealChanged = data => {
+    emitter.emit(BUS_EVENTS.DEAL_CHANGED, data);
   };
 
   onCampaignCreated = data => {

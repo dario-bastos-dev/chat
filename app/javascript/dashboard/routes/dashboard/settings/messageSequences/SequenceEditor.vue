@@ -347,7 +347,16 @@
               <option value="always_active">
                 {{ $t('MESSAGE_SEQUENCES.RULES.ALWAYS') }}
               </option>
+              <option value="manual">
+                {{ $t('MESSAGE_SEQUENCES.RULES.MANUAL') }}
+              </option>
             </select>
+            <p
+              v-if="form.activation_type === 'manual'"
+              class="text-xs text-n-slate-10"
+            >
+              {{ $t('MESSAGE_SEQUENCES.RULES.MANUAL_HELP') }}
+            </p>
             <div v-if="form.activation_type === 'tag'">
               <label class="block mb-1 text-xs text-n-slate-11">
                 Tags de Ativação (Qualquer uma delas ativará)

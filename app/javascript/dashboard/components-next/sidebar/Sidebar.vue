@@ -598,6 +598,15 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.REPORTS_BOT'),
           to: accountScopedRoute('bot_reports'),
         },
+        ...(isCloudFeatureEnabled('crm')
+          ? [
+              {
+                name: 'Reports CRM',
+                label: t('SIDEBAR.REPORTS_CRM'),
+                to: accountScopedRoute('crm_reports'),
+              },
+            ]
+          : []),
       ],
     },
     {

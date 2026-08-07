@@ -55,6 +55,7 @@ class Account < ApplicationRecord
   store_accessor :settings, :reporting_timezone
   store_accessor :settings, :keep_pending_on_bot_failure
   store_accessor :settings, :captain_auto_resolve_mode
+  store_accessor :settings, :crm_currency
   include AccountCaptainAutoResolve
 
   has_many :account_users, dependent: :destroy_async
@@ -116,8 +117,17 @@ class Account < ApplicationRecord
 
   before_validation :validate_limit_keys
   after_create_commit :notify_creation
+  after_create_commit :create_default_pipeline
   after_update_commit :clear_unread_conversation_counts_cache, if: :saved_change_to_feature_conversation_unread_counts?
   after_destroy :remove_account_sequences
+
+  DEFAULT_CRM_CURRENCY = 'BRL'
+
+  # Moeda unica da conta para os valores de negocio. Uma so por conta e
+  # deliberado: totais por etapa e forecast so fazem sentido numa moeda.
+  def crm_currency
+    settings['crm_currency'].presence || DEFAULT_CRM_CURRENCY
+  end
 
   def agents
     users.where(account_users: { role: :agent })
@@ -185,6 +195,10 @@ class Account < ApplicationRecord
 
   def notify_creation
     Rails.configuration.dispatcher.dispatch(ACCOUNT_CREATED, Time.zone.now, account: self)
+  end
+
+  def create_default_pipeline
+    Pipelines::CreateDefaultService.new(self).perform
   end
 
   def clear_unread_conversation_counts_cache

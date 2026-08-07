@@ -33,6 +33,25 @@
         />
       </div>
 
+      <!-- Falha de carregamento: nunca substituir por dado fabricado -->
+      <div
+        v-if="hasError"
+        class="flex items-center gap-3 p-4 mb-4 border rounded-xl border-n-ruby-5 bg-n-ruby-3 text-n-ruby-11"
+      >
+        <span class="i-ph-warning-circle size-5 shrink-0" />
+        <div class="flex flex-col gap-1">
+          <span class="text-sm font-medium">
+            {{ $t('CRM.REPORTS.LOAD_ERROR') }}
+          </span>
+          <button
+            class="text-xs font-semibold underline cursor-pointer border-0 bg-transparent p-0 text-left"
+            @click="fetchAllData"
+          >
+            {{ $t('CRM.REPORTS.RETRY') }}
+          </button>
+        </div>
+      </div>
+
       <!-- Summary Cards -->
       <div class="summary-section">
         <h3 class="section-title">{{ $t('CRM.REPORTS.SUMMARY') }}</h3>
@@ -274,6 +293,7 @@ import V4Button from 'dashboard/components-next/button/Button.vue';
 import ReportHeader from './components/ReportHeader.vue';
 import ReportFilterSelector from './components/FilterSelector.vue';
 import CrmReportsAPI from 'dashboard/api/crmReports';
+import { formatDealValue } from 'dashboard/helper/crmCurrency';
 
 export default {
   name: 'CrmReports',
@@ -287,6 +307,8 @@ export default {
   data() {
     return {
       isLoading: false,
+      hasError: false,
+      currency: 'BRL',
       selectedPipeline: null,
       from: 0,
       to: 0,
@@ -335,6 +357,7 @@ export default {
     }),
     async fetchAllData() {
       this.isLoading = true;
+      this.hasError = false;
       try {
         await Promise.all([
           this.fetchSummary(),
@@ -345,7 +368,7 @@ export default {
           this.fetchTopDeals(),
         ]);
       } catch (error) {
-        console.error('Error fetching CRM reports:', error);
+        this.hasError = true;
       } finally {
         this.isLoading = false;
       }
@@ -364,17 +387,9 @@ export default {
           this.getRequestParams()
         );
         this.summary = response.data || this.summary;
+        this.currency = response.data?.currency || this.currency;
       } catch (error) {
-        console.error('Error fetching summary:', error);
-        // Use mock data for development
-        this.summary = {
-          totalDeals: 127,
-          totalValue: 458000,
-          wonDeals: 42,
-          lostDeals: 18,
-          winRate: 70,
-          avgCycleTime: 14,
-        };
+        this.hasError = true;
       }
     },
     async fetchFunnel() {
@@ -382,15 +397,8 @@ export default {
         const response = await CrmReportsAPI.getFunnel(this.getRequestParams());
         this.funnelData = response.data || [];
       } catch (error) {
-        console.error('Error fetching funnel:', error);
-        // Mock data
-        this.funnelData = [
-          { id: 1, name: 'Novo Lead', count: 45, value: 150000 },
-          { id: 2, name: 'Qualificação', count: 32, value: 120000 },
-          { id: 3, name: 'Proposta', count: 28, value: 100000 },
-          { id: 4, name: 'Negociação', count: 15, value: 60000 },
-          { id: 5, name: 'Fechamento', count: 7, value: 28000 },
-        ];
+        this.hasError = true;
+        this.funnelData = [];
       }
     },
     async fetchDealsOverTime() {
@@ -401,16 +409,8 @@ export default {
         this.dealsOverTime = response.data || [];
         this.renderDealsChart();
       } catch (error) {
-        console.error('Error fetching deals over time:', error);
-        // Mock data
-        this.dealsOverTime = [
-          { date: '2026-01-01', created: 12, won: 5, lost: 2 },
-          { date: '2026-01-08', created: 18, won: 8, lost: 3 },
-          { date: '2026-01-15', created: 15, won: 6, lost: 4 },
-          { date: '2026-01-22', created: 22, won: 10, lost: 2 },
-          { date: '2026-01-29', created: 20, won: 13, lost: 7 },
-        ];
-        this.$nextTick(() => this.renderDealsChart());
+        this.hasError = true;
+        this.dealsOverTime = [];
       }
     },
     async fetchWonLost() {
@@ -421,10 +421,8 @@ export default {
         this.wonLostData = response.data || { won: 0, lost: 0 };
         this.renderWonLostChart();
       } catch (error) {
-        console.error('Error fetching won/lost:', error);
-        // Mock data
-        this.wonLostData = { won: 42, lost: 18 };
-        this.$nextTick(() => this.renderWonLostChart());
+        this.hasError = true;
+        this.wonLostData = { won: 0, lost: 0 };
       }
     },
     async fetchAgentPerformance() {
@@ -434,37 +432,8 @@ export default {
         );
         this.agentPerformance = response.data || [];
       } catch (error) {
-        console.error('Error fetching agent performance:', error);
-        // Mock data
-        this.agentPerformance = [
-          {
-            id: 1,
-            name: 'João Silva',
-            thumbnail: '',
-            totalDeals: 35,
-            wonDeals: 28,
-            totalValue: 120000,
-            winRate: 80,
-          },
-          {
-            id: 2,
-            name: 'Maria Santos',
-            thumbnail: '',
-            totalDeals: 42,
-            wonDeals: 30,
-            totalValue: 180000,
-            winRate: 71,
-          },
-          {
-            id: 3,
-            name: 'Pedro Costa',
-            thumbnail: '',
-            totalDeals: 28,
-            wonDeals: 15,
-            totalValue: 95000,
-            winRate: 54,
-          },
-        ];
+        this.hasError = true;
+        this.agentPerformance = [];
       }
     },
     async fetchTopDeals() {
@@ -475,37 +444,8 @@ export default {
         });
         this.topDeals = response.data || [];
       } catch (error) {
-        console.error('Error fetching top deals:', error);
-        // Mock data
-        this.topDeals = [
-          {
-            id: 1,
-            title: 'Contrato Enterprise ABC Corp',
-            value: 85000,
-            status: 'won',
-            contact: { name: 'Carlos Empresa' },
-            stage: { name: 'Fechado' },
-            assignee: { name: 'João Silva' },
-          },
-          {
-            id: 2,
-            title: 'Projeto XYZ Ltda',
-            value: 65000,
-            status: 'open',
-            contact: { name: 'Ana Projeto' },
-            stage: { name: 'Negociação' },
-            assignee: { name: 'Maria Santos' },
-          },
-          {
-            id: 3,
-            title: 'Expansão Cliente Gold',
-            value: 45000,
-            status: 'won',
-            contact: { name: 'Roberto Gold' },
-            stage: { name: 'Fechado' },
-            assignee: { name: 'Pedro Costa' },
-          },
-        ];
+        this.hasError = true;
+        this.topDeals = [];
       }
     },
     renderDealsChart() {
@@ -635,10 +575,7 @@ export default {
       });
     },
     formatCurrency(value) {
-      return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-      }).format(value || 0);
+      return formatDealValue(value, this.currency);
     },
     getFunnelWidth(stage, index) {
       if (!this.funnelData.length) return 100;

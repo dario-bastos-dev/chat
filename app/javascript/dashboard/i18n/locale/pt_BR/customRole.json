@@ -39,7 +39,12 @@
       "CONVERSATION_PARTICIPATING_MANAGE": "Gerenciar conversas que participa e aquelas atribuídas a elas",
       "CONTACT_MANAGE": "Gerenciar contatos",
       "REPORT_MANAGE": "Gerenciar relatórios",
-      "KNOWLEDGE_BASE_MANAGE": "Gerenciar base de conhecimento"
+      "KNOWLEDGE_BASE_MANAGE": "Gerenciar base de conhecimento",
+      "DEAL_MANAGE": "Gerenciar todos os negócios",
+      "DEAL_TEAM_MANAGE": "Gerenciar os seus negócios, os sem responsável e os da sua equipe",
+      "DEAL_UNASSIGNED_MANAGE": "Gerenciar negócios sem responsável e os atribuídos a você",
+      "DEAL_OWN_MANAGE": "Gerenciar apenas os negócios atribuídos a você",
+      "PIPELINE_MANAGE": "Gerenciar funis e etapas"
     },
     "FORM": {
       "NAME": {

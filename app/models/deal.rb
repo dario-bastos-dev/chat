@@ -4,26 +4,23 @@
 #
 # Table name: deals
 #
-#  id                  :bigint           not null, primary key
-#  title               :string(500)      not null
-#  value               :decimal(15, 2)   default(0.0)
-#  currency            :string(3)        default("BRL")
-#  status              :string(50)       default("open")
-#  lost_reason         :string(255)
-#  custom_attributes   :jsonb            default({})
-#  last_activity_at    :datetime
-#  won_at              :datetime
-#  lost_at             :datetime
-#  expected_close_date :date
-#  position            :integer          default(0)
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
-#  account_id          :bigint           not null
-#  pipeline_id         :bigint           not null
-#  stage_id            :bigint           not null
-#  contact_id          :bigint           not null
-#  inbox_id            :bigint
-#  assignee_id         :bigint
+#  id                :bigint           not null, primary key
+#  title             :string(500)      not null
+#  status            :string(50)       default("open")
+#  lost_reason       :string(255)
+#  custom_attributes :jsonb            default({})
+#  last_activity_at  :datetime
+#  won_at            :datetime
+#  lost_at           :datetime
+#  position          :integer          default(0)
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  account_id        :bigint           not null
+#  pipeline_id       :bigint           not null
+#  stage_id          :bigint           not null
+#  contact_id        :bigint           not null
+#  inbox_id          :bigint
+#  assignee_id       :bigint
 #
 # Indexes
 #
@@ -54,6 +51,7 @@ class Deal < ApplicationRecord
   has_many :conversations, through: :conversation_deals
 
   validates :title, presence: true, length: { maximum: 500 }
+  validates :value, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :account_id, presence: true
   validates :pipeline_id, presence: true
   validates :stage_id, presence: true
@@ -79,6 +77,14 @@ class Deal < ApplicationRecord
   scope :by_stage, ->(stage_id) { where(stage_id: stage_id) }
   scope :by_assignee, ->(assignee_id) { where(assignee_id: assignee_id) }
   scope :ordered_by_position, -> { order(position: :asc) }
+
+  # Le a coluna de cache direto, como Conversation#cached_label_list_array.
+  # `label_list` do acts_as_taggable_on consulta `taggings` a cada chamada, via
+  # add_custom_context, mesmo com o cache preenchido — o que dava uma query por
+  # negocio na listagem do Kanban.
+  def cached_label_list_array
+    (cached_label_list || '').split(',').map(&:strip).reject(&:blank?)
+  end
 
   # Check if deal is rotting (no activity for X days)
   def rotting?
@@ -120,13 +126,14 @@ class Deal < ApplicationRecord
     dispatch_rotting_event
   end
 
+  # O evento `deal.stage_changed` sai do after_update_commit, que ja observa a
+  # mudanca de stage_id. Despachar aqui tambem duplicava o evento e gerava duas
+  # notas de atividade a cada arrasto no Kanban.
   def move_to_stage!(new_stage, new_position = nil)
-    old_stage_id = stage_id
     self.stage = new_stage
     self.position = new_position if new_position.present?
     self.last_activity_at = Time.current
     save!
-    dispatch_stage_changed_event(old_stage_id, new_stage.id)
   end
 
 
@@ -215,7 +222,11 @@ class Deal < ApplicationRecord
   end
 
   def dispatch_update_event
-    Rails.configuration.dispatcher.dispatch(DEAL_UPDATED, Time.zone.now, deal: self, changed_attributes: previous_changes)
+    # `as_json` e obrigatorio aqui: previous_changes carrega o BigDecimal de
+    # `value`, e o Sidekiq recusa argumentos que nao sejam tipos nativos de
+    # JSON, fazendo a atualizacao inteira estourar ao enfileirar o evento.
+    Rails.configuration.dispatcher.dispatch(DEAL_UPDATED, Time.zone.now, deal: self,
+                                                                        changed_attributes: previous_changes.as_json)
 
     # Dispatch specific events based on what changed
     dispatch_won_event if previous_changes.key?('status') && status == 'won'

@@ -48,6 +48,8 @@
       "ACTIVATION": "Activation Mode",
       "TAG": "When conversation receives the defined tag",
       "ALWAYS": "Always active",
+      "MANUAL": "Manual activation",
+      "MANUAL_HELP": "This sequence will only start when someone manually activates it from the conversation's sequences panel.",
       "INBOX": "Limit to Inboxes",
       "ALL_INBOXES": "All Inboxes",
       "SELECTED_INBOXES": "Only selected Inboxes (IDs)"

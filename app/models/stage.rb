@@ -9,6 +9,8 @@
 #  position        :integer          default(0), not null
 #  win_probability :integer          default(0)
 #  rotting_days    :integer
+#  color           :string           default("#1f93ff")
+#  stage_type      :string           default("active")
 #  created_at      :datetime         not null
 #  updated_at      :datetime         not null
 #  pipeline_id     :bigint           not null
@@ -34,14 +36,6 @@ class Stage < ApplicationRecord
   scope :ordered, -> { order(position: :asc) }
 
   delegate :account, to: :pipeline
-
-  def deals_count
-    deals.where(status: 'open').count
-  end
-
-  def total_value
-    0.0
-  end
 
   private
 

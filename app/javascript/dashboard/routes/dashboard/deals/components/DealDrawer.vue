@@ -113,6 +113,32 @@
                 {{ $t('CRM.DEALS.DETAILS') }}
               </h3>
               <div class="grid grid-cols-2 gap-4 p-4 bg-n-alpha-1 border border-n-weak rounded-xl">
+                <!-- Valor (edicao inline) -->
+                <div class="flex flex-col gap-1 col-span-2">
+                  <span class="text-[11px] text-n-slate-11">
+                    {{ $t('CRM.DEALS.VALUE') }}
+                  </span>
+                  <input
+                    v-if="isEditingValue"
+                    ref="valueInput"
+                    v-model.number="editValueAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="w-full text-sm font-semibold text-n-slate-12 bg-n-alpha-2 border border-n-brand rounded-lg h-9 px-3 outline-none"
+                    @blur="saveValue"
+                    @keydown.enter="saveValue"
+                    @keydown.esc="cancelEditValue"
+                  />
+                  <button
+                    v-else
+                    class="text-left text-lg font-semibold text-n-slate-12 hover:text-n-brand transition-colors duration-150 cursor-pointer border-0 bg-transparent p-0"
+                    @click="startEditValue"
+                  >
+                    {{ formattedValue }}
+                  </button>
+                </div>
+
                 <div class="flex flex-col gap-1 relative" ref="stageSelectorContainer">
                   <span class="text-[11px] text-n-slate-11">{{ $t('CRM.DEALS.STAGE') }}</span>
                   <button
@@ -273,9 +299,21 @@
 
             <!-- Assignee -->
             <div class="mb-6 relative" ref="assigneeSelectorContainer">
-              <h3 class="text-xs font-semibold text-n-slate-11 uppercase tracking-wider mb-3">
-                {{ $t('CRM.DEALS.ASSIGNEE') }}
-              </h3>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="text-xs font-semibold text-n-slate-11 uppercase tracking-wider">
+                  {{ $t('CRM.DEALS.ASSIGNEE') }}
+                </h3>
+                <!-- Negócio sem responsável: qualquer agente que o enxerga
+                     pode assumir, sem precisar do dropdown de atribuição -->
+                <button
+                  v-if="!deal.assignee"
+                  class="text-xs font-semibold text-n-brand hover:underline cursor-pointer border-0 bg-transparent p-0 disabled:opacity-50"
+                  :disabled="isUpdating"
+                  @click="claimDeal"
+                >
+                  {{ $t('CRM.DEALS.CLAIM') }}
+                </button>
+              </div>
               <!-- Botão interativo do Responsável -->
               <button
                 class="w-full flex items-center justify-between gap-3 p-3 bg-n-alpha-1 hover:bg-n-alpha-2 border border-n-weak hover:border-n-brand rounded-xl cursor-pointer text-left transition-all duration-150 h-16 disabled:opacity-50"
@@ -487,7 +525,18 @@
       <woot-modal-header :header-title="$t('CRM.DEALS.LOST_REASON_TITLE')" />
       <div class="flex flex-col gap-1.5">
         <label class="text-xs font-semibold text-n-slate-11 uppercase tracking-wider">{{ $t('CRM.DEALS.LOST_REASON') }} *</label>
+        <select
+          v-if="lostReasonOptions.length"
+          v-model="selectedLostReason"
+          class="w-full px-3 py-2 text-sm bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150"
+        >
+          <option v-for="reason in lostReasonOptions" :key="reason" :value="reason">
+            {{ reason }}
+          </option>
+          <option value="__other__">{{ $t('CRM.DEALS.LOST_REASON_OTHER') }}</option>
+        </select>
         <textarea
+          v-if="!lostReasonOptions.length || selectedLostReason === '__other__'"
           v-model="lostReason"
           :placeholder="$t('CRM.DEALS.LOST_REASON_PLACEHOLDER')"
           rows="3"
@@ -653,6 +702,10 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import LabelDropdown from 'shared/components/ui/label/LabelDropdown.vue';
 import AddLabel from 'shared/components/ui/dropdown/AddLabel.vue';
+import {
+  formatDealValue,
+  DEFAULT_CRM_CURRENCY,
+} from 'dashboard/helper/crmCurrency';
 
 export default {
   name: 'DealDrawer',
@@ -688,6 +741,7 @@ export default {
       showTagDropdown: false,
       expandedPipelineId: null,
       lostReason: '',
+      selectedLostReason: '',
       isUpdating: false,
       isCreatingActivity: false,
       isLinkingConversation: false,
@@ -699,6 +753,8 @@ export default {
       },
       isEditingTitle: false,
       editTitleValue: '',
+      isEditingValue: false,
+      editValueAmount: 0,
       localDeal: null,
     };
   },
@@ -720,6 +776,22 @@ export default {
     },
     hasDealAttributes() {
       return this.dealAttributes?.length > 0;
+    },
+    dealPipeline() {
+      const pipelineId = this.deal?.pipeline?.id ?? this.deal?.pipeline_id;
+      return this.allPipelines?.find(p => p.id === pipelineId);
+    },
+    lostReasonOptions() {
+      return (this.dealPipeline?.lost_reasons || []).filter(reason => reason?.trim());
+    },
+    accountCurrency() {
+      return (
+        this.$store.getters.getCurrentAccount?.settings?.crm_currency ||
+        DEFAULT_CRM_CURRENCY
+      );
+    },
+    formattedValue() {
+      return formatDealValue(this.deal?.value, this.accountCurrency);
     },
     processedDealAttributes() {
       if (!this.dealAttributes?.length) return [];
@@ -980,21 +1052,28 @@ export default {
       }
     },
     openLostModal() {
+      this.selectedLostReason = this.lostReasonOptions[0] || '__other__';
       this.showLostModal = true;
     },
     closeLostModal() {
       this.showLostModal = false;
       this.lostReason = '';
+      this.selectedLostReason = '';
     },
     async markAsLost() {
-      if (!this.lostReason.trim()) {
+      const reason =
+        this.selectedLostReason && this.selectedLostReason !== '__other__'
+          ? this.selectedLostReason
+          : this.lostReason;
+
+      if (!reason.trim()) {
         this.$toast.error(this.$t('CRM.DEALS.LOST_REASON_REQUIRED'));
         return;
       }
 
       this.isUpdating = true;
       try {
-        await this.loseDeal({ id: this.deal.id, lostReason: this.lostReason });
+        await this.loseDeal({ id: this.deal.id, lostReason: reason });
         this.closeLostModal();
         this.$emit('updated');
         this.$toast.success(this.$t('CRM.DEALS.LOST_SUCCESS'));
@@ -1129,6 +1208,52 @@ export default {
     cancelEditingTitle() {
       this.isEditingTitle = false;
       this.editTitleValue = '';
+    },
+    async claimDeal() {
+      this.isUpdating = true;
+      try {
+        const updated = await this.updateDeal({
+          id: this.deal.id,
+          assignee_id: this.$store.getters.getCurrentUser?.id,
+        });
+        this.localDeal = updated;
+        this.$emit('updated');
+        this.$toast.success(this.$t('CRM.DEALS.CLAIM_SUCCESS'));
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.DEALS.CLAIM_ERROR'));
+      } finally {
+        this.isUpdating = false;
+      }
+    },
+    startEditValue() {
+      this.editValueAmount = Number(this.deal?.value || 0);
+      this.isEditingValue = true;
+      this.$nextTick(() => this.$refs.valueInput?.focus());
+    },
+    cancelEditValue() {
+      this.isEditingValue = false;
+    },
+    async saveValue() {
+      if (!this.isEditingValue) return;
+      this.isEditingValue = false;
+
+      const amount = Number(this.editValueAmount);
+      if (Number.isNaN(amount) || amount < 0) {
+        this.$toast.error(this.$t('CRM.DEALS.VALUE_INVALID'));
+        return;
+      }
+      if (amount === Number(this.deal?.value || 0)) return;
+
+      this.isUpdating = true;
+      try {
+        const updated = await this.updateDeal({ id: this.deal.id, value: amount });
+        this.localDeal = updated;
+        this.$emit('updated');
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.DEALS.VALUE_ERROR'));
+      } finally {
+        this.isUpdating = false;
+      }
     },
     async saveTitle() {
       const cleanNewTitle = this.editTitleValue.trim();

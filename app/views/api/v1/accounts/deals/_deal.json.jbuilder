@@ -1,5 +1,6 @@
 json.id deal.id
 json.title deal.title
+json.value deal.value
 json.status deal.status
 json.lost_reason deal.lost_reason
 json.position deal.position
@@ -9,7 +10,7 @@ json.lost_at deal.lost_at
 json.is_rotting deal.rotting?
 
 json.custom_attributes deal.custom_attributes
-json.labels deal.label_list
+json.labels deal.cached_label_list_array
 json.created_at deal.created_at
 json.updated_at deal.updated_at
 
@@ -31,7 +32,6 @@ json.contact do
   json.email deal.contact.email
   json.phone_number deal.contact.phone_number
   json.avatar_url deal.contact.avatar_url if deal.contact.respond_to?(:avatar_url)
-  json.labels deal.contact.label_list
 end
 
 if deal.assignee.present?

@@ -204,6 +204,9 @@ Rails.application.routes.draw do
 
           # CRM Routes
           resources :pipelines do
+            member do
+              get :board
+            end
             resources :stages do
               collection do
                 put :reorder
@@ -212,6 +215,9 @@ Rails.application.routes.draw do
           end
 
           resources :deals do
+            collection do
+              post :import
+            end
             member do
               patch :move
               patch :assign
@@ -224,6 +230,21 @@ Rails.application.routes.draw do
               end
             end
             resources :conversations, controller: 'deal_conversations', only: [:index, :create, :destroy]
+          end
+
+          namespace :crm do
+            resources :reports, only: [] do
+              collection do
+                get :summary
+                get :funnel
+                get :deals_over_time
+                get :won_lost
+                get :agent_performance
+                get :cycle_time
+                get :top_deals
+                get :download
+              end
+            end
           end
           resources :csat_survey_responses, only: [:index] do
             collection do

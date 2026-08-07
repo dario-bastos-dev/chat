@@ -17,6 +17,8 @@ const dummyCustomRolesData = [
       'contact_manage',
       'report_manage',
       'knowledge_base_manage',
+      'deal_manage',
+      'pipeline_manage',
     ],
   },
   {
@@ -37,6 +39,11 @@ const dummyCustomRolesData = [
     name: 'Report Permissions',
     description: 'Report permissions',
     permissions: ['report_manage'],
+  },
+  {
+    name: 'Deal Permissions',
+    description: 'Deal permissions',
+    permissions: ['deal_team_manage', 'pipeline_manage'],
   },
 ];
 

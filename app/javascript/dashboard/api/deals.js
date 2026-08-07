@@ -7,14 +7,24 @@ class DealsAPI extends ApiClient {
   }
 
   get(params = {}) {
-    const queryParams = new URLSearchParams();
+    const mapping = {
+      pipelineId: 'pipeline_id',
+      stageId: 'stage_id',
+      status: 'status',
+      assigneeId: 'assignee_id',
+      contactId: 'contact_id',
+      page: 'page',
+      perPage: 'per_page',
+      q: 'q',
+      label: 'label',
+      customFieldKey: 'custom_field_key',
+      customFieldValue: 'custom_field_value',
+    };
 
-    if (params.pipelineId) queryParams.append('pipeline_id', params.pipelineId);
-    if (params.stageId) queryParams.append('stage_id', params.stageId);
-    if (params.status) queryParams.append('status', params.status);
-    if (params.assigneeId) queryParams.append('assignee_id', params.assigneeId);
-    if (params.contactId) queryParams.append('contact_id', params.contactId);
-    if (params.page) queryParams.append('page', params.page);
+    const queryParams = new URLSearchParams();
+    Object.entries(mapping).forEach(([key, param]) => {
+      if (params[key]) queryParams.append(param, params[key]);
+    });
 
     const queryString = queryParams.toString();
     return axios.get(`${this.url}${queryString ? `?${queryString}` : ''}`);
@@ -22,6 +32,15 @@ class DealsAPI extends ApiClient {
 
   show(dealId) {
     return axios.get(`${this.url}/${dealId}`);
+  }
+
+  // O CSV é processado no backend, de forma assíncrona.
+  importFile(file) {
+    const formData = new FormData();
+    formData.append('import_file', file);
+    return axios.post(`${this.url}/import`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   }
 
   create(data) {

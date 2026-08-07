@@ -24,6 +24,11 @@
 # - 'contact_manage': Can manage contacts.
 # - 'report_manage': Can manage reports.
 # - 'knowledge_base_manage': Can manage knowledge base portals.
+# - 'deal_manage': Can manage all deals.
+# - 'deal_team_manage': Can manage their own, unassigned and their team's deals.
+# - 'deal_unassigned_manage': Can manage unassigned deals and those assigned to them.
+# - 'deal_own_manage': Can manage only the deals assigned to them.
+# - 'pipeline_manage': Can manage pipelines and their stages.
 
 class CustomRole < ApplicationRecord
   belongs_to :account
@@ -37,6 +42,21 @@ class CustomRole < ApplicationRecord
     contact_manage
     report_manage
     knowledge_base_manage
+    deal_manage
+    deal_team_manage
+    deal_unassigned_manage
+    deal_own_manage
+    pipeline_manage
+  ].freeze
+
+  # Deal permissions ordered from the widest scope to the narrowest. The first
+  # one present on a role wins, so a role holding both `deal_manage` and
+  # `deal_own_manage` resolves to `deal_manage`.
+  DEAL_PERMISSIONS = %w[
+    deal_manage
+    deal_team_manage
+    deal_unassigned_manage
+    deal_own_manage
   ].freeze
 
   validates :name, presence: true

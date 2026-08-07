@@ -51,6 +51,8 @@ export default {
         value,
       })),
       reportingTimezone: 'UTC',
+      crmCurrency: 'BRL',
+      crmCurrencies: ['BRL', 'USD', 'EUR', 'GBP', 'ARS', 'CLP', 'COP', 'MXN', 'PYG', 'UYU'],
     };
   },
   validations: {
@@ -99,6 +101,9 @@ export default {
     currentAccount() {
       return this.getAccount(this.accountId) || {};
     },
+    isCrmEnabled() {
+      return this.isFeatureEnabledonAccount(this.accountId, FEATURE_FLAGS.CRM);
+    },
   },
   mounted() {
     this.initializeAccount();
@@ -120,6 +125,7 @@ export default {
         this.supportEmail = support_email;
         this.features = features;
         this.reportingTimezone = settings?.reporting_timezone || 'UTC';
+        this.crmCurrency = settings?.crm_currency || 'BRL';
       } catch (error) {
         // Ignore error
       }
@@ -138,6 +144,7 @@ export default {
           domain: this.domain,
           support_email: this.supportEmail,
           reporting_timezone: this.reportingTimezone,
+          crm_currency: this.crmCurrency,
         });
         // If user locale is set, update the locale with user locale
         const updatedLocale = this.uiSettings?.locale || this.locale;
@@ -148,6 +155,7 @@ export default {
         account.locale = this.locale;
         if (!account.settings) account.settings = {};
         account.settings.reporting_timezone = this.reportingTimezone;
+        account.settings.crm_currency = this.crmCurrency;
         useAlert(this.$t('GENERAL_SETTINGS.UPDATE.SUCCESS'));
       } catch (error) {
         useAlert(this.$t('GENERAL_SETTINGS.UPDATE.ERROR'));
@@ -214,6 +222,24 @@ export default {
                 {{ timezone.label }}
               </option>
             </select>
+          </WithLabel>
+          <WithLabel
+            v-if="isCrmEnabled"
+            name="crm-currency"
+            :label="$t('GENERAL_SETTINGS.FORM.CRM_CURRENCY.LABEL')"
+          >
+            <select v-model="crmCurrency" class="!mb-0 text-sm">
+              <option
+                v-for="currency in crmCurrencies"
+                :key="currency"
+                :value="currency"
+              >
+                {{ currency }}
+              </option>
+            </select>
+            <template #help>
+              {{ $t('GENERAL_SETTINGS.FORM.CRM_CURRENCY.HELP') }}
+            </template>
           </WithLabel>
           <WithLabel
             v-if="featureCustomReplyDomainEnabled"

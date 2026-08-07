@@ -208,7 +208,30 @@ class ActionCableListener < BaseListener
     broadcast(account, [account_token(account)], CAMPAIGN_DELETED, campaign_data)
   end
 
+  # CRM: mantem o Kanban de agentes diferentes em sincronia. Sem isso, dois
+  # agentes no mesmo funil so convergiam no proximo refetch manual.
+  def deal_created(event)
+    broadcast_deal(event.data[:deal], DEAL_CREATED)
+  end
+
+  def deal_updated(event)
+    broadcast_deal(event.data[:deal], DEAL_UPDATED)
+  end
+
+  def deal_deleted(event)
+    broadcast_deal(event.data[:deal], DEAL_DELETED)
+  end
+
   private
+
+  def broadcast_deal(deal, event_name)
+    return if deal.blank?
+
+    account = deal.account
+    return if account.blank?
+
+    broadcast(account, [account_token(account)], event_name, deal.push_event_data)
+  end
 
   def account_token(account)
     "account_#{account.id}"

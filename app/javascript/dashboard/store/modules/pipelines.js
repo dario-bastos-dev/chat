@@ -104,69 +104,6 @@ export const actions = {
     commit(types.SET_CURRENT_PIPELINE, pipeline);
   },
 
-  // Stage actions
-  createStage: async function createStage(
-    { commit, state: _state },
-    { pipelineId, stageData }
-  ) {
-    try {
-      const response = await PipelinesAPI.createStage(pipelineId, {
-        stage: stageData,
-      });
-      // Refresh current pipeline to get updated stages
-      const pipelineResponse = await PipelinesAPI.show(pipelineId);
-      commit(types.SET_CURRENT_PIPELINE, pipelineResponse.data);
-      commit(types.EDIT_PIPELINE, pipelineResponse.data);
-      return response.data;
-    } catch (error) {
-      throw new Error(error);
-    }
-  },
-
-  updateStage: async function updateStage(
-    { commit },
-    { pipelineId, stageId, stageData }
-  ) {
-    try {
-      const response = await PipelinesAPI.updateStage(pipelineId, stageId, {
-        stage: stageData,
-      });
-      // Refresh current pipeline to get updated stages
-      const pipelineResponse = await PipelinesAPI.show(pipelineId);
-      commit(types.SET_CURRENT_PIPELINE, pipelineResponse.data);
-      commit(types.EDIT_PIPELINE, pipelineResponse.data);
-      return response.data;
-    } catch (error) {
-      throw new Error(error);
-    }
-  },
-
-  deleteStage: async function deleteStage({ commit }, { pipelineId, stageId }) {
-    try {
-      await PipelinesAPI.deleteStage(pipelineId, stageId);
-      // Refresh current pipeline to get updated stages
-      const pipelineResponse = await PipelinesAPI.show(pipelineId);
-      commit(types.SET_CURRENT_PIPELINE, pipelineResponse.data);
-      commit(types.EDIT_PIPELINE, pipelineResponse.data);
-    } catch (error) {
-      throw new Error(error);
-    }
-  },
-
-  reorderStages: async function reorderStages(
-    { commit },
-    { pipelineId, stageIds }
-  ) {
-    try {
-      await PipelinesAPI.reorderStages(pipelineId, stageIds);
-      // Refresh current pipeline to get updated stages
-      const pipelineResponse = await PipelinesAPI.show(pipelineId);
-      commit(types.SET_CURRENT_PIPELINE, pipelineResponse.data);
-      commit(types.EDIT_PIPELINE, pipelineResponse.data);
-    } catch (error) {
-      throw new Error(error);
-    }
-  },
 };
 
 export const mutations = {

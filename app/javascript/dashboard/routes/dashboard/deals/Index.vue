@@ -55,7 +55,7 @@
       <div class="flex items-center justify-between px-6 py-4 border-b border-n-weak bg-n-solid-2 gap-4 shrink-0">
         <div class="flex flex-col gap-0.5">
           <h1 class="text-lg font-bold text-n-slate-12 m-0 tracking-tight">
-            Negócios
+            {{ $t('CRM.DEALS.TITLE') }}
           </h1>
         </div>
 
@@ -67,7 +67,7 @@
               <input
                 v-model="searchQuery"
                 type="text"
-                placeholder="Pesquisar por negócio ou contato..."
+                :placeholder="$t('CRM.FILTERS.SEARCH_DEALS_PLACEHOLDER')"
                 class="w-full !py-1 text-sm !bg-transparent !border-0 !border-none !outline-none !focus:outline-none !focus:ring-0 !focus:border-none !focus-visible:outline-none !shadow-none text-n-slate-12 placeholder-n-slate-11 !h-full !p-0 !m-0 no-margin"
               />
             </div>
@@ -79,7 +79,7 @@
       <div class="flex items-center justify-between px-6 py-2.5 border-b border-n-weak bg-n-solid-2 shrink-0 gap-4">
         <div class="flex items-center gap-6">
           <div class="flex items-center gap-1.5 text-sm">
-            <span class="text-n-slate-11">Total de Negócios:</span>
+            <span class="text-n-slate-11">{{ $t('CRM.TOTAL_DEALS') }}:</span>
             <span class="font-semibold text-n-slate-12">{{ filteredDeals.length }}</span>
           </div>
         </div>
@@ -95,7 +95,7 @@
               class="w-3.5 h-3.5 rounded border-n-weak text-n-brand focus:ring-n-brand cursor-pointer"
               :disabled="filteredDeals.length === 0"
             />
-            <span>Selecionar todos</span>
+            <span>{{ $t('CRM.BULK.SELECT_ALL') }}</span>
           </label>
 
           <!-- Botão Ações (Dropdown) -->
@@ -104,7 +104,7 @@
               class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-n-slate-12 bg-n-alpha-1 hover:bg-n-alpha-2 border border-n-weak rounded-lg transition-colors duration-150 cursor-pointer h-8"
               @click="toggleBulkActionsDropdown"
             >
-              <span>Ações</span>
+              <span>{{ $t('CRM.BULK.ACTIONS') }}</span>
               <fluent-icon icon="chevron-down" size="10" />
             </button>
             
@@ -119,7 +119,7 @@
                 @click="openBulkMoveModal"
               >
                 <fluent-icon icon="arrow-swap" size="12" class="text-n-slate-11" />
-                <span>Mover Etapa</span>
+                <span>{{ $t('CRM.BULK.MOVE_STAGE') }}</span>
               </button>
 
               <!-- Opção Exportar -->
@@ -129,7 +129,7 @@
                 @click="exportDeals"
               >
                 <fluent-icon icon="share" size="12" class="text-n-slate-11" />
-                <span>Exportar</span>
+                <span>{{ $t('CRM.BULK.EXPORT') }}</span>
               </button>
 
               <!-- Opção Importar -->
@@ -138,7 +138,7 @@
                 @click="importDeals"
               >
                 <fluent-icon icon="arrow-right-import" size="12" class="text-n-slate-11" />
-                <span>Importar</span>
+                <span>{{ $t('CRM.BULK.IMPORT') }}</span>
               </button>
 
               <!-- Divisor -->
@@ -151,7 +151,7 @@
                 @click="deleteSelectedDeals"
               >
                 <fluent-icon icon="delete" size="12" class="text-n-ruby-9" />
-                <span>Deletar</span>
+                <span>{{ $t('CRM.BULK.DELETE') }}</span>
               </button>
             </div>
           </div>
@@ -207,7 +207,14 @@
                     class="font-semibold text-n-slate-12 cursor-pointer hover:text-woot-500 transition-colors truncate block max-w-[200px]"
                     @click="openDealDrawer(deal)"
                   >
-                    {{ cleanTitle(deal.title) }}
+                    {{ deal.title }}
+                  </span>
+                </BaseTableCell>
+
+                <!-- Valor -->
+                <BaseTableCell>
+                  <span class="font-medium text-n-slate-12 whitespace-nowrap">
+                    {{ currencyValue(deal.value) }}
                   </span>
                 </BaseTableCell>
 
@@ -722,10 +729,18 @@
     <woot-delete-modal
       v-if="showDeleteModal"
       v-model:show="showDeleteModal"
-      :title="isBulkDelete ? 'Excluir Negócios' : 'Excluir Negócio'"
-      :message="isBulkDelete ? `Tem certeza que deseja excluir os ${selectedDealIds.length} negócio(s) selecionado(s)? Esta ação não pode ser desfeita.` : 'Tem certeza que deseja excluir este negócio? Esta ação não pode ser desfeita.'"
-      :confirm-text="$t('CRM.DELETE') || 'Excluir'"
-      :reject-text="$t('CRM.CANCEL') || 'Cancelar'"
+      :title="
+        isBulkDelete
+          ? $t('CRM.BULK.DELETE_TITLE')
+          : $t('CRM.DEALS.DELETE_TITLE')
+      "
+      :message="
+        isBulkDelete
+          ? $t('CRM.BULK.DELETE_MESSAGE', { count: selectedDealIds.length })
+          : $t('CRM.DEALS.DELETE_CONFIRM')
+      "
+      :confirm-text="$t('CRM.DELETE')"
+      :reject-text="$t('CRM.CANCEL')"
       :on-confirm="confirmDeleteDeal"
       :on-close="closeDeleteModal"
     />
@@ -736,10 +751,10 @@
       :on-close="closeBulkMoveModal"
     >
       <div class="p-6 min-w-[400px] flex flex-col gap-4 bg-n-surface-2 text-n-slate-12">
-        <woot-modal-header header-title="Mover Negócios em Lote" />
-        
+        <woot-modal-header :header-title="$t('CRM.BULK.MOVE_TITLE')" />
+
         <p class="text-xs text-n-slate-11 m-0">
-          Selecione a nova etapa e o pipeline para mover os <strong>{{ selectedDealIds.length }}</strong> negócio(s) selecionado(s):
+          {{ $t('CRM.BULK.MOVE_DESCRIPTION', { count: selectedDealIds.length }) }}
         </p>
 
         <!-- Dropdown / Acordeão de Pipelines e Etapas -->
@@ -806,6 +821,11 @@ import DealForm from './components/DealForm.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import { BaseTable, BaseTableRow, BaseTableCell } from 'dashboard/components-next/table';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
+import {
+  formatDealValue,
+  DEFAULT_CRM_CURRENCY,
+} from 'dashboard/helper/crmCurrency';
+import { buildDefaultPipeline, STAGE_TYPE_COLORS } from './constants';
 
 export default {
   name: 'DealsIndex',
@@ -834,19 +854,7 @@ export default {
       bulkMoveExpandedPipelineId: null,
       dealToDelete: null,
       isBulkDelete: false,
-      newPipeline: {
-        name: '',
-        is_default: false,
-        stages: [
-          { name: 'Pendente', color: '#3b82f6', stage_type: 'not_started', position: 1, win_probability: 10 },
-          { name: 'Aberto', color: '#eab308', stage_type: 'active', position: 2, win_probability: 50 },
-          { name: 'Ganho', color: '#22c55e', stage_type: 'done', position: 3, win_probability: 100 },
-          { name: 'Perdido', color: '#ef4444', stage_type: 'closed', position: 4, win_probability: 0 },
-        ],
-        lost_reasons: [],
-        visibility: 'public',
-        allowed_team_ids: [],
-      },
+      newPipeline: buildDefaultPipeline(false),
       activeTab: 'stages',
       stageGroups: [
         { key: 'not_started', label: 'Entrada', dotColor: 'bg-n-brand' },
@@ -864,6 +872,7 @@ export default {
       deals: 'deals/getDeals',
       dealsUiFlags: 'deals/getUIFlags',
       agents: 'agents/getAgents',
+      currentAccount: 'getCurrentAccount',
     }),
     defaultPipeline() {
       return this.pipelines.find(p => p.is_default) || this.pipelines[0];
@@ -872,6 +881,7 @@ export default {
       return [
         '',
         'Negócio',
+        'Valor',
         'Contato',
         'Pipeline',
         'Etapa',
@@ -964,11 +974,7 @@ export default {
       return this.newPipeline.stages.filter(s => s.stage_type === groupKey);
     },
     getStageColor(stage) {
-      if (stage.color) return stage.color;
-      if (stage.stage_type === 'not_started') return '#3b82f6';
-      if (stage.stage_type === 'done') return '#22c55e';
-      if (stage.stage_type === 'closed') return '#ef4444';
-      return '#eab308';
+      return stage.color || STAGE_TYPE_COLORS[stage.stage_type] || STAGE_TYPE_COLORS.active;
     },
     updateGroupStages(groupKey, newStages) {
       const otherStages = this.newPipeline.stages.filter(s => s.stage_type !== groupKey);
@@ -1028,19 +1034,7 @@ export default {
     },
     closeCreateModal() {
       this.showCreateModal = false;
-      this.newPipeline = {
-        name: '',
-        is_default: false,
-        stages: [
-          { name: 'Pendente', color: '#3b82f6', stage_type: 'not_started', position: 1, win_probability: 10 },
-          { name: 'Aberto', color: '#eab308', stage_type: 'active', position: 2, win_probability: 50 },
-          { name: 'Ganho', color: '#22c55e', stage_type: 'done', position: 3, win_probability: 100 },
-          { name: 'Perdido', color: '#ef4444', stage_type: 'closed', position: 4, win_probability: 0 },
-        ],
-        lost_reasons: [],
-        visibility: 'public',
-        allowed_team_ids: [],
-      };
+      this.newPipeline = buildDefaultPipeline(false);
       this.activeTab = 'stages';
     },
     addLostReason() {
@@ -1087,8 +1081,11 @@ export default {
         );
       }
     },
-    cleanTitle(title) {
-      return title || '';
+    currencyValue(value) {
+      return formatDealValue(
+        value,
+        this.currentAccount?.settings?.crm_currency || DEFAULT_CRM_CURRENCY
+      );
     },
 
     getDealStageColor(deal) {
@@ -1101,9 +1098,9 @@ export default {
       return 'bg-n-brand/10 text-n-brand ring-n-brand/20';
     },
     getStatusLabel(status) {
-      if (status === 'won') return 'Ganho';
-      if (status === 'lost') return 'Perdido';
-      return 'Aberto';
+      if (status === 'won') return this.$t('CRM.DEALS.STATUS_WON');
+      if (status === 'lost') return this.$t('CRM.DEALS.STATUS_LOST');
+      return this.$t('CRM.DEALS.STATUS_OPEN');
     },
     openDealDrawer(deal) {
       this.selectedDeal = deal;
@@ -1130,7 +1127,7 @@ export default {
     },
     async onDealCreated() {
       this.closeCreateDealModal();
-      this.$toast.success('Negócio criado com sucesso.');
+      this.$toast.success(this.$t('CRM.DEALS.CREATE_SUCCESS'));
       await this.fetchDealsAction({ pipelineId: null, stageId: null });
     },
     toggleSelectDeal(dealId) {
@@ -1169,15 +1166,15 @@ export default {
       try {
         if (this.isBulkDelete) {
           await Promise.all(this.selectedDealIds.map(id => this.deleteDealAction(id)));
-          this.$toast.success('Negócio(s) excluído(s) com sucesso.');
+          this.$toast.success(this.$t('CRM.BULK.DELETE_SUCCESS'));
           this.selectedDealIds = [];
         } else if (this.dealToDelete) {
           await this.deleteDealAction(this.dealToDelete.id);
-          this.$toast.success('Negócio excluído com sucesso.');
+          this.$toast.success(this.$t('CRM.DEALS.DELETE_SUCCESS'));
         }
         await this.fetchDealsAction({ pipelineId: null, stageId: null });
       } catch (error) {
-        this.$toast.error('Erro ao excluir negócio(s).');
+        this.$toast.error(this.$t('CRM.BULK.DELETE_ERROR'));
       } finally {
         this.closeDeleteModal();
       }
@@ -1249,7 +1246,7 @@ export default {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      this.$toast.success('Negócios exportados com sucesso!');
+      this.$toast.success(this.$t('CRM.BULK.EXPORT_SUCCESS'));
     },
     importDeals() {
       this.showBulkActionsDropdown = false;

@@ -6,6 +6,11 @@ export const AVAILABLE_CUSTOM_ROLE_PERMISSIONS = [
   'contact_manage',
   'report_manage',
   'knowledge_base_manage',
+  'deal_manage',
+  'deal_team_manage',
+  'deal_unassigned_manage',
+  'deal_own_manage',
+  'pipeline_manage',
 ];
 
 export const ROLES = ['agent', 'administrator'];
@@ -32,6 +37,17 @@ export const CONTACT_PERMISSIONS = 'contact_manage';
 export const REPORTS_PERMISSIONS = 'report_manage';
 
 export const PORTAL_PERMISSIONS = 'knowledge_base_manage';
+
+// Deal permissions, widest scope first. Holding any of them grants access to
+// the Deals section; the backend policy decides which deals are visible.
+export const DEAL_PERMISSIONS = [
+  'deal_manage',
+  'deal_team_manage',
+  'deal_unassigned_manage',
+  'deal_own_manage',
+];
+
+export const PIPELINE_PERMISSIONS = 'pipeline_manage';
 
 export const ASSIGNEE_TYPE_TAB_PERMISSIONS = {
   me: {

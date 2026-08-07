@@ -526,6 +526,11 @@ import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import { BaseTable, BaseTableRow, BaseTableCell } from 'dashboard/components-next/table';
+import {
+  buildDefaultPipeline,
+  STAGE_TYPE_ORDER,
+  STAGE_TYPE_COLORS,
+} from 'dashboard/routes/dashboard/deals/constants';
 import { useAlert } from 'dashboard/composables';
 
 export default {
@@ -649,11 +654,7 @@ export default {
       return this.currentPipeline.stages.filter(s => s.stage_type === groupKey);
     },
     getStageColor(stage) {
-      if (stage.color) return stage.color;
-      if (stage.stage_type === 'not_started') return '#3b82f6';
-      if (stage.stage_type === 'done') return '#22c55e';
-      if (stage.stage_type === 'closed') return '#ef4444';
-      return '#eab308';
+      return stage.color || STAGE_TYPE_COLORS[stage.stage_type] || STAGE_TYPE_COLORS.active;
     },
     addStageByGroup(groupKey) {
       let defaultColor = '#3b82f6';
@@ -693,25 +694,18 @@ export default {
       this.isEditing = false;
       this.activeTab = 'stages';
       const isFirstPipeline = !this.pipelines || this.pipelines.length === 0;
-      this.currentPipeline = {
-        name: '',
-        is_default: isFirstPipeline,
-        stages: [
-          { name: 'Pendente', color: '#3b82f6', stage_type: 'not_started', position: 1, win_probability: 10 },
-          { name: 'Aberto', color: '#eab308', stage_type: 'active', position: 2, win_probability: 50 },
-          { name: 'Ganho', color: '#22c55e', stage_type: 'done', position: 3, win_probability: 100 },
-          { name: 'Perdido', color: '#ef4444', stage_type: 'closed', position: 4, win_probability: 0 },
-        ],
-        lost_reasons: [],
-        visibility: 'public',
-        allowed_team_ids: [],
-      };
+      this.currentPipeline = buildDefaultPipeline(isFirstPipeline);
       this.showModal = true;
     },
     editPipeline(pipeline) {
       this.isEditing = true;
       this.activeTab = 'stages';
-      this.currentPipeline = JSON.parse(JSON.stringify(pipeline));
+      this.currentPipeline = {
+        visibility: 'public',
+        lost_reasons: [],
+        allowed_team_ids: [],
+        ...JSON.parse(JSON.stringify(pipeline)),
+      };
       // Backfill missing stage_types to active by default
       if (this.currentPipeline.stages) {
         this.currentPipeline.stages.forEach(s => {
@@ -725,14 +719,7 @@ export default {
       this.showModal = false;
       setTimeout(() => {
         if (!this.showModal) {
-          this.currentPipeline = {
-            name: '',
-            is_default: false,
-            stages: [],
-            lost_reasons: [],
-            visibility: 'public',
-            allowed_team_ids: [],
-          };
+          this.currentPipeline = { ...buildDefaultPipeline(false), stages: [] };
         }
       }, 200);
     },
@@ -757,16 +744,9 @@ export default {
       this.isSaving = true;
 
       // Ordenar logicamente por tipo de estágio (not_started -> active -> done -> closed)
-      const stageTypeOrder = {
-        'not_started': 1,
-        'active': 2,
-        'done': 3,
-        'closed': 4
-      };
-
       const sortedStages = [...this.currentPipeline.stages].sort((a, b) => {
-        const orderA = stageTypeOrder[a.stage_type] || 2;
-        const orderB = stageTypeOrder[b.stage_type] || 2;
+        const orderA = STAGE_TYPE_ORDER[a.stage_type] ?? STAGE_TYPE_ORDER.active;
+        const orderB = STAGE_TYPE_ORDER[b.stage_type] ?? STAGE_TYPE_ORDER.active;
         if (orderA !== orderB) {
           return orderA - orderB;
         }

@@ -10,18 +10,26 @@ class StagePolicy < ApplicationPolicy
   end
 
   def create?
-    @account_user.administrator?
+    administrator?
   end
 
   def update?
-    @account_user.administrator?
+    administrator?
   end
 
   def destroy?
-    @account_user.administrator?
+    administrator?
   end
 
   def reorder?
+    administrator?
+  end
+
+  private
+
+  def administrator?
     @account_user.administrator?
   end
 end
+
+StagePolicy.prepend_mod_with('StagePolicy')

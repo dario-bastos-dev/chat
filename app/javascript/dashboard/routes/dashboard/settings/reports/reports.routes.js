@@ -172,7 +172,7 @@ export default {
         {
           path: 'crm',
           name: 'crm_reports',
-          meta,
+          meta: { ...meta, featureFlag: FEATURE_FLAGS.CRM },
           component: CrmReports,
         },
       ],

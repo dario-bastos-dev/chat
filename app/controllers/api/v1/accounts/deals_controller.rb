@@ -4,18 +4,21 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
   before_action :fetch_deal, only: [:show, :update, :destroy, :move, :assign, :win, :lose]
 
   def index
-    @deals = policy_scope(Deal)
-             .includes(:contact, :assignee, :stage, :pipeline)
-             .where(filter_params)
-             .ordered_by_position
-             .page(params[:page])
-             .per(50)
+    @deals = Deals::Finder.new(scope: policy_scope(Deal), params: filter_params).perform
+                          .includes(:contact, :assignee, :stage, :pipeline)
+                          .ordered_by_position
+                          .page(params[:page])
+                          .per(per_page)
   end
 
-  def show; end
+  def show
+    authorize @deal
+  end
 
   def create
+    authorize Deal
     @deal = Current.account.deals.new(deal_params.except(:labels))
+    @deal.stage = visible_stage!
     @deal.assignee = current_user if @deal.assignee_id.nil?
     ActiveRecord::Base.transaction do
       @deal.save!
@@ -42,14 +45,30 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
     head :ok
   end
 
+  # O import roda no backend, de forma assincrona, reaproveitando o DataImport
+  # que ja existia para contatos: parser CSV de verdade, dedupe de contato e um
+  # CSV de rejeitados com o motivo de cada linha.
+  def import
+    authorize Deal
+
+    if params[:import_file].blank?
+      render_could_not_create_error(I18n.t('errors.deals.import.missing_file'))
+      return
+    end
+
+    ActiveRecord::Base.transaction do
+      import = Current.account.data_imports.create!(data_type: 'deals')
+      import.import_file.attach(params[:import_file])
+    end
+
+    head :ok
+  end
+
   def move
     authorize @deal
-    
-    new_stage = Current.account.pipelines
-                       .find(@deal.pipeline_id)
-                       .stages
-                       .find(params[:stage_id])
-    
+
+    new_stage = policy_scope(Pipeline).find(@deal.pipeline_id).stages.find(params[:stage_id])
+
     @deal.move_to_stage!(new_stage, params[:position])
     render :show
   end
@@ -84,19 +103,27 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
     @deal = Current.account.deals.find(params[:id])
   end
 
+  # Guards against creating a deal inside a pipeline the user cannot see.
+  def visible_stage!
+    Stage.joins(:pipeline).merge(policy_scope(Pipeline)).find(deal_params[:stage_id])
+  end
+
+  DEFAULT_PER_PAGE = 25
+  MAX_PER_PAGE = 100
+
+  def per_page
+    [(params[:per_page].presence || DEFAULT_PER_PAGE).to_i, MAX_PER_PAGE].min
+  end
+
   def filter_params
-    filters = {}
-    filters[:pipeline_id] = params[:pipeline_id] if params[:pipeline_id].present?
-    filters[:stage_id] = params[:stage_id] if params[:stage_id].present?
-    filters[:status] = params[:status] if params[:status].present?
-    filters[:assignee_id] = params[:assignee_id] if params[:assignee_id].present?
-    filters[:contact_id] = params[:contact_id] if params[:contact_id].present?
-    filters
+    params.permit(:pipeline_id, :stage_id, :status, :assignee_id, :contact_id, :inbox_id,
+                  :q, :label, :custom_field_key, :custom_field_value, :min_value, :max_value)
+          .to_h.symbolize_keys
   end
 
   def deal_params
     params.require(:deal).permit(
-      :title, :stage_id, :contact_id, :inbox_id,
+      :title, :value, :stage_id, :contact_id, :inbox_id,
       :assignee_id, :position,
       custom_attributes: {},
       labels: []

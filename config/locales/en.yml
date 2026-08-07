@@ -87,6 +87,11 @@ en:
     data_import:
       data_type:
         invalid: Invalid data type
+    deals:
+      import:
+        missing_file: File is blank
+        no_pipeline: No pipeline with stages available to import into
+        malformed: The CSV file could not be parsed
     contacts:
       import:
         failed: File is blank
@@ -581,6 +586,13 @@ en:
 
       Transcript:
       %{format_messages}
+  default_pipeline:
+    name: 'Sales Pipeline'
+    stages:
+      pending: 'Pending'
+      open: 'Open'
+      won: 'Won'
+      lost: 'Lost'
   agent_capacity_policy:
     inbox_already_assigned: 'Inbox has already been assigned to this policy'
   portals:

@@ -2,12 +2,13 @@
 
 module Pipelines
   class CreateDefaultService
+    # Mirrors the four stages the dashboard proposes when creating a pipeline by
+    # hand, so a brand new account starts with a usable funnel.
     DEFAULT_STAGES = [
-      { name: 'Qualificação', position: 0, win_probability: 10 },
-      { name: 'Contato Feito', position: 1, win_probability: 25 },
-      { name: 'Proposta Enviada', position: 2, win_probability: 50 },
-      { name: 'Negociação', position: 3, win_probability: 75 },
-      { name: 'Fechamento', position: 4, win_probability: 100 }
+      { key: 'pending', position: 1, stage_type: 'not_started', color: '#3b82f6', win_probability: 10 },
+      { key: 'open', position: 2, stage_type: 'active', color: '#eab308', win_probability: 50 },
+      { key: 'won', position: 3, stage_type: 'done', color: '#22c55e', win_probability: 100 },
+      { key: 'lost', position: 4, stage_type: 'closed', color: '#ef4444', win_probability: 0 }
     ].freeze
 
     def initialize(account)
@@ -18,10 +19,10 @@ module Pipelines
       return if @account.pipelines.exists?
 
       ActiveRecord::Base.transaction do
-        pipeline = @account.pipelines.create!(name: 'Funil de Vendas', is_default: true)
+        pipeline = @account.pipelines.create!(name: I18n.t('default_pipeline.name'), is_default: true)
 
-        DEFAULT_STAGES.each do |stage_attrs|
-          pipeline.stages.create!(stage_attrs)
+        DEFAULT_STAGES.each do |attrs|
+          pipeline.stages.create!(attrs.except(:key).merge(name: I18n.t("default_pipeline.stages.#{attrs[:key]}")))
         end
 
         pipeline
