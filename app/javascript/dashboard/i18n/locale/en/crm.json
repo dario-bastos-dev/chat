@@ -173,7 +173,6 @@
       "TITLE": "CRM Reports",
       "SUMMARY": "Summary",
       "SELECT_PIPELINE": "Select Pipeline",
-      "ALL_PIPELINES": "All pipelines",
       "DOWNLOAD": "Download Report",
       "DOWNLOAD_ERROR": "Error downloading report",
       "TOTAL_DEALS": "Total Deals",

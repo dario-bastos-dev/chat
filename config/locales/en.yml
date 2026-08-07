@@ -117,6 +117,9 @@ en:
     data_import:
       data_type:
         invalid: Invalid data type
+    crm:
+      reports:
+        pipeline_required: 'A pipeline must be selected'
     deals:
       import:
         missing_file: File is blank

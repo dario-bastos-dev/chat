@@ -6,7 +6,9 @@
           v-model="selectedPipelineId"
           class="h-8 min-w-[200px] px-3 text-sm border rounded-lg cursor-pointer bg-n-alpha-1 border-n-weak text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand"
         >
-          <option :value="null">{{ $t('CRM.REPORTS.ALL_PIPELINES') }}</option>
+          <option v-if="!pipelines.length" :value="null" disabled>
+            {{ $t('CRM.REPORTS.SELECT_PIPELINE') }}
+          </option>
           <option
             v-for="pipeline in pipelines"
             :key="pipeline.id"
@@ -78,7 +80,7 @@
               <span class="text-lg font-semibold truncate text-n-slate-12">
                 {{ card.value }}
               </span>
-              <span class="text-xs truncate text-n-slate-11">
+              <span class="text-xs leading-tight text-n-slate-11">
                 {{ card.label }}
               </span>
             </div>
@@ -433,6 +435,17 @@ export default {
     selectedPipelineId() {
       this.fetchAllData();
     },
+    // O relatorio e sempre de um funil: agregar varios mistura etapas de
+    // funis diferentes e torna ciclo medio e forecast sem sentido.
+    pipelines: {
+      immediate: true,
+      handler(list) {
+        if (this.selectedPipelineId || !list?.length) return;
+
+        const fallback = list.find(pipeline => pipeline.is_default) || list[0];
+        this.selectedPipelineId = fallback.id;
+      },
+    },
   },
   mounted() {
     this.fetchPipelines();
@@ -450,6 +463,8 @@ export default {
       fetchPipelines: 'pipelines/get',
     }),
     async fetchAllData() {
+      if (!this.selectedPipelineId) return;
+
       this.isLoading = true;
       this.hasError = false;
       try {
@@ -471,7 +486,7 @@ export default {
       return {
         from: this.from,
         to: this.to,
-        pipelineId: this.selectedPipelineId || undefined,
+        pipelineId: this.selectedPipelineId,
         groupBy: this.groupBy,
       };
     },

@@ -130,17 +130,17 @@ class Crm::ReportBuilder
   private
 
   def period_scope
-    @period_scope ||= begin
-      relation = @scope.where(created_at: range)
-      relation = relation.where(pipeline_id: @params[:pipeline_id]) if @params[:pipeline_id].present?
-      relation
-    end
+    @period_scope ||= @scope.where(created_at: range, pipeline_id: pipeline_id)
   end
 
   def stages
-    scope = Stage.joins(:pipeline).where(pipelines: { account_id: @account.id })
-    scope = scope.where(pipeline_id: @params[:pipeline_id]) if @params[:pipeline_id].present?
-    scope.ordered
+    Stage.joins(:pipeline)
+         .where(pipelines: { account_id: @account.id }, pipeline_id: pipeline_id)
+         .ordered
+  end
+
+  def pipeline_id
+    @params.fetch(:pipeline_id)
   end
 
   def range
@@ -156,8 +156,7 @@ class Crm::ReportBuilder
   end
 
   def won_lost_series(column, status)
-    @scope.where(status: status, column => range)
-          .then { |rel| @params[:pipeline_id].present? ? rel.where(pipeline_id: @params[:pipeline_id]) : rel }
+    @scope.where(status: status, pipeline_id: pipeline_id, column => range)
           .group_by_period(group_by, column, range: range).count
   end
 

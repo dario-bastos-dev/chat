@@ -2,6 +2,7 @@
 
 class Api::V1::Accounts::Crm::ReportsController < Api::V1::Accounts::BaseController
   before_action :check_authorization
+  before_action :ensure_pipeline
 
   def summary
     render json: builder.summary
@@ -39,6 +40,15 @@ class Api::V1::Accounts::Crm::ReportsController < Api::V1::Accounts::BaseControl
 
   def check_authorization
     authorize :report, :view?
+  end
+
+  # O relatorio e sempre de um unico funil. Agregar varios mistura etapas de
+  # funis diferentes e torna ciclo medio e forecast sem sentido, entao a
+  # ausencia do parametro e erro, nao um "todos".
+  def ensure_pipeline
+    return if params[:pipeline_id].present?
+
+    render_could_not_create_error(I18n.t('errors.crm.reports.pipeline_required'))
   end
 
   # O escopo passa pela policy de negocios: o relatorio nunca soma negocios que
