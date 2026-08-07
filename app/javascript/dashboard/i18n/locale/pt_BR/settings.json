@@ -383,7 +383,8 @@
     "SECURITY": "Segurança",
     "CRM": "CRM",
     "CRM_DEALS": "Negócios",
-    "CONVERSATION_WORKFLOW": "Fluxo de Conversas"
+    "CONVERSATION_WORKFLOW": "Fluxo de Conversas",
+    "REPORTS_CRM": "CRM"
   },
   "BILLING_SETTINGS": {
     "TITLE": "Cobrança",
@@ -821,5 +822,4 @@
       "CANCEL_BUTTON_LABEL": "Cancelar"
     }
   }
-
 }

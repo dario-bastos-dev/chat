@@ -121,6 +121,10 @@
       "FEATURES": {
         "INBOUND_EMAIL_ENABLED": "A continuidade das conversas com e-mails está ativada para sua conta.",
         "CUSTOM_EMAIL_DOMAIN_ENABLED": "Você pode receber e-mails em seu domínio personalizado agora."
+      },
+      "CRM_CURRENCY": {
+        "LABEL": "Moeda do CRM",
+        "HELP": "Moeda usada nos valores de negócio em todo o CRM. Uma única moeda por conta mantém os totais por etapa e o forecast coerentes."
       }
     },
     "UPDATE_CHATWOOT": "Uma atualização {latestChatwootVersion} para o Chatwoot está disponível. Por favor, atualize sua instância.",

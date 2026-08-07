@@ -129,7 +129,25 @@
         "ADD": "Adicionar Negócio",
         "CREATE_SUCCESS": "Negócio criado com sucesso!",
         "VIEW_IN_KANBAN": "Ver no Kanban"
-      }
+      },
+      "WEIGHTED_VALUE_HELP": "Soma dos valores em aberto ponderada pela probabilidade de ganho de cada etapa",
+      "VALUE_HELP": "Valor na moeda da conta",
+      "VALUE_INVALID": "O valor deve ser zero ou maior",
+      "VALUE_ERROR": "Erro ao atualizar o valor do negócio",
+      "FILTER_VALUE_RANGE": "Faixa de valor",
+      "FILTER_MIN": "Mín",
+      "FILTER_MAX": "Máx",
+      "LOAD_ERROR": "Erro ao carregar os negócios",
+      "LOAD_MORE": "Carregar mais ({count} restantes)",
+      "LOADING_MORE": "Carregando...",
+      "LOST_REASON_OTHER": "Outro (descreva abaixo)",
+      "STATUS_OPEN": "Aberto",
+      "DELETE_SUCCESS": "Negócio excluído com sucesso.",
+      "CREATE_SUCCESS": "Negócio criado com sucesso.",
+      "CLAIM": "Assumir",
+      "CLAIM_SUCCESS": "Negócio atribuído a você.",
+      "CLAIM_ERROR": "Não foi possível atribuir o negócio a você.",
+      "ROTTING_TOOLTIP": "Sem atividade há {days} dias nesta etapa"
     },
     "ACTIVITIES": {
       "TITLE": "Atividades",
@@ -171,7 +189,55 @@
       "AGENT": "Agente",
       "CREATED": "Criados",
       "OPEN": "Aberto",
-      "NO_DATA": "Nenhum dado disponível"
+      "NO_DATA": "Nenhum dado disponível",
+      "LOAD_ERROR": "Não foi possível carregar os relatórios do CRM. Os números abaixo podem estar incompletos.",
+      "RETRY": "Tentar novamente"
+    },
+    "FILTERS": {
+      "TITLE": "Filtros do Kanban",
+      "CLEAR": "Limpar Filtros",
+      "CLEAR_SHORT": "Limpar",
+      "LABEL": "Filtros",
+      "SEARCH_PLACEHOLDER": "Pesquisar por nome do lead...",
+      "SEARCH_DEALS_PLACEHOLDER": "Pesquisar por negócio ou contato...",
+      "BY_STAGE": "Filtrar por Etapa",
+      "ALL_STAGES": "Todas as Etapas",
+      "BY_TAG": "Filtrar por Tag/Etiqueta",
+      "ALL_TAGS": "Todas as Tags",
+      "CUSTOM_FIELD": "Campo Personalizado",
+      "NO_FIELD": "Nenhum campo",
+      "VALUE_PLACEHOLDER": "Valor..."
+    },
+    "BULK": {
+      "ACTIONS": "Ações",
+      "SELECT_ALL": "Selecionar todos",
+      "SELECTED": "{count} selecionado(s)",
+      "CANCEL": "Cancelar",
+      "MOVE_STAGE": "Mover Etapa",
+      "EXPORT": "Exportar",
+      "IMPORT": "Importar",
+      "DELETE": "Deletar",
+      "MOVE_TITLE": "Mover Negócios em Lote",
+      "MOVE_DESCRIPTION": "Selecione a nova etapa e o funil para mover os {count} negócio(s) selecionado(s):",
+      "MOVING": "Movendo negócios...",
+      "MOVE_SUCCESS": "Negócio(s) movido(s) com sucesso!",
+      "MOVE_ERROR": "Erro ao mover os negócios.",
+      "DELETE_TITLE": "Excluir Negócios",
+      "DELETE_MESSAGE": "Tem certeza que deseja excluir os {count} negócio(s) selecionado(s)? Esta ação não pode ser desfeita.",
+      "DELETE_SUCCESS": "Negócio(s) excluído(s) com sucesso.",
+      "DELETE_ERROR": "Ocorreu um erro ao deletar os negócios.",
+      "EXPORT_SUCCESS": "Negócios exportados com sucesso!"
+    },
+    "IMPORT": {
+      "EMPTY_FILE": "O arquivo CSV está vazio ou inválido.",
+      "MISSING_TITLE_COLUMN": "A coluna \"title\" é obrigatória no CSV.",
+      "NO_STAGE": "Nenhum funil com etapas disponível para importar.",
+      "STARTED": "Iniciando importação de negócios...",
+      "PARTIAL": "{success} negócio(s) importado(s), {skipped} linha(s) ignorada(s).",
+      "SUCCESS": "{count} negócio(s) importado(s) com sucesso!",
+      "READ_ERROR": "Erro ao ler ou processar o arquivo CSV.",
+      "QUEUED": "Importação iniciada. Você será avisado quando terminar.",
+      "HELP": "Colunas esperadas: title (obrigatória), value, stage, contact_name, contact_email, contact_phone, assignee_email."
     }
   }
 }
