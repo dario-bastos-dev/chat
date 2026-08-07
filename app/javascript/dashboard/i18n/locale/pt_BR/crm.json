@@ -173,6 +173,7 @@
       "TITLE": "Relatórios CRM",
       "SUMMARY": "Resumo",
       "SELECT_PIPELINE": "Selecionar Pipeline",
+      "ALL_PIPELINES": "Todos os funis",
       "DOWNLOAD": "Baixar Relatório",
       "DOWNLOAD_ERROR": "Erro ao baixar relatório",
       "TOTAL_DEALS": "Total de Negócios",

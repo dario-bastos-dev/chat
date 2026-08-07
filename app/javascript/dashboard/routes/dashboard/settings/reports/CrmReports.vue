@@ -2,18 +2,19 @@
   <div class="flex flex-col gap-6 p-4">
     <ReportHeader :header-title="$t('CRM.REPORTS.TITLE')">
       <div class="flex items-center gap-2">
-        <multiselect
-          v-model="selectedPipeline"
-          :options="pipelines"
-          :placeholder="$t('CRM.REPORTS.SELECT_PIPELINE')"
-          label="name"
-          track-by="id"
-          :allow-empty="true"
-          :show-labels="false"
-          class="min-w-[200px]"
-          @select="onPipelineChange"
-          @remove="onPipelineChange"
-        />
+        <select
+          v-model="selectedPipelineId"
+          class="h-8 min-w-[200px] px-3 text-sm border rounded-lg cursor-pointer bg-n-alpha-1 border-n-weak text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand"
+        >
+          <option :value="null">{{ $t('CRM.REPORTS.ALL_PIPELINES') }}</option>
+          <option
+            v-for="pipeline in pipelines"
+            :key="pipeline.id"
+            :value="pipeline.id"
+          >
+            {{ pipeline.name }}
+          </option>
+        </select>
         <V4Button
           :label="$t('CRM.REPORTS.DOWNLOAD')"
           icon="i-ph-download-simple"
@@ -105,27 +106,34 @@
             class="flex items-center gap-3"
           >
             <!-- Rótulo em coluna fixa: antes ficava sobre a barra -->
-            <div class="flex flex-col w-40 shrink-0">
-              <span class="text-xs font-medium truncate text-n-slate-12">
+            <div class="flex flex-col w-56 shrink-0">
+              <span
+                class="text-xs font-medium truncate text-n-slate-12"
+                :title="stage.name"
+              >
                 {{ stage.name }}
               </span>
               <span class="text-[11px] text-n-slate-11">
                 {{ formatCurrency(stage.value) }}
               </span>
             </div>
-            <div class="flex-1 h-7 rounded-md bg-n-alpha-1">
+            <div class="flex-1 h-6 overflow-hidden rounded-md bg-n-alpha-1">
               <div
-                class="flex items-center justify-end h-full px-2 transition-all duration-300 rounded-md min-w-8"
+                class="h-full transition-all duration-300 rounded-md"
                 :style="{
-                  width: `${getFunnelWidth(stage, index)}%`,
+                  width: `${getFunnelWidth(stage)}%`,
                   backgroundColor: getStageColor(index),
                 }"
-              >
-                <span class="text-xs font-semibold text-white">
-                  {{ stage.count }}
-                </span>
-              </div>
+              />
             </div>
+            <!-- Contagem fora da barra: dentro dela desaparecia quando a etapa
+                 tinha poucos negócios -->
+            <span
+              class="w-10 text-xs font-semibold text-right shrink-0"
+              :class="stage.count ? 'text-n-slate-12' : 'text-n-slate-10'"
+            >
+              {{ stage.count }}
+            </span>
           </div>
         </div>
       </section>
@@ -201,10 +209,10 @@
               >
                 <td class="px-3 py-2">
                   <div class="flex items-center gap-2 min-w-0">
-                    <thumbnail
+                    <Avatar
                       :src="agent.thumbnail"
-                      :username="agent.name"
-                      size="24px"
+                      :name="agent.name"
+                      :size="24"
                     />
                     <span class="truncate text-n-slate-12">
                       {{ agent.name }}
@@ -330,6 +338,7 @@ import Spinner from 'shared/components/Spinner.vue';
 import V4Button from 'dashboard/components-next/button/Button.vue';
 import ReportHeader from './components/ReportHeader.vue';
 import ReportFilterSelector from './components/FilterSelector.vue';
+import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import CrmReportsAPI from 'dashboard/api/crmReports';
 import { formatDealValue } from 'dashboard/helper/crmCurrency';
 
@@ -341,13 +350,14 @@ export default {
     V4Button,
     ReportHeader,
     ReportFilterSelector,
+    Avatar,
   },
   data() {
     return {
       isLoading: false,
       hasError: false,
       currency: 'BRL',
-      selectedPipeline: null,
+      selectedPipelineId: null,
       from: 0,
       to: 0,
       groupBy: 'day',
@@ -420,7 +430,7 @@ export default {
     },
   },
   watch: {
-    selectedPipeline() {
+    selectedPipelineId() {
       this.fetchAllData();
     },
   },
@@ -461,7 +471,7 @@ export default {
       return {
         from: this.from,
         to: this.to,
-        pipelineId: this.selectedPipeline?.id,
+        pipelineId: this.selectedPipelineId || undefined,
         groupBy: this.groupBy,
       };
     },
@@ -627,9 +637,6 @@ export default {
       this.groupBy = groupBy?.period || 'day';
       this.fetchAllData();
     },
-    onPipelineChange() {
-      this.fetchAllData();
-    },
     async downloadReport() {
       try {
         const response = await CrmReportsAPI.downloadReport({
@@ -661,12 +668,13 @@ export default {
     formatCurrency(value) {
       return formatDealValue(value, this.currency);
     },
-    getFunnelWidth(stage, index) {
-      if (!this.funnelData.length) return 100;
-      const maxCount = Math.max(...this.funnelData.map(s => s.count));
-      const minWidth = 40;
-      const calculated = (stage.count / maxCount) * 100;
-      return Math.max(calculated, minWidth);
+    // Largura estritamente proporcional. O piso de 40% que existia antes fazia
+    // uma etapa vazia parecer ter quase metade do volume da maior.
+    getFunnelWidth(stage) {
+      const maxCount = Math.max(...this.funnelData.map(item => item.count), 0);
+      if (!maxCount || !stage.count) return 0;
+
+      return Math.max((stage.count / maxCount) * 100, 2);
     },
     getStageColor(index) {
       const colors = [
