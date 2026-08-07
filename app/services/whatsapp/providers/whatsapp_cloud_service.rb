@@ -75,6 +75,22 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
     csat_template_service.get_template_status(template_name)
   end
 
+  def create_message_template(params)
+    template_management_service.create_template(params)
+  end
+
+  def delete_message_template(template_name)
+    template_management_service.delete_template(template_name)
+  end
+
+  def message_template_status(template_name)
+    template_management_service.template_status(template_name)
+  end
+
+  def upload_template_media(file, format)
+    Whatsapp::MediaUploadService.new(whatsapp_channel).upload(file, format)
+  end
+
   def media_url(media_id, phone_number_id = nil)
     url = "#{api_base_path}/#{api_version}/#{media_id}"
     url += "?phone_number_id=#{phone_number_id}" if phone_number_id
@@ -85,6 +101,10 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
 
   def csat_template_service
     @csat_template_service ||= Whatsapp::CsatTemplateService.new(whatsapp_channel)
+  end
+
+  def template_management_service
+    @template_management_service ||= Whatsapp::TemplateManagementService.new(whatsapp_channel)
   end
 
   def api_version

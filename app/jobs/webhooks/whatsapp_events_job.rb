@@ -6,6 +6,10 @@ class Webhooks::WhatsappEventsJob < MutexApplicationJob
   retry_on LockAcquisitionError, wait: 2.seconds, attempts: 20
 
   def perform(params = {})
+    # Template status payloads carry no phone metadata, so they can't be routed
+    # through the per-channel lookup below. They are WABA scoped, not number scoped.
+    return handle_template_status_update(params) if template_status_event?(params)
+
     channel = find_channel_from_whatsapp_business_payload(params)
 
     if channel_is_inactive?(channel)
@@ -86,6 +90,19 @@ class Webhooks::WhatsappEventsJob < MutexApplicationJob
   end
 
   private
+
+  def template_status_event?(params)
+    params.dig(:entry, 0, :changes, 0, :field) == 'message_template_status_update'
+  end
+
+  def handle_template_status_update(params)
+    change = params.dig(:entry, 0, :changes, 0)
+
+    Whatsapp::TemplateStatusUpdateService.new(
+      waba_id: params.dig(:entry, 0, :id),
+      event_value: change[:value]
+    ).perform
+  end
 
   # Echo payloads reverse the fields — `from` is the business number and `to` is the contact.
   # Returns nil for status-only webhooks so they bypass the lock.
