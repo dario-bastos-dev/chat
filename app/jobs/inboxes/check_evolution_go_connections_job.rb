@@ -4,8 +4,12 @@ class Inboxes::CheckEvolutionGoConnectionsJob < ApplicationJob
   # HTTP status codes that indicate the instance is invalid and must be recreated
   CRITICAL_ERROR_CODES = [400, 401, 404].freeze
 
-  def perform
-    evolution_go_channels.find_each(batch_size: 50) do |channel|
+  # Runs for every Evolution GO channel on the cron schedule, or for a single channel
+  # when a CONNECTION close webhook asks for an out-of-band check.
+  def perform(channel_id = nil)
+    channels = channel_id.present? ? evolution_go_channels.where(id: channel_id) : evolution_go_channels
+
+    channels.find_each(batch_size: 50) do |channel|
       next if channel.account.blank? || channel.account.suspended?
       next if channel.inbox.blank?
 

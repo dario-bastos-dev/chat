@@ -27,6 +27,7 @@
     },
     "PARSER": {
       "VARIABLES_LABEL": "Variáveis",
+      "HEADER_VARIABLES_LABEL": "Variáveis do cabeçalho",
       "LANGUAGE": "Idioma",
       "CATEGORY": "Categoria",
       "VARIABLE_PLACEHOLDER": "Insira o valor para {variable}",
@@ -41,7 +42,9 @@
       "COUPON_CODE": "Digite o código do cupom (máx. 15 caracteres)",
       "MEDIA_URL_LABEL": "Digite a URL {type}",
       "DOCUMENT_NAME_PLACEHOLDER": "Informe o nome do arquivo do documento (ex.: Comprovante_2025.pdf)",
-      "BUTTON_PARAMETER": "Insira o parâmetro do botão"
+      "BUTTON_PARAMETER": "Insira o parâmetro do botão",
+      "MEDIA_FROM_TEMPLATE": "Usando a mídia aprovada junto com este template.",
+      "MEDIA_REPLACE": "Usar outra URL"
     }
   }
 }

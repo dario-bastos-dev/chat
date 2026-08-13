@@ -5,7 +5,7 @@ class AutoAssignment::AgentAssignmentService
   pattr_initialize [:conversation!, :allowed_agent_ids!]
 
   def find_assignee
-    round_robin_manage_service.available_agent(allowed_agent_ids: allowed_online_agent_ids)
+    round_robin_manage_service.available_agent(allowed_agent_ids: eligible_agent_ids)
   end
 
   def perform
@@ -41,6 +41,14 @@ class AutoAssignment::AgentAssignmentService
 
     # the online user ids are string, since its from redis, allowed member ids are integer, since its from active record
     @allowed_online_agent_ids ||= online_agent_ids & allowed_agent_ids&.map(&:to_s)
+  end
+
+  # Teams can opt in to including offline/busy agents in the round robin,
+  # e.g. when the team wants every new conversation assigned even outside working hours.
+  def eligible_agent_ids
+    return allowed_agent_ids&.map(&:to_s) if conversation.team&.allow_offline_assignment?
+
+    allowed_online_agent_ids
   end
 
   def round_robin_manage_service

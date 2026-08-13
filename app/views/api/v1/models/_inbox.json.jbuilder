@@ -133,7 +133,7 @@ json.bot_name resource.channel.try(:bot_name) if resource.telegram?
 
 ### WhatsApp Channel
 if resource.whatsapp?
-  message_templates = resource.channel.try(:message_templates)
+  message_templates = resource.channel.try(:message_templates_with_media)
   json.message_templates message_templates.is_a?(Array) ? message_templates : []
   json.provider_config resource.channel.try(:provider_config) if Current.account_user&.administrator?
   if Current.account_user&.administrator? &&
@@ -141,10 +141,15 @@ if resource.whatsapp?
      (resource.channel.try(:provider_config) || {}).to_h['source'] == 'embedded_signup'
     json.business_management_token_configured resource.channel.try(:business_management_token).present?
   end
-  # Only show reauthorization for embedded signup; manual flow uses API keys, not OAuth
+  # Evolution channels lose the WhatsApp session (QR pairing), so they always surface the alert.
+  # For the remaining providers, only embedded signup can be reauthorized; manual flow uses API keys, not OAuth
   json.reauthorization_required(
-    (resource.channel.try(:provider_config) || {}).to_h['source'] == 'embedded_signup' &&
-    resource.channel.try(:reauthorization_required?)
+    if resource.channel.try(:provider).in?(%w[evolution evolution_go])
+      resource.channel.try(:reauthorization_required?)
+    else
+      (resource.channel.try(:provider_config) || {}).to_h['source'] == 'embedded_signup' &&
+        resource.channel.try(:reauthorization_required?)
+    end
   )
 end
 

@@ -16,6 +16,7 @@ import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import SettingsLayout from '../SettingsLayout.vue';
 import TemplateCard from './TemplateCard.vue';
 import TemplatePreviewDrawer from './TemplatePreviewDrawer.vue';
+import NewTemplateDialog from './NewTemplateDialog.vue';
 import { formatTemplateLanguage, groupTemplates } from './templateUtils';
 
 const FUZZY_SEARCH_KEYS = [
@@ -45,6 +46,7 @@ const selectedLanguage = ref('all');
 const selectedTemplate = ref(null);
 const openFilterMenu = ref(null);
 const previewPanelRef = ref(null);
+const newTemplatePanelRef = ref(null);
 const templateRecordsByInboxId = new Map();
 const {
   run: runTemplateRequest,
@@ -84,6 +86,19 @@ const selectedInbox = computed(() =>
     inbox => String(inbox.id) === selectedInboxId.value
   )
 );
+
+// Creating a template in-app goes through the Cloud API, so only whatsapp_cloud
+// inboxes qualify. Twilio and 360dialog still fall back to the provider console.
+const creatableInboxes = computed(() =>
+  whatsappInboxes.value.filter(
+    inbox =>
+      inbox.channel_type === INBOX_TYPES.WHATSAPP &&
+      inbox.provider === 'whatsapp_cloud' &&
+      (!selectedInbox.value || selectedInbox.value.id === inbox.id)
+  )
+);
+
+const canCreateTemplate = computed(() => creatableInboxes.value.length > 0);
 
 const newTemplateUrl = computed(() => {
   if (selectedInbox.value) {
@@ -289,6 +304,10 @@ const fetchTemplates = async () => {
   }
 };
 
+const handleEditTemplate = ({ template, inboxId }) => {
+  newTemplatePanelRef.value?.open(template, inboxId);
+};
+
 onActivated(fetchTemplates);
 onDeactivated(abortTemplateRequest);
 </script>
@@ -354,8 +373,20 @@ onDeactivated(abortTemplateRequest);
             }}
           </span>
         </template>
-        <template v-if="newTemplateUrl" #actions>
-          <a :href="newTemplateUrl" target="_blank" rel="noopener noreferrer">
+        <template v-if="canCreateTemplate || newTemplateUrl" #actions>
+          <Button
+            v-if="canCreateTemplate"
+            :label="$t('WHATSAPP_TEMPLATE_MGMT.NEW_TEMPLATE')"
+            icon="i-lucide-plus"
+            size="sm"
+            @click="newTemplatePanelRef?.open()"
+          />
+          <a
+            v-else
+            :href="newTemplateUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Button
               :label="$t('WHATSAPP_TEMPLATE_MGMT.NEW_TEMPLATE')"
               icon="i-lucide-plus"
@@ -386,6 +417,16 @@ onDeactivated(abortTemplateRequest);
       </div>
     </template>
 
-    <TemplatePreviewDrawer ref="previewPanelRef" :template="selectedTemplate" />
+    <TemplatePreviewDrawer
+      ref="previewPanelRef"
+      :template="selectedTemplate"
+      @deleted="fetchTemplates"
+      @edit="handleEditTemplate"
+    />
+    <NewTemplateDialog
+      ref="newTemplatePanelRef"
+      :inboxes="creatableInboxes"
+      @saved="fetchTemplates"
+    />
   </SettingsLayout>
 </template>

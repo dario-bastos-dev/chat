@@ -47,7 +47,10 @@
       "MANUAL_HELP": "Esta sequência só será iniciada quando alguém a ativar manualmente pelo painel de sequências da conversa.",
       "INBOX": "Limitar Caixas de Entrada (Inboxes)",
       "ALL_INBOXES": "Todas as Inboxes",
-      "SELECTED_INBOXES": "Somente as Inboxes selecionadas (IDs)"
+      "SELECTED_INBOXES": "Somente as Inboxes selecionadas (IDs)",
+      "WEEKDAYS": "Dias da semana permitidos",
+      "WEEKDAYS_HELP": "As mensagens só serão enviadas nos dias selecionados. Fora deles, a sequência aguarda o próximo dia permitido.",
+      "WEEKDAYS_REQUIRED": "Selecione ao menos um dia permitido."
     },
     "DELETE": {
       "TITLE": "Deletar Sequência",

@@ -1,6 +1,7 @@
 <script>
 import { mapGetters } from 'vuex';
 import AutomationActionTeamMessageInput from './AutomationActionTeamMessageInput.vue';
+import AutomationActionMessageInput from './AutomationActionMessageInput.vue';
 import AutomationActionFileInput from './AutomationFileInput.vue';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
@@ -12,6 +13,7 @@ import { useAccount } from 'dashboard/composables/useAccount';
 export default {
   components: {
     AutomationActionTeamMessageInput,
+    AutomationActionMessageInput,
     AutomationActionFileInput,
     WootMessageEditor,
     NextButton,
@@ -292,12 +294,14 @@ export default {
         />
         <template v-if="showActionInput && !isVerticalLayout">
           <template v-if="isCloudFeatureEnabled('crm') && (action_name === 'create_deal' || action_name === 'move_deal_stage')">
+            <!-- No min-width here: the dropdown root would reserve the space while the trigger
+                 button stays content-sized, leaving a visible gap between the two selects. -->
             <SingleSelect
               v-model="selectedPipeline"
               :options="pipelineOptions"
               placeholder="Selecionar pipeline"
               :dropdown-max-height="dropdownMaxHeight"
-              class="min-w-[160px]"
+              class="flex-shrink-0"
             />
             <SingleSelect
               v-if="selectedPipeline"
@@ -305,7 +309,7 @@ export default {
               :options="stageOptions"
               placeholder="Selecionar etapa"
               :dropdown-max-height="dropdownMaxHeight"
-              class="min-w-[160px]"
+              class="flex-shrink-0"
             />
           </template>
           <template v-else>
@@ -358,8 +362,13 @@ export default {
         :teams="dropdownValues"
         :dropdown-max-height="dropdownMaxHeight"
       />
+      <AutomationActionMessageInput
+        v-if="inputType === 'textarea' && action_name === 'send_message'"
+        v-model="castMessageVmodel"
+        :dropdown-max-height="dropdownMaxHeight"
+      />
       <WootMessageEditor
-        v-if="inputType === 'textarea'"
+        v-else-if="inputType === 'textarea'"
         v-model="castMessageVmodel"
         rows="4"
         enable-variables

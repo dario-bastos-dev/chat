@@ -3,6 +3,12 @@ class Whatsapp::TemplateManagementService
   BUTTON_TYPES = %w[QUICK_REPLY URL PHONE_NUMBER].freeze
   MEDIA_FORMATS = %w[IMAGE VIDEO DOCUMENT].freeze
   NAME_FORMAT = /\A[a-z0-9_]{1,512}\z/
+  # Placeholders are either all numeric ({{1}}) or all named ({{order_id}});
+  # Meta rejects a template that mixes the two styles.
+  VARIABLE_PATTERN = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/
+  NAMED_VARIABLE_FORMAT = /\A[a-z][a-z0-9]*(?:_[a-z0-9]+)*\z/
+  POSITIONAL_FORMAT = 'POSITIONAL'.freeze
+  NAMED_FORMAT = 'NAMED'.freeze
   DEFAULT_LANGUAGE = 'en'.freeze
   BODY_MAX_LENGTH = 1024
   HEADER_MAX_LENGTH = 60
@@ -19,6 +25,15 @@ class Whatsapp::TemplateManagementService
     request_body = build_request_body(params)
     response = HTTParty.post("#{business_account_path}/message_templates", headers: api_headers, body: request_body.to_json)
     process_creation_response(response, request_body)
+  rescue ValidationError => e
+    { success: false, error: e.message }
+  end
+
+  # Meta edits a template by id, not by name, and only the components can change.
+  def update_template(template_id, params)
+    request_body = build_update_body(params)
+    response = HTTParty.post("#{api_base_path}/#{api_version}/#{template_id}", headers: api_headers, body: request_body.to_json)
+    process_update_response(response)
   rescue ValidationError => e
     { success: false, error: e.message }
   end
@@ -45,8 +60,40 @@ class Whatsapp::TemplateManagementService
       name: params[:name],
       language: params[:language].presence || DEFAULT_LANGUAGE,
       category: params[:category],
+      parameter_format: parameter_format(params),
       components: build_components(params)
     }
+  end
+
+  def build_update_body(params)
+    validate_content!(params)
+
+    {
+      parameter_format: parameter_format(params),
+      components: build_components(params)
+    }
+  end
+
+  def process_update_response(response)
+    return { success: true } if response.success?
+
+    Rails.logger.error "WhatsApp template update failed: #{response.code} - #{response.body}"
+    { success: false, error: 'Template update failed', response_body: response.body }
+  end
+
+  def extract_variables(text)
+    text.to_s.scan(VARIABLE_PATTERN).flatten.uniq
+  end
+
+  def named_variables?(variables)
+    variables.any? { |variable| !variable.match?(/\A\d+\z/) }
+  end
+
+  # The format is derived from what the author typed, so the caller never has to
+  # declare it. Header and body must agree, which validate_variable_styles! enforces.
+  def parameter_format(params)
+    variables = extract_variables(params.dig(:body, :text)) + extract_variables(params.dig(:header, :text))
+    named_variables?(variables) ? NAMED_FORMAT : POSITIONAL_FORMAT
   end
 
   def build_components(params)
@@ -66,8 +113,21 @@ class Whatsapp::TemplateManagementService
     return if header[:text].blank?
 
     component = { type: 'HEADER', format: 'TEXT', text: header[:text] }
-    component[:example] = { header_text: Array(header[:example]) } if header[:example].present?
+    component[:example] = header_example(header) if header[:example].present?
     component
+  end
+
+  def header_example(header)
+    variables = extract_variables(header[:text])
+    return { header_text: Array(header[:example]) } unless named_variables?(variables)
+
+    { header_text_named_params: named_params(variables, header[:example]) }
+  end
+
+  def named_params(variables, examples)
+    variables.each_with_index.map do |variable, index|
+      { param_name: variable, example: Array(examples)[index] }
+    end
   end
 
   def media_header_component(header, format)
@@ -80,9 +140,16 @@ class Whatsapp::TemplateManagementService
 
   def body_component(body)
     component = { type: 'BODY', text: body[:text] }
-    # The Cloud API expects body examples as an array of sample sets, one per variable set.
-    component[:example] = { body_text: [Array(body[:example])] } if body[:example].present?
+    component[:example] = body_example(body) if body[:example].present?
     component
+  end
+
+  def body_example(body)
+    variables = extract_variables(body[:text])
+    return { body_text_named_params: named_params(variables, body[:example]) } if named_variables?(variables)
+
+    # Positional examples go as an array of sample sets, one set per variable group.
+    { body_text: [Array(body[:example])] }
   end
 
   def footer_component(footer)
@@ -114,6 +181,13 @@ class Whatsapp::TemplateManagementService
     raise ValidationError, 'Name must contain only lowercase letters, numbers and underscores' unless params[:name].to_s.match?(NAME_FORMAT)
     raise ValidationError, "Category must be one of #{CATEGORIES.join(', ')}" unless CATEGORIES.include?(params[:category])
 
+    validate_content!(params)
+  end
+
+  # Name, language and category are immutable on an edit, so only the content
+  # rules are shared between create and update.
+  def validate_content!(params)
+    validate_variable_styles!(params)
     validate_body!(params[:body])
     validate_header!(params[:header])
     validate_footer!(params[:footer])
@@ -189,19 +263,48 @@ class Whatsapp::TemplateManagementService
     end
   end
 
-  # Meta rejects templates whose placeholders are not sequential from {{1}} or whose
-  # sample values do not match the placeholder count, so we catch it before the request.
+  # Meta rejects templates whose placeholders are not sequential from {{1}}, whose
+  # named placeholders are malformed, or whose sample values do not match the
+  # placeholder count, so we catch all of it before the request.
   def validate_variables!(text, examples, label)
-    placeholders = text.scan(/\{\{(\d+)\}\}/).flatten.map(&:to_i)
-    return if placeholders.empty? && examples.empty?
+    variables = extract_variables(text)
+    return if variables.empty? && examples.empty?
 
-    variables = placeholders.uniq.sort
-    raise ValidationError, "#{label} variables must be numbered sequentially starting at 1" if variables != (1..variables.size).to_a
+    if named_variables?(variables)
+      validate_named_variables!(variables, label)
+    else
+      validate_positional_variables!(variables, label)
+    end
+
     raise ValidationError, "#{label} requires one sample value per variable" if examples.size != variables.size
   end
 
+  def validate_positional_variables!(variables, label)
+    numbers = variables.map(&:to_i).sort
+    return if numbers == (1..numbers.size).to_a
+
+    raise ValidationError, "#{label} variables must be numbered sequentially starting at 1"
+  end
+
+  def validate_named_variables!(variables, label)
+    return if variables.all? { |variable| variable.match?(NAMED_VARIABLE_FORMAT) }
+
+    raise ValidationError,
+          "#{label} variable names must use lowercase letters, numbers and single underscores between words"
+  end
+
+  # A template is either fully positional or fully named; Meta rejects the mix.
+  def validate_variable_styles!(params)
+    header_variables = extract_variables(params.dig(:header, :text))
+    body_variables = extract_variables(params.dig(:body, :text))
+    return if header_variables.empty? || body_variables.empty?
+    return if named_variables?(header_variables) == named_variables?(body_variables)
+
+    raise ValidationError, 'Header and body must both use either numbered or named variables, not a mix'
+  end
+
   def variable_count(text)
-    text.scan(/\{\{\d+\}\}/).size
+    extract_variables(text).size
   end
 
   def process_creation_response(response, request_body)

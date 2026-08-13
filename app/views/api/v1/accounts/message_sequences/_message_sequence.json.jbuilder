@@ -28,6 +28,7 @@ json.macro_execution_time message_sequence.macro_execution_time
 json.restrict_execution_time message_sequence.restrict_execution_time
 json.execution_start_hour message_sequence.execution_start_hour
 json.execution_end_hour message_sequence.execution_end_hour
+json.allowed_weekdays message_sequence.allowed_weekdays
 json.created_by_id message_sequence.created_by_id
 json.created_at message_sequence.created_at.to_i
 json.updated_at message_sequence.updated_at.to_i

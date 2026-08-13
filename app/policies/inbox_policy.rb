@@ -74,6 +74,14 @@ class InboxPolicy < ApplicationPolicy
     @account_user.administrator?
   end
 
+  def whatsapp_profile?
+    @account_user.administrator?
+  end
+
+  def update_whatsapp_profile?
+    @account_user.administrator?
+  end
+
   def reset_secret?
     @account_user.administrator?
   end

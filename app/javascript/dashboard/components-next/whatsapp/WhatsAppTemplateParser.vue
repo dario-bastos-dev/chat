@@ -17,6 +17,7 @@ import { isWhatsAppComplete } from '@chatwoot/utils';
 import Input from 'dashboard/components-next/input/Input.vue';
 import {
   buildTemplateParameters,
+  mergeTemplateParameters,
   allKeysRequired,
   DEFAULT_LANGUAGE,
   DEFAULT_CATEGORY,
@@ -39,6 +40,14 @@ const props = defineProps({
   sendRenderedContent: {
     type: Boolean,
     default: false,
+  },
+  // Variable values saved earlier for this template, when the parser is reopened
+  // on something that already stores them (an automation rule, a sequence step).
+  // Without this the inputs are rebuilt empty on mount and the saved values are
+  // lost on the next save.
+  initialParams: {
+    type: Object,
+    default: () => ({}),
   },
 });
 
@@ -68,6 +77,14 @@ const bodyText = computed(() => {
   return bodyComponent.value?.text || '';
 });
 
+// Buttons are part of what the contact will see, so the preview shows them even
+// though their only editable piece (a URL suffix, a copy code) is handled by the
+// parameter inputs further down.
+const templateButtons = computed(
+  () =>
+    findComponentByType(props.template, COMPONENT_TYPES.BUTTONS)?.buttons || []
+);
+
 const headerText = computed(() => {
   return headerComponent.value?.format === 'TEXT'
     ? headerComponent.value?.text || ''
@@ -76,6 +93,37 @@ const headerText = computed(() => {
 
 const hasMediaHeader = computed(() =>
   MEDIA_FORMATS.includes(headerComponent.value?.format)
+);
+
+// Meta requires the header media on every send — omitting it answers #132000 —
+// so the URL comes from the template instead of being asked for again.
+//
+// A template created through Chatwoot keeps its own copy of the media, which is
+// the stable source. Otherwise the approval sample is used, but only when Meta
+// returned it as a fetchable URL: it can also come back as the raw upload
+// handle
+// (`4::aW1hZ2Uv…`), which is not usable as a link. Anything that is not a URL
+// falls back to asking.
+const boundMediaUrl = computed(() => {
+  if (!hasMediaHeader.value) return '';
+  const storedUrl = props.template.chatwoot_media_url;
+  if (storedUrl) return storedUrl;
+
+  const handle = headerComponent.value?.example?.header_handle?.[0] || '';
+  return /^https?:\/\//.test(handle) ? handle : '';
+});
+
+// Meta signs these URLs and they can expire, so the media stays replaceable.
+const isOverridingMedia = ref(false);
+
+const isMediaFromTemplate = computed(
+  () =>
+    !!boundMediaUrl.value &&
+    processedParams.value.header?.media_url === boundMediaUrl.value
+);
+
+const showMediaInputs = computed(
+  () => !isMediaFromTemplate.value || isOverridingMedia.value
 );
 
 const formatType = computed(() => {
@@ -129,10 +177,17 @@ const v$ = useVuelidate(
 );
 
 const initializeTemplateParameters = () => {
-  processedParams.value = buildTemplateParameters(
-    props.template,
-    hasMediaHeader.value
+  const params = mergeTemplateParameters(
+    buildTemplateParameters(props.template, hasMediaHeader.value),
+    props.initialParams
   );
+
+  if (boundMediaUrl.value && params.header && !params.header.media_url) {
+    params.header.media_url = boundMediaUrl.value;
+  }
+
+  isOverridingMedia.value = false;
+  processedParams.value = params;
 };
 
 const updateMediaUrl = value => {
@@ -231,6 +286,19 @@ defineExpose({
         </div>
       </div>
 
+      <div
+        v-if="templateButtons.length"
+        class="flex flex-col gap-1 pt-3 border-t border-n-strong"
+      >
+        <span
+          v-for="(button, index) in templateButtons"
+          :key="index"
+          class="text-sm font-medium text-center text-n-brand"
+        >
+          {{ button.text || button.title }}
+        </span>
+      </div>
+
       <div class="text-xs text-n-slate-11">
         {{ categoryLabel }}
       </div>
@@ -245,7 +313,22 @@ defineExpose({
             }) || `${formatType} Header`
           }}
         </p>
-        <div class="flex items-center mb-2.5">
+        <div
+          v-if="!showMediaInputs"
+          class="flex gap-2 items-center mb-2.5 text-sm text-n-slate-11"
+        >
+          <span class="flex-1">
+            {{ $t('WHATSAPP_TEMPLATES.PARSER.MEDIA_FROM_TEMPLATE') }}
+          </span>
+          <button
+            type="button"
+            class="font-medium text-n-brand"
+            @click="isOverridingMedia = true"
+          >
+            {{ $t('WHATSAPP_TEMPLATES.PARSER.MEDIA_REPLACE') }}
+          </button>
+        </div>
+        <div v-if="showMediaInputs" class="flex items-center mb-2.5">
           <Input
             :model-value="processedParams.header?.media_url || ''"
             type="url"
@@ -258,7 +341,10 @@ defineExpose({
             @update:model-value="updateMediaUrl"
           />
         </div>
-        <div v-if="isDocumentTemplate" class="flex items-center mb-2.5">
+        <div
+          v-if="showMediaInputs && isDocumentTemplate"
+          class="flex items-center mb-2.5"
+        >
           <Input
             :model-value="processedParams.header?.media_name || ''"
             type="text"

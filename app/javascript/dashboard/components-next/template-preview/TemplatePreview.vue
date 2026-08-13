@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import MessageFormatter from 'shared/helpers/MessageFormatter.js';
 import { TemplateNormalizer } from 'dashboard/services/TemplateNormalizer';
 import {
   PLATFORMS,
@@ -53,6 +54,13 @@ const substituteVariables = (text, variables) => {
   });
 };
 
+// Every preview injects the body as HTML, but a template body is plain text
+// carrying its own line breaks and WhatsApp markup. Formatting it the way
+// message bubbles do keeps the paragraphs and the bold/italic instead of
+// collapsing everything into a single run of text.
+const formatBody = text =>
+  text ? new MessageFormatter(text).formattedMessage : '';
+
 const processedTemplate = computed(() => {
   const normalized = TemplateNormalizer.normalize(
     props.template,
@@ -91,7 +99,7 @@ const processedTemplate = computed(() => {
 
   return {
     ...normalized,
-    content: substituteVariables(content, props.variables),
+    content: formatBody(substituteVariables(content, props.variables)),
     title: substituteVariables(title, props.variables),
     footer: substituteVariables(footer, props.variables),
     image_url: substituteVariables(imageUrl, props.variables),

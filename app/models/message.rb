@@ -109,6 +109,7 @@ class Message < ApplicationRecord
   # [:external_created_at] : Can specify if the message was created at a different timestamp externally
   # [:external_error : Can specify if the message creation failed due to an error at external API
   # [:data] : Used for structured content types such as voice_call
+  # [:history_sync] : Marks a message backfilled from WhatsApp coexistence history, so live-traffic callbacks are skipped
   store :content_attributes, accessors: [:submitted_email, :items, :submitted_values, :email, :in_reply_to, :deleted,
                                          :external_created_at, :story_sender, :story_id, :external_error,
                                          :translations, :in_reply_to_external_id, :is_unsupported, :data], coder: JSON
@@ -323,6 +324,11 @@ class Message < ApplicationRecord
   end
 
   def execute_after_create_commit_callbacks
+    # WhatsApp coexistence history is backfilled months after the fact. Reacting to it as if it were live
+    # traffic would notify agents about old messages, reopen resolved conversations, restart sequences and
+    # re-run automations. The sync service sets the conversation timestamps itself.
+    return if content_attributes['history_sync'].present?
+
     # rails issue with order of active record callbacks being executed https://github.com/rails/rails/issues/20911
     reopen_conversation
     mark_pending_conversation_as_open_for_human_response

@@ -6,13 +6,20 @@ const allElementsNumbers = arr => {
   return arr.every(elem => typeof elem === 'number');
 };
 
+// Dropdown selections arrive as `{ id, name }` objects and are reduced to their
+// id. Actions carrying a richer payload — a WhatsApp template definition, a deal
+// attribute map — have no `id` and must be kept whole, otherwise saving the rule
+// would replace them with `undefined`.
+const isSelectedOption = value =>
+  value && typeof value === 'object' && !Array.isArray(value) && 'id' in value;
+
 const formatArray = params => {
   if (params.length <= 0) {
     params = [];
   } else if (allElementsString(params) || allElementsNumbers(params)) {
     params = [...params];
   } else {
-    params = params.map(val => val.id);
+    params = params.map(val => (isSelectedOption(val) ? val.id : val));
   }
   return params;
 };

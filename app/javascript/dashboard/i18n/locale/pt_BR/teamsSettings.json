@@ -118,6 +118,9 @@
       "AUTO_ASSIGN": {
         "LABEL": "Permitir atribuição automática para este time."
       },
+      "OFFLINE_ASSIGNMENT": {
+        "LABEL": "Também atribuir conversas a agentes offline ou ocupados."
+      },
       "SUBMIT_CREATE": "Criar novo time"
     }
   }

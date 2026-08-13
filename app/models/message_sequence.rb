@@ -33,19 +33,32 @@ class MessageSequence < ApplicationRecord
   validates :execution_start_hour, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 23 }, if: :restrict_execution_time?
   validates :execution_end_hour, numericality: { only_integer: true, greater_than_or_equal_to: 0, less_than_or_equal_to: 23 }, if: :restrict_execution_time?
   validate :execution_hours_range, if: :restrict_execution_time?
+  validate :allowed_weekdays_presence
 
-  accepts_nested_attributes_for :steps, allow_destroy: true
+  accepts_nested_attributes_for :steps, allow_destroy: true,
+                                         reject_if: proc { |attrs|
+                                           attrs['id'].blank? && attrs['content'].blank? && attrs['macro_id'].blank? &&
+                                             attrs['file'].blank? && attrs['template_params'].blank?
+                                         }
   accepts_nested_attributes_for :message_sequence_inboxes, allow_destroy: true
 
   scope :active, -> { where(active: true) }
+
+  def allowed_on_weekday?(wday)
+    allowed_weekdays.include?(wday)
+  end
 
   private
 
   def execution_hours_range
     return if execution_start_hour.blank? || execution_end_hour.blank?
-    
+
     if execution_start_hour >= execution_end_hour
-      errors.add(:execution_end_hour, 'deve ser maior que a hora de início')
+      errors.add(:execution_end_hour, I18n.t('message_sequences.errors.execution_end_hour_range'))
     end
+  end
+
+  def allowed_weekdays_presence
+    errors.add(:allowed_weekdays, I18n.t('message_sequences.errors.allowed_weekdays_blank')) if allowed_weekdays.blank?
   end
 end

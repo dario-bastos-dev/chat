@@ -49,8 +49,40 @@ class Inboxes extends CacheEnabledApiClient {
     );
   }
 
+  getWhatsappProfile(inboxId) {
+    return axios.get(`${this.url}/${inboxId}/whatsapp_profile`);
+  }
+
+  updateWhatsappProfile(inboxId, { profilePicture, websites = [], ...fields }) {
+    const formData = new FormData();
+    Object.entries(fields).forEach(([key, value]) => {
+      formData.append(key, value ?? '');
+    });
+    // Meta clears the list when no website is sent, so an empty array
+    // still needs one blank entry.
+    if (websites.length) {
+      websites.forEach(website => formData.append('websites[]', website));
+    } else {
+      formData.append('websites[]', '');
+    }
+    if (profilePicture) {
+      formData.append('profile_picture', profilePicture);
+    }
+    return axios.post(
+      `${this.url}/${inboxId}/update_whatsapp_profile`,
+      formData
+    );
+  }
+
   createMessageTemplate(inboxId, template) {
     return axios.post(`${this.url}/${inboxId}/message_templates`, { template });
+  }
+
+  updateMessageTemplate(inboxId, name, language, template) {
+    return axios.patch(`${this.url}/${inboxId}/message_templates/${name}`, {
+      language,
+      template,
+    });
   }
 
   deleteMessageTemplate(inboxId, name) {
@@ -60,7 +92,9 @@ class Inboxes extends CacheEnabledApiClient {
   uploadMessageTemplateMedia(inboxId, file, format) {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('format', format);
+    // Not `format`: the API routes default it to 'json' and route defaults win
+    // over the body, so the header format would never reach the controller.
+    formData.append('header_format', format);
     return axios.post(
       `${this.url}/${inboxId}/message_templates/media`,
       formData

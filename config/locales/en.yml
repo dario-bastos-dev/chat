@@ -713,3 +713,6 @@ en:
   message_sequences:
     paused_window: "The message sequence \"%{sequence_name}\" was temporarily suspended because the messaging window of this channel expired. It will resume automatically when the contact replies."
     macro_deleted: "The step of sequence \"%{sequence_name}\" tried to execute a macro that has been deleted. The step was ignored to continue the sequence."
+    errors:
+      execution_end_hour_range: 'must be greater than the start hour'
+      allowed_weekdays_blank: 'must have at least one day selected'

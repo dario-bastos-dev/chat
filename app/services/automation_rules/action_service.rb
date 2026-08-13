@@ -43,7 +43,32 @@ class AutomationRules::ActionService < ActionService
   def send_message(message)
     return if conversation_a_tweet?
 
-    params = { content: message[0], private: false, content_attributes: { automation_rule_id: @rule.id } }
+    action_param = message[0]
+    # A template is stored as a hash in the same action_params slot the plain text uses, so rules
+    # created before templates were supported keep working untouched.
+    return send_whatsapp_template(action_param) if action_param.is_a?(Hash)
+
+    params = { content: action_param, private: false, content_attributes: { automation_rule_id: @rule.id } }
+    Messages::MessageBuilder.new(nil, @conversation, params).perform
+  end
+
+  # Rules are account wide, so a template rule can match a conversation on any channel. Only WhatsApp
+  # reads template_params; anywhere else the message would be delivered empty, so it is skipped.
+  def send_whatsapp_template(action_param)
+    template_params = action_param[:template_params]
+    return if template_params.blank? || template_params[:name].blank?
+
+    unless @conversation.inbox.channel.is_a?(Channel::Whatsapp)
+      Rails.logger.info("[AUTOMATION] Rule #{@rule.id} skipped its template on non-WhatsApp inbox #{@conversation.inbox_id}")
+      return
+    end
+
+    params = {
+      content: render_liquid_variables(action_param[:content]),
+      private: false,
+      content_attributes: { automation_rule_id: @rule.id },
+      template_params: render_liquid_deep(template_params)
+    }
     Messages::MessageBuilder.new(nil, @conversation, params).perform
   end
 
@@ -226,6 +251,17 @@ class AutomationRules::ActionService < ActionService
   end
 
   private
+
+  # Template variables are nested inside processed_params (body, header, buttons), so the whole
+  # structure is walked instead of only its top level.
+  def render_liquid_deep(value)
+    case value
+    when String then render_liquid_variables(value)
+    when Hash then value.transform_values { |nested| render_liquid_deep(nested) }
+    when Array then value.map { |nested| render_liquid_deep(nested) }
+    else value
+    end
+  end
 
   def render_liquid_variables(string)
     return string if string.blank?

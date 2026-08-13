@@ -35,5 +35,17 @@ RSpec.describe AutoAssignment::AgentAssignmentService do
       expect(described_class.new(conversation: conversation,
                                  allowed_agent_ids: inbox_members.map(&:user_id).map(&:to_s)).find_assignee).to eq(inbox_members[4].user)
     end
+
+    context 'when the conversation belongs to a team that allows offline assignment' do
+      let!(:team) { create(:team, account: account, allow_offline_assignment: true) }
+      let!(:conversation) { create(:conversation, inbox: inbox, account: account, team: team) }
+
+      it 'will assign a busy/offline agent from the allowed agent ids' do
+        assignee = described_class.new(conversation: conversation,
+                                        allowed_agent_ids: inbox_members.map(&:user_id).map(&:to_s)).find_assignee
+
+        expect(inbox_members.map(&:user_id)).to include(assignee.id)
+      end
+    end
   end
 end

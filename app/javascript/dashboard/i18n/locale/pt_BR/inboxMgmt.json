@@ -754,7 +754,87 @@
       "BOT_CONFIGURATION": "Configuração do Bot",
       "ACCOUNT_HEALTH": "Saúde da conta",
       "CSAT": "CSAT",
-      "INSTANCE": "Instância"
+      "INSTANCE": "Instância",
+      "WHATSAPP_PROFILE": "Perfil"
+    },
+    "WHATSAPP_PROFILE": {
+      "DESCRIPTION": "Este é o perfil que seus clientes veem no WhatsApp ao abrir o contato da sua empresa.",
+      "FETCH_ERROR": "Não foi possível carregar o perfil do WhatsApp. Tente novamente.",
+      "UPDATE_SUCCESS": "Perfil do WhatsApp atualizado com sucesso.",
+      "UPDATE_ERROR": "Não foi possível atualizar o perfil do WhatsApp. Tente novamente.",
+      "RETRY": "Tentar novamente",
+      "PICTURE": {
+        "LABEL": "Foto do perfil",
+        "HELP_TEXT": "JPG ou PNG, no mínimo 192x192 pixels e até 5 MB.",
+        "FORMAT_ERROR": "O WhatsApp só aceita foto de perfil em JPG ou PNG.",
+        "SIZE_ERROR": "A foto do perfil precisa ter menos de 5 MB."
+      },
+      "ABOUT": {
+        "LABEL": "Recado",
+        "HELP_TEXT": "Frase curta exibida logo abaixo do nome da empresa. Até 139 caracteres.",
+        "PLACEHOLDER": "Atendimento de segunda a sexta, das 9h às 18h"
+      },
+      "BUSINESS_DESCRIPTION": {
+        "LABEL": "Descrição",
+        "HELP_TEXT": "Texto mais longo descrevendo a sua empresa. Até 512 caracteres.",
+        "PLACEHOLDER": "Conte aos seus clientes o que a sua empresa faz"
+      },
+      "VERTICAL": {
+        "LABEL": "Categoria",
+        "HELP_TEXT": "Depois de definida, o WhatsApp não permite remover a categoria.",
+        "PLACEHOLDER": "Selecione uma categoria"
+      },
+      "ADDRESS": {
+        "LABEL": "Endereço",
+        "PLACEHOLDER": "Rua, número, cidade"
+      },
+      "EMAIL": {
+        "LABEL": "E-mail",
+        "PLACEHOLDER": "contato@empresa.com",
+        "ERROR": "Informe um e-mail válido."
+      },
+      "WEBSITES": {
+        "LABEL": "Sites",
+        "HELP_TEXT": "Até dois links, incluindo http:// ou https://.",
+        "PLACEHOLDER": "https://empresa.com",
+        "ERROR": "Informe uma URL válida começando com http:// ou https://."
+      },
+      "VERTICALS": {
+        "OTHER": "Outros",
+        "AUTO": "Automotivo",
+        "BEAUTY": "Beleza, spa e salão",
+        "APPAREL": "Moda e vestuário",
+        "EDU": "Educação",
+        "ENTERTAIN": "Entretenimento",
+        "EVENT_PLAN": "Eventos e cerimonial",
+        "FINANCE": "Finanças e bancos",
+        "GROCERY": "Alimentos e mercado",
+        "GOVT": "Serviço público",
+        "HOTEL": "Hotelaria e hospedagem",
+        "HEALTH": "Saúde e medicina",
+        "NONPROFIT": "Organização sem fins lucrativos",
+        "PROF_SERVICES": "Serviços profissionais",
+        "RETAIL": "Comércio e varejo",
+        "TRAVEL": "Viagens e transporte",
+        "RESTAURANT": "Restaurante",
+        "ALCOHOL": "Bebidas alcoólicas",
+        "ONLINE_GAMBLING": "Apostas e jogos online",
+        "PHYSICAL_GAMBLING": "Apostas e jogos presenciais",
+        "OTC_DRUGS": "Medicamentos sem receita"
+      }
+    },
+    "HISTORY_SYNC": {
+      "TITLE": "Sincronização do histórico",
+      "REFRESH": "Atualizar",
+      "HELP_TEXT": "O WhatsApp envia até 180 dias de conversas do app WhatsApp Business, em partes, ao longo dos minutos seguintes à conexão.",
+      "PROGRESS": "{progress}% sincronizado",
+      "STATUS": {
+        "REQUESTED": "Solicitado ao WhatsApp, aguardando a primeira parte.",
+        "RECEIVING": "Recebendo mensagens.",
+        "COMPLETED": "Histórico sincronizado.",
+        "UNAVAILABLE": "Não há histórico para sincronizar neste número.",
+        "NOT_RECEIVED": "Nenhum histórico recebido. Verifique se o campo history está assinado no app da Meta."
+      }
     },
     "EVOLUTION_INSTANCE": {
       "TITLE": "Configuração da Instância",

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
@@ -7,12 +7,17 @@ import TextArea from 'dashboard/components-next/textarea/TextArea.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import { useAlert } from 'dashboard/composables';
 import InboxesAPI from 'dashboard/api/inboxes';
-import MessageTemplatePreview from './MessageTemplatePreview.vue';
+import TemplateFormPreview from './TemplateFormPreview.vue';
+import { templateToForm } from './templateFormMapper';
 
 const props = defineProps({
   inboxId: { type: [Number, String], required: true },
   isSubmitting: { type: Boolean, default: false },
+  // Present when editing: name and language are immutable on Meta's side.
+  template: { type: Object, default: null },
 });
+
+const isEditing = computed(() => Boolean(props.template));
 
 const emit = defineEmits(['submit', 'cancel']);
 
@@ -22,6 +27,7 @@ const { t } = useI18n();
 // button, which is not supported here yet.
 const CATEGORIES = ['UTILITY', 'MARKETING'];
 const BUTTON_TEXT_MAX_LENGTH = 25;
+const TEMPLATE_NAME_MAX_LENGTH = 512;
 const LANGUAGES = ['pt_BR', 'en', 'en_US', 'es', 'es_ES'];
 const BUTTON_TYPES = ['QUICK_REPLY', 'URL', 'PHONE_NUMBER'];
 const HEADER_FORMATS = ['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT'];
@@ -37,11 +43,12 @@ const buildInitialState = () => ({
   language: 'pt_BR',
   headerFormat: 'TEXT',
   headerText: '',
-  headerExample: '',
+  headerExamples: [],
   mediaHandle: '',
+  mediaBlobId: '',
   mediaFileName: '',
   bodyText: '',
-  bodyExample: '',
+  bodyExamples: [],
   footerText: '',
   buttons: [],
 });
@@ -57,7 +64,7 @@ const mediaAccept = computed(() => MEDIA_ACCEPT[form.headerFormat] || '');
 const categoryOptions = computed(() =>
   CATEGORIES.map(value => ({
     value,
-    label: t(`INBOX_MGMT.MESSAGE_TEMPLATES.CATEGORIES.${value}`),
+    label: t(`WHATSAPP_TEMPLATE_MGMT.CATEGORIES.${value}`),
   }))
 );
 const languageOptions = computed(() =>
@@ -66,36 +73,85 @@ const languageOptions = computed(() =>
 const headerFormatOptions = computed(() =>
   HEADER_FORMATS.map(value => ({
     value,
-    label: t(`INBOX_MGMT.MESSAGE_TEMPLATES.HEADER_FORMATS.${value}`),
+    label: t(`WHATSAPP_TEMPLATE_MGMT.HEADER_FORMATS.${value}`),
   }))
 );
 const buttonTypeOptions = computed(() =>
   BUTTON_TYPES.map(value => ({
     value,
-    label: t(`INBOX_MGMT.MESSAGE_TEMPLATES.BUTTON_TYPES.${value}`),
+    label: t(`WHATSAPP_TEMPLATE_MGMT.BUTTON_TYPES.${value}`),
   }))
 );
 
-const countVariables = text => (text.match(/\{\{\d+\}\}/g) || []).length;
+// Placeholders can be numbered ({{1}}) or named ({{order_id}}); returns the
+// distinct names in the order they first appear.
+const VARIABLE_PATTERN = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
+const NAMED_VARIABLE_FORMAT = /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/;
 
-const splitExamples = value =>
+const extractVariables = text => [
+  ...new Set([...(text || '').matchAll(VARIABLE_PATTERN)].map(match => match[1])),
+];
+
+const isNamedVariable = variable => !/^\d+$/.test(variable);
+const hasNamedVariables = variables => variables.some(isNamedVariable);
+
+// Meta only accepts [a-z0-9_] in template names, so the field is normalised as
+// the user types: accents are stripped and every other run of characters
+// collapses into a single underscore. A trailing underscore is kept while
+// typing (so "order_" can still become "order_confirmed") and trimmed on blur.
+const sanitizeName = value =>
   value
-    .split('|')
-    .map(sample => sample.trim())
-    .filter(Boolean);
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]+/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_+/, '')
+    .slice(0, TEMPLATE_NAME_MAX_LENGTH);
 
-const bodyVariableCount = computed(() => countVariables(form.bodyText));
-const headerVariableCount = computed(() => countVariables(form.headerText));
+const templateName = computed({
+  get: () => form.name,
+  set: value => {
+    form.name = sanitizeName(value);
+  },
+});
+
+const handleNameBlur = () => {
+  form.name = form.name.replace(/_+$/, '');
+};
+
+// One input per placeholder, resized as the text changes, so the fields never
+// depend on a delimiter the user has to type.
+const syncExamples = (list, count) => {
+  while (list.length < count) list.push('');
+  if (list.length > count) list.splice(count);
+};
+
+const bodyVariables = computed(() => extractVariables(form.bodyText));
+const headerVariables = computed(() => extractVariables(form.headerText));
+
+// Watch the count, not the array: the computed returns a fresh array on every
+// keystroke and would otherwise re-run the sync needlessly.
+watch(
+  () => bodyVariables.value.length,
+  count => syncExamples(form.bodyExamples, count),
+  { immediate: true }
+);
+watch(
+  () => headerVariables.value.length,
+  count => syncExamples(form.headerExamples, count),
+  { immediate: true }
+);
 
 const previewHeader = computed(() => ({
   format: form.headerFormat,
   text: form.headerText,
-  example: splitExamples(form.headerExample),
+  example: form.headerExamples,
   fileName: form.mediaFileName,
 }));
 const previewBody = computed(() => ({
   text: form.bodyText,
-  example: splitExamples(form.bodyExample),
+  example: form.bodyExamples,
 }));
 const previewFooter = computed(() => ({ text: form.footerText }));
 
@@ -114,10 +170,11 @@ const removeButton = index => {
 
 const handleHeaderFormatChange = () => {
   form.mediaHandle = '';
+  form.mediaBlobId = '';
   form.mediaFileName = '';
   if (isMediaHeader.value) {
     form.headerText = '';
-    form.headerExample = '';
+    form.headerExamples = [];
   }
 };
 
@@ -133,13 +190,17 @@ const handleFileSelect = async event => {
       form.headerFormat
     );
     form.mediaHandle = data.handle;
+    // Kept alongside the Meta handle so the send can point at our own copy
+    // instead of the approval sample, whose signed URL expires.
+    form.mediaBlobId = data.blob_id || '';
     form.mediaFileName = file.name;
   } catch (error) {
     form.mediaHandle = '';
+    form.mediaBlobId = '';
     form.mediaFileName = '';
     useAlert(
       error?.response?.data?.error ||
-        t('INBOX_MGMT.MESSAGE_TEMPLATES.ERRORS.UPLOAD_FAILED')
+        t('WHATSAPP_TEMPLATE_MGMT.ERRORS.UPLOAD_FAILED')
     );
   } finally {
     isUploading.value = false;
@@ -150,65 +211,86 @@ const handleFileSelect = async event => {
 // Meta accepts at most one variable per URL button, and only at the very end.
 const isValidButtonUrl = url => {
   if (!url?.trim()) return false;
-  const variables = url.match(/\{\{\d+\}\}/g) || [];
+  const variables = url.match(VARIABLE_PATTERN) || [];
   if (!variables.length) return true;
   return variables.length === 1 && url.endsWith(variables[0]);
 };
 
 const validate = () => {
   if (!/^[a-z0-9_]{1,512}$/.test(form.name)) {
-    return t('INBOX_MGMT.MESSAGE_TEMPLATES.ERRORS.INVALID_NAME');
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.INVALID_NAME');
   }
   if (!form.bodyText.trim()) {
-    return t('INBOX_MGMT.MESSAGE_TEMPLATES.ERRORS.BODY_REQUIRED');
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.BODY_REQUIRED');
   }
-  if (splitExamples(form.bodyExample).length !== bodyVariableCount.value) {
-    return t('INBOX_MGMT.MESSAGE_TEMPLATES.ERRORS.BODY_EXAMPLE_MISMATCH');
+  if (form.bodyExamples.some(sample => !sample.trim())) {
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.BODY_EXAMPLE_MISMATCH');
   }
   if (isMediaHeader.value && !form.mediaHandle) {
-    return t('INBOX_MGMT.MESSAGE_TEMPLATES.ERRORS.MEDIA_REQUIRED');
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.MEDIA_REQUIRED');
   }
   if (
     !isMediaHeader.value &&
-    splitExamples(form.headerExample).length !== headerVariableCount.value
+    form.headerExamples.some(sample => !sample.trim())
   ) {
-    return t('INBOX_MGMT.MESSAGE_TEMPLATES.ERRORS.HEADER_EXAMPLE_MISMATCH');
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.HEADER_EXAMPLE_MISMATCH');
+  }
+  const invalidVariable = [...bodyVariables.value, ...headerVariables.value].find(
+    variable => isNamedVariable(variable) && !NAMED_VARIABLE_FORMAT.test(variable)
+  );
+  if (invalidVariable) {
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.INVALID_VARIABLE_NAME', {
+      name: invalidVariable,
+    });
+  }
+  if (
+    bodyVariables.value.length &&
+    headerVariables.value.length &&
+    hasNamedVariables(bodyVariables.value) !==
+      hasNamedVariables(headerVariables.value)
+  ) {
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.MIXED_VARIABLES');
   }
   if (form.buttons.some(button => !button.text.trim())) {
-    return t('INBOX_MGMT.MESSAGE_TEMPLATES.ERRORS.BUTTON_LABEL_REQUIRED');
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.BUTTON_LABEL_REQUIRED');
   }
   if (
     form.buttons.some(button => button.text.length > BUTTON_TEXT_MAX_LENGTH)
   ) {
-    return t('INBOX_MGMT.MESSAGE_TEMPLATES.ERRORS.BUTTON_LABEL_TOO_LONG');
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.BUTTON_LABEL_TOO_LONG');
   }
   const invalidUrlButton = form.buttons.find(
     button => button.type === 'URL' && !isValidButtonUrl(button.url)
   );
   if (invalidUrlButton) {
-    return t('INBOX_MGMT.MESSAGE_TEMPLATES.ERRORS.INVALID_BUTTON_URL');
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.INVALID_BUTTON_URL');
   }
   return '';
 };
 
 const buildPayload = () => {
   const payload = {
-    name: form.name,
+    // Trailing underscores are only trimmed on blur, which a submit via Enter skips.
+    name: form.name.replace(/_+$/, ''),
     category: form.category,
     language: form.language,
-    body: { text: form.bodyText, example: splitExamples(form.bodyExample) },
+    body: {
+      text: form.bodyText,
+      example: form.bodyExamples.map(sample => sample.trim()),
+    },
   };
 
   if (isMediaHeader.value) {
     payload.header = {
       format: form.headerFormat,
       media_handle: form.mediaHandle,
+      media_blob_id: form.mediaBlobId,
     };
   } else if (form.headerText.trim()) {
     payload.header = {
       format: 'TEXT',
       text: form.headerText,
-      example: splitExamples(form.headerExample),
+      example: form.headerExamples.map(sample => sample.trim()),
     };
   }
   if (form.footerText.trim()) {
@@ -218,8 +300,8 @@ const buildPayload = () => {
     payload.buttons = form.buttons.map(button => {
       if (button.type === 'URL') {
         // Meta expects the sample as the full URL with the variable filled in.
-        const example = countVariables(button.url)
-          ? [button.url.replace(/\{\{\d+\}\}/, '123')]
+        const example = extractVariables(button.url).length
+          ? [button.url.replace(VARIABLE_PATTERN, '123')]
           : [];
         return { type: 'URL', text: button.text, url: button.url, example };
       }
@@ -244,47 +326,68 @@ const handleSubmit = () => {
   emit('submit', buildPayload());
 };
 
-const reset = () => {
-  Object.assign(form, buildInitialState());
+const load = template => {
+  Object.assign(form, template ? templateToForm(template) : buildInitialState());
   errorMessage.value = '';
 };
 
-defineExpose({ reset });
+const reset = () => load(null);
+
+// The form fills itself from the prop instead of relying on the parent calling `load` at the right
+// moment: the panel sets the template and mounts this component in the same tick, so its ref is
+// still null when the parent tries, and the fields would stay empty on the first edit.
+watch(() => props.template, load, { immediate: true });
+
+defineExpose({ reset, load });
 </script>
 
 <template>
   <div class="flex flex-col gap-5">
     <div class="grid gap-4 sm:grid-cols-3">
       <Input
-        v-model="form.name"
-        :label="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.NAME.LABEL')"
-        :placeholder="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.NAME.PLACEHOLDER')"
-        :message="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.NAME.HELP')"
+        v-model="templateName"
+        :label="$t('WHATSAPP_TEMPLATE_MGMT.FORM.NAME.LABEL')"
+        :placeholder="$t('WHATSAPP_TEMPLATE_MGMT.FORM.NAME.PLACEHOLDER')"
+        :message="
+          isEditing
+            ? $t('WHATSAPP_TEMPLATE_MGMT.FORM.NAME.LOCKED')
+            : $t('WHATSAPP_TEMPLATE_MGMT.FORM.NAME.HELP')
+        "
+        :disabled="isEditing"
+        @blur="handleNameBlur"
       />
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-n-slate-12">
-          {{ $t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.CATEGORY.LABEL') }}
+          {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.CATEGORY.LABEL') }}
         </label>
         <Select v-model="form.category" :options="categoryOptions" />
       </div>
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-n-slate-12">
-          {{ $t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.LANGUAGE.LABEL') }}
+          {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.LANGUAGE.LABEL') }}
         </label>
-        <Select v-model="form.language" :options="languageOptions" />
+        <Select
+          v-model="form.language"
+          :options="languageOptions"
+          :disabled="isEditing"
+        />
       </div>
     </div>
 
     <div class="flex flex-col gap-3">
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-n-slate-12">
-          {{ $t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.HEADER_FORMAT.LABEL') }}
+          {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.HEADER_FORMAT.LABEL') }}
         </label>
         <Select
           v-model="form.headerFormat"
           :options="headerFormatOptions"
+          :disabled="isEditing"
           @update:model-value="handleHeaderFormatChange"
         />
+        <span v-if="isEditing" class="text-sm text-n-slate-11">
+          {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.HEADER_FORMAT.LOCKED') }}
+        </span>
       </div>
 
       <div v-if="isMediaHeader" class="flex gap-3 items-center">
@@ -297,7 +400,7 @@ defineExpose({ reset });
           @change="handleFileSelect"
         />
         <span v-if="isUploading" class="text-sm text-n-slate-11">
-          {{ $t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.UPLOADING') }}
+          {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.UPLOADING') }}
         </span>
         <span v-else-if="form.mediaFileName" class="text-sm text-n-teal-11">
           {{ form.mediaFileName }}
@@ -307,54 +410,73 @@ defineExpose({ reset });
       <div v-else class="grid gap-4 sm:grid-cols-2">
         <Input
           v-model="form.headerText"
-          :label="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.HEADER.LABEL')"
+          :label="$t('WHATSAPP_TEMPLATE_MGMT.FORM.HEADER.LABEL')"
           :placeholder="
-            $t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.HEADER.PLACEHOLDER')
+            $t('WHATSAPP_TEMPLATE_MGMT.FORM.HEADER.PLACEHOLDER')
           "
         />
-        <Input
-          v-if="headerVariableCount"
-          v-model="form.headerExample"
-          :label="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.HEADER_EXAMPLE.LABEL')"
-          :message="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.EXAMPLE_HELP')"
-        />
+        <div v-show="headerVariables.length" class="flex flex-col gap-2">
+          <label class="text-sm font-medium text-n-slate-12">
+            {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.HEADER_EXAMPLE.LABEL') }}
+          </label>
+          <Input
+            v-for="(variable, index) in headerVariables"
+            :key="`header-sample-${variable}`"
+            v-model="form.headerExamples[index]"
+            :placeholder="
+              $t('WHATSAPP_TEMPLATE_MGMT.FORM.VARIABLE_PLACEHOLDER', {
+                name: variable,
+              })
+            "
+          />
+        </div>
       </div>
     </div>
 
     <TextArea
       v-model="form.bodyText"
-      :label="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.BODY.LABEL')"
-      :placeholder="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.BODY.PLACEHOLDER')"
+      :label="$t('WHATSAPP_TEMPLATE_MGMT.FORM.BODY.LABEL')"
+      :placeholder="$t('WHATSAPP_TEMPLATE_MGMT.FORM.BODY.PLACEHOLDER')"
+      :message="$t('WHATSAPP_TEMPLATE_MGMT.FORM.BODY.HELP')"
       :max-length="1024"
       show-character-count
       auto-height
       resize
     />
 
-    <Input
-      v-if="bodyVariableCount"
-      v-model="form.bodyExample"
-      :label="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.BODY_EXAMPLE.LABEL')"
-      :message="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.EXAMPLE_HELP')"
-    />
+    <div v-show="bodyVariables.length" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-n-slate-12">
+        {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.BODY_EXAMPLE.LABEL') }}
+      </label>
+      <Input
+        v-for="(variable, index) in bodyVariables"
+        :key="`body-sample-${variable}`"
+        v-model="form.bodyExamples[index]"
+        :placeholder="
+          $t('WHATSAPP_TEMPLATE_MGMT.FORM.VARIABLE_PLACEHOLDER', {
+            name: variable,
+          })
+        "
+      />
+    </div>
 
     <Input
       v-model="form.footerText"
-      :label="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.FOOTER.LABEL')"
-      :placeholder="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.FOOTER.PLACEHOLDER')"
+      :label="$t('WHATSAPP_TEMPLATE_MGMT.FORM.FOOTER.LABEL')"
+      :placeholder="$t('WHATSAPP_TEMPLATE_MGMT.FORM.FOOTER.PLACEHOLDER')"
     />
 
     <div class="flex flex-col gap-3">
       <div class="flex justify-between items-center">
         <span class="text-sm font-medium text-n-slate-12">
-          {{ $t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.BUTTONS.LABEL') }}
+          {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.BUTTONS.LABEL') }}
         </span>
         <NextButton
           variant="faded"
           color="slate"
           size="sm"
           icon="i-lucide-plus"
-          :label="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.BUTTONS.ADD')"
+          :label="$t('WHATSAPP_TEMPLATE_MGMT.FORM.BUTTONS.ADD')"
           @click="addButton"
         />
       </div>
@@ -367,21 +489,21 @@ defineExpose({ reset });
         <Input
           v-model="button.text"
           :placeholder="
-            $t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.BUTTONS.TEXT_PLACEHOLDER')
+            $t('WHATSAPP_TEMPLATE_MGMT.FORM.BUTTONS.TEXT_PLACEHOLDER')
           "
         />
         <Input
           v-if="button.type === 'URL'"
           v-model="button.url"
           :placeholder="
-            $t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.BUTTONS.URL_PLACEHOLDER')
+            $t('WHATSAPP_TEMPLATE_MGMT.FORM.BUTTONS.URL_PLACEHOLDER')
           "
         />
         <Input
           v-else-if="button.type === 'PHONE_NUMBER'"
           v-model="button.phone_number"
           :placeholder="
-            $t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.BUTTONS.PHONE_PLACEHOLDER')
+            $t('WHATSAPP_TEMPLATE_MGMT.FORM.BUTTONS.PHONE_PLACEHOLDER')
           "
         />
         <span v-else />
@@ -397,9 +519,9 @@ defineExpose({ reset });
 
     <div class="flex flex-col gap-2">
       <span class="text-sm font-medium text-n-slate-12">
-        {{ $t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.PREVIEW') }}
+        {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.PREVIEW') }}
       </span>
-      <MessageTemplatePreview
+      <TemplateFormPreview
         :header="previewHeader"
         :body="previewBody"
         :footer="previewFooter"
@@ -415,11 +537,15 @@ defineExpose({ reset });
       <NextButton
         variant="faded"
         color="slate"
-        :label="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.CANCEL')"
+        :label="$t('WHATSAPP_TEMPLATE_MGMT.FORM.CANCEL')"
         @click="emit('cancel')"
       />
       <NextButton
-        :label="$t('INBOX_MGMT.MESSAGE_TEMPLATES.FORM.SUBMIT')"
+        :label="
+          isEditing
+            ? $t('WHATSAPP_TEMPLATE_MGMT.FORM.SAVE')
+            : $t('WHATSAPP_TEMPLATE_MGMT.FORM.SUBMIT')
+        "
         :is-loading="isSubmitting"
         @click="handleSubmit"
       />

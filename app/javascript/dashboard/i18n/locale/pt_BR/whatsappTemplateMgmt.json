@@ -1,0 +1,153 @@
+{
+  "WHATSAPP_TEMPLATE_MGMT": {
+    "TITLE": "Templates",
+    "DESCRIPTION": "Veja os templates de mensagem sincronizados das suas caixas de entrada do WhatsApp. Para criar ou editar um template, gerencie pelo seu provedor.",
+    "COUNT": "{n} template | {n} templates",
+    "KNOW_MORE": "Saiba mais",
+    "NEW_TEMPLATE": "Novo template",
+    "SEARCH_PLACEHOLDER": "Buscar por conteúdo ou nome...",
+    "MANAGE_IN_META": "Gerenciar na Meta",
+    "MANAGE_IN_TWILIO": "Gerenciar na Twilio",
+    "LOADING": "Carregando templates do WhatsApp...",
+    "EMPTY": "Nenhum template do WhatsApp encontrado.",
+    "NO_RESULTS": "Nenhum template corresponde aos seus filtros.",
+    "FETCH_ERROR": "Não foi possível carregar os templates do WhatsApp. Tente novamente.",
+    "PARTIAL_FETCH_ERROR": "Alguns templates do WhatsApp não puderam ser carregados. Tente novamente.",
+    "LAST_SYNC_ATTEMPT": "Última tentativa de sincronização em {date}",
+    "MORE_INBOXES": "+{n}",
+    "FILTERS": {
+      "ALL_INBOXES": "Todas as caixas de entrada",
+      "ALL_LANGUAGES": "Todos os idiomas"
+    },
+    "TYPES": {
+      "TEXT": "Texto",
+      "IMAGE": "Imagem",
+      "VIDEO": "Vídeo",
+      "DOCUMENT": "Documento",
+      "MEDIA": "Mídia",
+      "QUICK_REPLY": "Resposta rápida",
+      "CALL_TO_ACTION": "Chamada para ação",
+      "CATALOG": "Catálogo",
+      "COPY_CODE": "Copiar código"
+    },
+    "PREVIEW": {
+      "TITLE": "Pré-visualização do template",
+      "DESCRIPTION": "Veja como este template aparece no WhatsApp.",
+      "OPEN": "Pré-visualizar {name}",
+      "CLOSE": "Fechar pré-visualização",
+      "DETAILS": "Detalhes do template",
+      "STATUS": "Status",
+      "TYPE": "Tipo de conteúdo",
+      "CATEGORY": "Categoria",
+      "LANGUAGE": "Idioma",
+      "INBOXES": "Caixas de entrada",
+      "LAST_SYNC_ATTEMPT": "Última tentativa de sincronização"
+    },
+    "TABLE": {
+      "NAME": "Nome",
+      "CATEGORY": "Categoria",
+      "LANGUAGE": "Idioma",
+      "STATUS": "Status"
+    },
+    "CATEGORIES": {
+      "UTILITY": "Utilidade",
+      "MARKETING": "Marketing"
+    },
+    "BUTTON_TYPES": {
+      "QUICK_REPLY": "Resposta rápida",
+      "URL": "URL",
+      "PHONE_NUMBER": "Telefone"
+    },
+    "HEADER_FORMATS": {
+      "TEXT": "Texto",
+      "IMAGE": "Imagem",
+      "VIDEO": "Vídeo",
+      "DOCUMENT": "Documento"
+    },
+    "FORM": {
+      "NAME": {
+        "LABEL": "Nome do template",
+        "PLACEHOLDER": "pedido_confirmado",
+        "HELP": "Formatado automaticamente: letras minúsculas, números e underscores.",
+        "LOCKED": "O nome não pode ser alterado depois da criação."
+      },
+      "CATEGORY": {
+        "LABEL": "Categoria"
+      },
+      "LANGUAGE": {
+        "LABEL": "Idioma"
+      },
+      "HEADER": {
+        "LABEL": "Cabeçalho (opcional)",
+        "PLACEHOLDER": "Olá {'{{'}nome_cliente{'}}'}"
+      },
+      "HEADER_FORMAT": {
+        "LABEL": "Formato do cabeçalho",
+        "LOCKED": "O formato do cabeçalho não pode ser alterado depois da criação."
+      },
+      "HEADER_EXAMPLE": {
+        "LABEL": "Valores de exemplo do cabeçalho"
+      },
+      "UPLOADING": "Enviando…",
+      "BODY": {
+        "LABEL": "Corpo",
+        "PLACEHOLDER": "Olá {'{{'}nome_cliente{'}}'}, seu pedido {'{{'}id_pedido{'}}'} foi confirmado.",
+        "HELP": "Use {'{{'}nome{'}}'} para variáveis nomeadas ou {'{{'}1{'}}'} para numeradas — não misture as duas."
+      },
+      "BODY_EXAMPLE": {
+        "LABEL": "Valores de exemplo do corpo"
+      },
+      "FOOTER": {
+        "LABEL": "Rodapé (opcional)",
+        "PLACEHOLDER": "Enviado pela equipe de suporte"
+      },
+      "BUTTONS": {
+        "LABEL": "Botões (opcional)",
+        "ADD": "Adicionar botão",
+        "TEXT_PLACEHOLDER": "Texto do botão",
+        "URL_PLACEHOLDER": "https://exemplo.com/pedidos/{'{{'}id_pedido{'}}'}",
+        "PHONE_PLACEHOLDER": "+5511999999999"
+      },
+      "PREVIEW": "Pré-visualização",
+      "SUBMIT": "Enviar para aprovação",
+      "CANCEL": "Cancelar",
+      "VARIABLE_PLACEHOLDER": "Valor de exemplo para {name}",
+      "SAVE": "Salvar e enviar para revisão"
+    },
+    "ERRORS": {
+      "INVALID_NAME": "O nome deve conter apenas letras minúsculas, números e underscores.",
+      "BODY_REQUIRED": "O texto do corpo é obrigatório.",
+      "BODY_EXAMPLE_MISMATCH": "Informe um valor de exemplo para cada variável do corpo.",
+      "HEADER_EXAMPLE_MISMATCH": "Informe um valor de exemplo para cada variável do cabeçalho.",
+      "BUTTON_LABEL_REQUIRED": "Todo botão precisa de um texto.",
+      "BUTTON_LABEL_TOO_LONG": "O texto do botão deve ter no máximo 25 caracteres.",
+      "INVALID_BUTTON_URL": "Botões de URL aceitam no máximo uma variável, e ela precisa estar no fim da URL.",
+      "MEDIA_REQUIRED": "Envie um arquivo para o cabeçalho de mídia.",
+      "UPLOAD_FAILED": "Não foi possível enviar o arquivo. Tente novamente.",
+      "INVALID_VARIABLE_NAME": "A variável {name} deve usar letras minúsculas, números e um único underscore entre palavras.",
+      "MIXED_VARIABLES": "Use variáveis nomeadas ou numeradas no template inteiro, não as duas."
+    },
+    "CREATE_SUCCESS": "Template enviado à Meta para aprovação.",
+    "CREATE_ERROR": "Não foi possível criar o template. Tente novamente.",
+    "DELETE_SUCCESS": "Template excluído com sucesso.",
+    "DELETE_ERROR": "Não foi possível excluir o template. Tente novamente.",
+    "CREATE": {
+      "TITLE": "Novo template",
+      "DESCRIPTION": "Envie um template à Meta para aprovação. Ele fica pendente até a Meta revisar.",
+      "INBOX": "Caixa de entrada"
+    },
+    "DELETE": {
+      "BUTTON": "Excluir template",
+      "TITLE": "Excluir template",
+      "DESCRIPTION": "Isto exclui {name} na Meta e não pode ser desfeito.",
+      "CONFIRM": "Excluir"
+    },
+    "EDIT": {
+      "BUTTON": "Editar conteúdo",
+      "TITLE": "Editar template",
+      "DESCRIPTION": "Apenas o conteúdo muda. Nome, idioma e formato do cabeçalho são fixos, e o template volta para revisão da Meta."
+    },
+    "UPDATE_SUCCESS": "Template enviado à Meta para revisão.",
+    "UPDATE_ERROR": "Não foi possível atualizar o template. Tente novamente."
+  }
+}

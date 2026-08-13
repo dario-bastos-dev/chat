@@ -118,6 +118,9 @@
       "AUTO_ASSIGN": {
         "LABEL": "Allow auto assign for this team."
       },
+      "OFFLINE_ASSIGNMENT": {
+        "LABEL": "Also assign conversations to agents who are offline or busy."
+      },
       "SUBMIT_CREATE": "Create team"
     }
   }

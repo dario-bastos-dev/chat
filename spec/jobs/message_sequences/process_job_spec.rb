@@ -11,7 +11,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
            conversation: conversation,
            message_sequence: message_sequence,
            created_at: 10.seconds.ago,
-           current_step: 0)
+           current_step: step_1)
   end
 
   describe '#perform' do
@@ -30,7 +30,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
         expect(last_message.private).to be_falsey
         expect(last_message.content).to eq(step_1.content)
 
-        expect(conv_seq.reload.current_step).to eq(1)
+        expect(conv_seq.reload.current_step).to be_nil
         expect(conv_seq.waiting_interaction).to be_falsey
       end
     end
@@ -52,7 +52,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
 
         # A sequência deve estar pausada (waiting_interaction: true) e o passo NÃO deve ter avançado
         expect(conv_seq.reload.waiting_interaction).to be_truthy
-        expect(conv_seq.current_step).to eq(0)
+        expect(conv_seq.current_step).to eq(step_1)
       end
     end
 
@@ -67,7 +67,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
           described_class.new.perform
         }.not_to change(conversation.messages, :count)
 
-        expect(conv_seq.reload.current_step).to eq(0)
+        expect(conv_seq.reload.current_step).to eq(step_1)
         expect(conv_seq.waiting_interaction).to be_truthy
       end
     end
@@ -89,7 +89,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
           described_class.new.perform
         }.not_to change(conversation.messages, :count)
 
-        expect(conv_seq.reload.current_step).to eq(1)
+        expect(conv_seq.reload.current_step).to be_nil
         expect(conv_seq.waiting_interaction).to be_falsey
       end
 
@@ -104,7 +104,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
         }.not_to change(conversation.messages, :count)
 
         # Não deve pausar a sequência e deve avançar o passo
-        expect(conv_seq.reload.current_step).to eq(1)
+        expect(conv_seq.reload.current_step).to be_nil
         expect(conv_seq.waiting_interaction).to be_falsey
       end
 
@@ -128,7 +128,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
         expect(last_message.private).to be_truthy
         expect(last_message.content).to include('tried to execute a macro that has been deleted')
 
-        expect(conv_seq.reload.current_step).to eq(1)
+        expect(conv_seq.reload.current_step).to be_nil
       end
     end
 
@@ -171,7 +171,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
           }
         }
         expect(last_message.additional_attributes['template_params']).to eq(expected_params)
-        expect(conv_seq.reload.current_step).to eq(1)
+        expect(conv_seq.reload.current_step).to be_nil
       end
     end
   end

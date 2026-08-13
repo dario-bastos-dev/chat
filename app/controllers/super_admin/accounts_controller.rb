@@ -119,6 +119,8 @@ class SuperAdmin::AccountsController < SuperAdmin::ApplicationController
     # rubocop:disable Rails/I18nLocaleTexts
     redirect_to new_super_admin_account_path, alert: "Falha ao analisar o arquivo JSON: #{e.message}"
     # rubocop:enable Rails/I18nLocaleTexts
+  end
+
   private
 
   def validate_suspension_metadata

@@ -151,7 +151,14 @@
       "SYNC_ASSIGNEE_CONV_TO_DEAL": "Sync Conversation assignee to Deal",
       "SYNC_ASSIGNEE_DEAL_TO_CONV": "Sync Deal assignee to Conversation",
       "STATUS_WON": "Won",
-      "STATUS_LOST": "Lost"
+      "STATUS_LOST": "Lost",
+      "MESSAGE_MODE": {
+        "TEXT": "Message",
+        "TEMPLATE": "Template"
+      },
+      "TEMPLATE_INBOX_PLACEHOLDER": "Select the inbox with the template",
+      "TEMPLATE_PLACEHOLDER": "Select a template",
+      "NO_TEMPLATE_INBOX": "No WhatsApp inbox has approved templates yet."
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Activate Automation Rule",

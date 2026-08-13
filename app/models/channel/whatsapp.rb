@@ -137,6 +137,59 @@ class Channel::Whatsapp < ApplicationRecord
     before&.dig('source') == 'embedded_signup' && after['source'] != 'embedded_signup'
   end
 
+  # Templates carry the media stored locally when they were created here, so the UI can stop asking
+  # for a URL on every send. Templates created straight at Meta have none and keep the old behaviour.
+  #
+  # This renders on the inbox list, which is the app shell, so it never raises: losing the hint only
+  # brings the URL field back, while an exception would empty the sidebar. The send resolves the
+  # stored media on its own regardless of what the UI knew.
+  def message_templates_with_media
+    templates = synced_message_templates
+    return templates if templates.none? { |template| media_header_template?(template) }
+
+    media_urls = WhatsappTemplateMedia.url_map(account_id)
+    return templates if media_urls.blank?
+
+    templates.map do |template|
+      url = media_urls[[template['name'], template['language']]]
+      url.present? ? template.merge('chatwoot_media_url' => url) : template
+    end
+  rescue StandardError => e
+    Rails.logger.error("[WHATSAPP] Could not resolve stored template media for channel #{id}: #{e.message}")
+    synced_message_templates
+  end
+
+  # The column defaults to an empty hash, so a channel that never synced is not a list of templates.
+  # Array.wrap would turn that default into a single blank template.
+  def synced_message_templates
+    message_templates.is_a?(Array) ? message_templates : []
+  end
+
+  # Most inboxes have no media template at all, so the lookup is skipped entirely for them instead of
+  # querying once per inbox while the list renders.
+  def media_header_template?(template)
+    Array.wrap(template['components']).any? do |component|
+      component['type'] == 'HEADER' && %w[IMAGE VIDEO DOCUMENT].include?(component['format'])
+    end
+  end
+
+  def history_sync
+    provider_config['history_sync'] || {}
+  end
+
+  # History chunks are processed concurrently, so only the history_sync key is written: rewriting the
+  # whole provider_config would let one worker's stale snapshot clobber the credentials another wrote.
+  # Going through SQL also skips validate_provider_config, which would re-check the token on every chunk.
+  def update_history_sync!(attributes)
+    payload = history_sync.merge(attributes.stringify_keys, 'updated_at' => Time.current.iso8601)
+    # rubocop:disable Rails/SkipsModelValidations
+    Channel::Whatsapp.where(id: id).update_all(
+      ["provider_config = jsonb_set(provider_config, '{history_sync}', ?::jsonb)", payload.to_json]
+    )
+    # rubocop:enable Rails/SkipsModelValidations
+    provider_config['history_sync'] = payload
+  end
+
   def mark_message_templates_updated
     # rubocop:disable Rails/SkipsModelValidations
     update_column(:message_templates_last_updated, Time.zone.now)

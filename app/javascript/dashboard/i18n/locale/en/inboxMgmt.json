@@ -732,96 +732,86 @@
       "CAMPAIGN": "Campaigns",
       "BOT_CONFIGURATION": "Bot Configuration",
       "ACCOUNT_HEALTH": "Account Health",
-      "MESSAGE_TEMPLATES": "Message Templates",
-      "INSTANCE": "Instance"
+      "INSTANCE": "Instance",
+      "WHATSAPP_PROFILE": "Profile"
     },
-    "MESSAGE_TEMPLATES": {
-      "TITLE": "Message templates",
-      "DESCRIPTION": "Create templates and submit them to Meta for approval. Newly created templates stay in a pending state until Meta reviews them.",
-      "NEW_TEMPLATE": "New template",
-      "EMPTY_STATE": "No templates found for this inbox yet.",
-      "FETCH_ERROR": "Could not load the templates. Please try again.",
-      "CREATE_SUCCESS": "Template submitted to Meta for approval.",
-      "CREATE_ERROR": "Could not create the template. Please try again.",
-      "DELETE_SUCCESS": "Template deleted successfully.",
-      "DELETE_ERROR": "Could not delete the template. Please try again.",
-      "TABLE": {
-        "NAME": "Name",
-        "CATEGORY": "Category",
-        "LANGUAGE": "Language",
-        "STATUS": "Status"
+    "WHATSAPP_PROFILE": {
+      "DESCRIPTION": "This is the profile your customers see on WhatsApp when they open your business contact.",
+      "FETCH_ERROR": "We could not load the WhatsApp profile. Please try again.",
+      "UPDATE_SUCCESS": "WhatsApp profile updated successfully.",
+      "UPDATE_ERROR": "We could not update the WhatsApp profile. Please try again.",
+      "RETRY": "Retry",
+      "PICTURE": {
+        "LABEL": "Profile picture",
+        "HELP_TEXT": "JPG or PNG, at least 192x192 pixels and under 5 MB.",
+        "FORMAT_ERROR": "WhatsApp only accepts JPG or PNG profile pictures.",
+        "SIZE_ERROR": "The profile picture must be smaller than 5 MB."
       },
-      "CATEGORIES": {
-        "UTILITY": "Utility",
-        "MARKETING": "Marketing"
+      "ABOUT": {
+        "LABEL": "About",
+        "HELP_TEXT": "Short line shown right below the business name. Up to 139 characters.",
+        "PLACEHOLDER": "Available Monday to Friday, 9am to 6pm"
       },
-      "HEADER_FORMATS": {
-        "TEXT": "Text",
-        "IMAGE": "Image",
-        "VIDEO": "Video",
-        "DOCUMENT": "Document"
+      "BUSINESS_DESCRIPTION": {
+        "LABEL": "Description",
+        "HELP_TEXT": "Longer text describing your business. Up to 512 characters.",
+        "PLACEHOLDER": "Tell your customers what your business does"
       },
-      "BUTTON_TYPES": {
-        "QUICK_REPLY": "Quick reply",
-        "URL": "URL",
-        "PHONE_NUMBER": "Phone number"
+      "VERTICAL": {
+        "LABEL": "Category",
+        "HELP_TEXT": "Once a category is set, WhatsApp does not allow it to be cleared.",
+        "PLACEHOLDER": "Select a category"
       },
-      "FORM": {
-        "NAME": {
-          "LABEL": "Template name",
-          "PLACEHOLDER": "order_confirmed",
-          "HELP": "Lowercase letters, numbers and underscores only."
-        },
-        "CATEGORY": {
-          "LABEL": "Category"
-        },
-        "LANGUAGE": {
-          "LABEL": "Language"
-        },
-        "HEADER": {
-          "LABEL": "Header (optional)",
-          "PLACEHOLDER": "Hello {'{{'}1{'}}'}"
-        },
-        "HEADER_FORMAT": {
-          "LABEL": "Header format"
-        },
-        "HEADER_EXAMPLE": {
-          "LABEL": "Header sample values"
-        },
-        "UPLOADING": "Uploading…",
-        "BODY": {
-          "LABEL": "Body",
-          "PLACEHOLDER": "Your order {'{{'}1{'}}'} has been confirmed."
-        },
-        "BODY_EXAMPLE": {
-          "LABEL": "Body sample values"
-        },
-        "FOOTER": {
-          "LABEL": "Footer (optional)",
-          "PLACEHOLDER": "Sent by the support team"
-        },
-        "BUTTONS": {
-          "LABEL": "Buttons (optional)",
-          "ADD": "Add button",
-          "TEXT_PLACEHOLDER": "Button label",
-          "URL_PLACEHOLDER": "https://example.com/orders/{'{{'}1{'}}'}",
-          "PHONE_PLACEHOLDER": "+15550100"
-        },
-        "EXAMPLE_HELP": "One sample value per variable, separated by |",
-        "PREVIEW": "Preview",
-        "SUBMIT": "Submit for approval",
-        "CANCEL": "Cancel"
+      "ADDRESS": {
+        "LABEL": "Address",
+        "PLACEHOLDER": "Street, number, city"
       },
-      "ERRORS": {
-        "INVALID_NAME": "The name must contain only lowercase letters, numbers and underscores.",
-        "BODY_REQUIRED": "The body text is required.",
-        "BODY_EXAMPLE_MISMATCH": "Provide one body sample value per variable.",
-        "HEADER_EXAMPLE_MISMATCH": "Provide one header sample value per variable.",
-        "BUTTON_LABEL_REQUIRED": "Every button needs a label.",
-        "BUTTON_LABEL_TOO_LONG": "Button labels must be 25 characters or shorter.",
-        "INVALID_BUTTON_URL": "URL buttons accept at most one variable, and it must be at the end of the URL.",
-        "MEDIA_REQUIRED": "Upload a file for the media header.",
-        "UPLOAD_FAILED": "Could not upload the file. Please try again."
+      "EMAIL": {
+        "LABEL": "Email",
+        "PLACEHOLDER": "contact@company.com",
+        "ERROR": "Enter a valid email address."
+      },
+      "WEBSITES": {
+        "LABEL": "Websites",
+        "HELP_TEXT": "Up to two links, including http:// or https://.",
+        "PLACEHOLDER": "https://company.com",
+        "ERROR": "Enter a valid URL starting with http:// or https://."
+      },
+      "VERTICALS": {
+        "OTHER": "Other",
+        "AUTO": "Automotive",
+        "BEAUTY": "Beauty, Spa and Salon",
+        "APPAREL": "Clothing and Apparel",
+        "EDU": "Education",
+        "ENTERTAIN": "Entertainment",
+        "EVENT_PLAN": "Event Planning and Service",
+        "FINANCE": "Finance and Banking",
+        "GROCERY": "Food and Grocery",
+        "GOVT": "Public Service",
+        "HOTEL": "Hotel and Lodging",
+        "HEALTH": "Medical and Health",
+        "NONPROFIT": "Non-profit",
+        "PROF_SERVICES": "Professional Services",
+        "RETAIL": "Shopping and Retail",
+        "TRAVEL": "Travel and Transportation",
+        "RESTAURANT": "Restaurant",
+        "ALCOHOL": "Alcoholic Beverages",
+        "ONLINE_GAMBLING": "Online Gambling and Gaming",
+        "PHYSICAL_GAMBLING": "Physical Gambling and Gaming",
+        "OTC_DRUGS": "Over-the-counter Drugs"
+      }
+    },
+    "HISTORY_SYNC": {
+      "TITLE": "Chat history sync",
+      "REFRESH": "Refresh",
+      "HELP_TEXT": "WhatsApp sends up to 180 days of chats from the WhatsApp Business app, in chunks, over the minutes following the connection.",
+      "PROGRESS": "{progress}% synced",
+      "STATUS": {
+        "REQUESTED": "Requested to WhatsApp, waiting for the first chunk.",
+        "RECEIVING": "Receiving messages.",
+        "COMPLETED": "History synced.",
+        "UNAVAILABLE": "No history to sync for this number.",
+        "NOT_RECEIVED": "No history received. Check that the history webhook field is subscribed in the Meta app."
       }
     },
     "EVOLUTION_INSTANCE": {

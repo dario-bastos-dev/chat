@@ -2,7 +2,10 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
+import { useAlert } from 'dashboard/composables';
+import InboxesAPI from 'dashboard/api/inboxes';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import SidePanel from 'dashboard/components-next/side-panel/SidePanel.vue';
 import {
   TemplateNormalizer,
@@ -23,6 +26,8 @@ const props = defineProps({
     default: null,
   },
 });
+
+const emit = defineEmits(['deleted', 'edit']);
 
 const { t } = useI18n();
 const META_TEMPLATE_MANAGER_URL =
@@ -55,6 +60,61 @@ const managementLabel = computed(() =>
     ? t('WHATSAPP_TEMPLATE_MGMT.MANAGE_IN_TWILIO')
     : t('WHATSAPP_TEMPLATE_MGMT.MANAGE_IN_META')
 );
+// Only Cloud API inboxes can be deleted from here; a grouped template can span
+// several inboxes, so we delete it on each one (they may sit on different WABAs).
+const deletableInboxes = computed(() =>
+  (props.template?.inboxes || []).filter(
+    inbox => inbox.provider === 'whatsapp_cloud'
+  )
+);
+const canDelete = computed(() => deletableInboxes.value.length > 0);
+
+// Meta only accepts content edits on marketing templates, and never while a
+// submission is still under review.
+const canEdit = computed(
+  () =>
+    canDelete.value &&
+    props.template?.category?.toUpperCase() === 'MARKETING' &&
+    props.template?.status?.toUpperCase() !== 'PENDING'
+);
+
+const handleEdit = () => {
+  emit('edit', {
+    template: props.template,
+    inboxId: deletableInboxes.value[0]?.id,
+  });
+  panelRef.value?.close();
+};
+
+const confirmDeleteDialogRef = ref(null);
+const isDeleting = ref(false);
+
+const handleDelete = async () => {
+  isDeleting.value = true;
+  try {
+    const results = await Promise.allSettled(
+      deletableInboxes.value.map(inbox =>
+        InboxesAPI.deleteMessageTemplate(inbox.id, props.template.name)
+      )
+    );
+
+    if (results.every(result => result.status === 'rejected')) {
+      throw results[0].reason;
+    }
+
+    useAlert(t('WHATSAPP_TEMPLATE_MGMT.DELETE_SUCCESS'));
+    confirmDeleteDialogRef.value?.close();
+    panelRef.value?.close();
+    emit('deleted');
+  } catch (error) {
+    useAlert(
+      error?.response?.data?.error || t('WHATSAPP_TEMPLATE_MGMT.DELETE_ERROR')
+    );
+  } finally {
+    isDeleting.value = false;
+  }
+};
+
 const open = () => panelRef.value?.open();
 const close = () => panelRef.value?.close();
 
@@ -129,15 +189,54 @@ defineExpose({ open, close });
       </div>
     </div>
 
-    <template v-if="managementUrl" #footer>
-      <a :href="managementUrl" target="_blank" rel="noopener noreferrer">
+    <template v-if="managementUrl || canDelete || canEdit" #footer>
+      <div class="flex flex-col w-full gap-2">
+        <a
+          v-if="managementUrl"
+          :href="managementUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Button
+            class="w-full"
+            :label="managementLabel"
+            icon="i-lucide-external-link"
+            trailing-icon
+          />
+        </a>
         <Button
+          v-if="canEdit"
           class="w-full"
-          :label="managementLabel"
-          icon="i-lucide-external-link"
-          trailing-icon
+          variant="faded"
+          color="slate"
+          icon="i-lucide-pencil"
+          :label="$t('WHATSAPP_TEMPLATE_MGMT.EDIT.BUTTON')"
+          @click="handleEdit"
         />
-      </a>
+        <Button
+          v-if="canDelete"
+          class="w-full"
+          variant="faded"
+          color="ruby"
+          icon="i-lucide-trash"
+          :label="$t('WHATSAPP_TEMPLATE_MGMT.DELETE.BUTTON')"
+          @click="confirmDeleteDialogRef?.open()"
+        />
+      </div>
     </template>
+
+    <Dialog
+      ref="confirmDeleteDialogRef"
+      type="alert"
+      :title="$t('WHATSAPP_TEMPLATE_MGMT.DELETE.TITLE')"
+      :description="
+        $t('WHATSAPP_TEMPLATE_MGMT.DELETE.DESCRIPTION', {
+          name: template?.name,
+        })
+      "
+      :confirm-button-label="$t('WHATSAPP_TEMPLATE_MGMT.DELETE.CONFIRM')"
+      :is-loading="isDeleting"
+      @confirm="handleDelete"
+    />
   </SidePanel>
 </template>

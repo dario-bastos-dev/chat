@@ -42,6 +42,7 @@ import snooze from './snooze.json';
 import teamsSettings from './teamsSettings.json';
 import webhooks from './webhooks.json';
 import whatsappTemplates from './whatsappTemplates.json';
+import whatsappTemplateMgmt from './whatsappTemplateMgmt.json';
 import yearInReview from './yearInReview.json';
 import messageSequences from './messageSequences.json';
 import scheduledMessages from './scheduledMessages.json';
@@ -93,6 +94,7 @@ export default {
   ...teamsSettings,
   ...webhooks,
   ...whatsappTemplates,
+  ...whatsappTemplateMgmt,
   ...yearInReview,
   ...messageSequences,
   ...scheduledMessages,

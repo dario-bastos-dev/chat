@@ -318,6 +318,8 @@ Rails.application.routes.draw do
             post :sync_templates, on: :member
             put :whatsapp_business_management_token, on: :member
             get :health, on: :member
+            get :whatsapp_profile, on: :member
+            post :update_whatsapp_profile, on: :member
             post :register_webhook, on: :member
             get :evolution_qrcode, on: :member
             get :evolution_status, on: :member
@@ -344,7 +346,7 @@ Rails.application.routes.draw do
 
             # Listing is served by the `message_templates` member action above; this only adds
             # creation/deletion, so the paths differ by verb and never collide.
-            resources :message_templates, only: [:create, :destroy],
+            resources :message_templates, only: [:create, :update, :destroy],
                                           controller: 'inbox_message_templates', param: :name do
               post :media, on: :collection
             end

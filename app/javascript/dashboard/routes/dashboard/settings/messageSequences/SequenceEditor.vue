@@ -200,6 +200,7 @@
                     v-if="step.template_inbox_id && getSelectedTemplate(step)"
                     :ref="`templateParser_${index}`"
                     :template="getSelectedTemplate(step)"
+                    :initial-params="step.template_params?.processed_params || {}"
                   />
                 </div>
 
@@ -554,6 +555,30 @@
             </p>
           </div>
 
+          <!-- Allowed Weekdays -->
+          <div class="p-3 mb-4 border rounded-md border-n-weak bg-n-solid-3">
+            <p class="block m-0 mb-2 text-sm font-medium text-n-slate-12">
+              {{ $t('MESSAGE_SEQUENCES.RULES.WEEKDAYS') }}
+            </p>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="day in weekdayOptions"
+                :key="day.value"
+                type="button"
+                class="px-2.5 py-1 text-xs font-medium border rounded-md"
+                :class="form.allowed_weekdays.includes(day.value)
+                  ? 'text-n-blue-11 border-n-blue-9 bg-n-blue-3'
+                  : 'text-n-slate-11 border-n-weak bg-n-solid-2'"
+                @click="toggleWeekday(day.value)"
+              >
+                {{ day.label }}
+              </button>
+            </div>
+            <p class="mt-2 text-[10px] text-n-slate-10 leading-tight">
+              {{ $t('MESSAGE_SEQUENCES.RULES.WEEKDAYS_HELP') }}
+            </p>
+          </div>
+
           <!-- Save Button at bottom -->
           <div class="w-full mt-auto pt-4">
             <button
@@ -605,6 +630,7 @@ export default {
         restrict_execution_time: false,
         execution_start_hour: 8,
         execution_end_hour: 19,
+        allowed_weekdays: [0, 1, 2, 3, 4, 5, 6],
         steps_attributes: [
           {
             position: 1,
@@ -643,6 +669,17 @@ export default {
       return this.inboxes.filter(
         inbox => inbox.channel_type === 'Channel::Whatsapp'
       );
+    },
+    weekdayOptions() {
+      return [
+        { value: 1, label: 'Seg' },
+        { value: 2, label: 'Ter' },
+        { value: 3, label: 'Qua' },
+        { value: 4, label: 'Qui' },
+        { value: 5, label: 'Sex' },
+        { value: 6, label: 'Sáb' },
+        { value: 0, label: 'Dom' },
+      ];
     },
   },
   watch: {
@@ -712,6 +749,14 @@ export default {
         : [];
       this.form.activation_tag = currentTags.filter(t => t !== tag).join(',');
     },
+    toggleWeekday(day) {
+      const index = this.form.allowed_weekdays.indexOf(day);
+      if (index === -1) {
+        this.form.allowed_weekdays.push(day);
+      } else {
+        this.form.allowed_weekdays.splice(index, 1);
+      }
+    },
     getActualIndex(step) {
       return this.form.steps_attributes.indexOf(step);
     },
@@ -737,6 +782,10 @@ export default {
             restrict_execution_time: seq.restrict_execution_time || false,
             execution_start_hour: seq.execution_start_hour ?? 8,
             execution_end_hour: seq.execution_end_hour ?? 19,
+            allowed_weekdays:
+              seq.allowed_weekdays && seq.allowed_weekdays.length
+                ? seq.allowed_weekdays
+                : [0, 1, 2, 3, 4, 5, 6],
             steps_attributes: seq.steps
               ? seq.steps.map(s => {
                   const step = {
@@ -825,6 +874,10 @@ export default {
         formData.append('execution_end_hour', this.form.execution_end_hour);
       }
 
+      this.form.allowed_weekdays.forEach(day => {
+        formData.append('allowed_weekdays[]', day);
+      });
+
       this.form.steps_attributes.forEach((step, index) => {
         if (step.id) {
           formData.append(`steps_attributes[${index}][id]`, step.id);
@@ -877,6 +930,11 @@ export default {
     async save() {
       if (!this.form.name) {
         useAlert(this.$t('MESSAGE_SEQUENCES.FORM.NAME_REQUIRED'));
+        return;
+      }
+
+      if (!this.form.allowed_weekdays.length) {
+        useAlert(this.$t('MESSAGE_SEQUENCES.RULES.WEEKDAYS_REQUIRED'));
         return;
       }
 

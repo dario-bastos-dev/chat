@@ -86,9 +86,9 @@
 ## Project-Specific
 
 - **Translations**:
-  - For product and source-string changes, only update `en.yml` and `en.json`; other languages are handled through Crowdin and the community
+  - For product and source-string changes, update both `en.yml`/`en.json` and the `pt_BR` equivalents (`pt_BR.yml` / `pt_BR/*.json`) in the same change; other languages are still handled through Crowdin and the community
   - Crowdin-generated translation sync PRs may update non-English locale files; do not flag those changes solely for modifying translated locale files
-  - Backend i18n → `en.yml`, Frontend i18n → `en.json`
+  - Backend i18n → `en.yml` + `pt_BR.yml`, Frontend i18n → `en.json` + `pt_BR/*.json`
 - **Frontend**:
   - Use `components-next/` for message bubbles (the rest is being deprecated)
 

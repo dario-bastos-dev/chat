@@ -25,6 +25,7 @@ class Api::V1::Accounts::Conversations::ConversationSequencesController < Api::V
     sequence = Current.account.message_sequences.find(params[:message_sequence_id])
     conv_seq = @conversation.conversation_message_sequences.find_or_initialize_by(message_sequence_id: sequence.id)
     conv_seq.active = true
+    conv_seq.current_step = sequence.steps.order(:position).first if conv_seq.current_step.blank?
     conv_seq.save!
 
     render json: { message_sequence_id: sequence.id, attached: true, conversation_active: true }, status: :ok

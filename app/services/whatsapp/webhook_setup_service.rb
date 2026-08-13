@@ -69,11 +69,26 @@ class Whatsapp::WebhookSetupService
   end
 
   # Builds on WEBHOOK_DEFAULT_FIELDS so the base fields stay defined in one place;
-  # `calls` is added only when voice calling is enabled on the inbox.
+  # `calls` is added only when voice calling is enabled on the inbox, and the coexistence
+  # fields only when the WABA was onboarded through embedded signup.
   def subscribed_fields
     fields = Whatsapp::FacebookApiClient::WEBHOOK_DEFAULT_FIELDS.dup
+    fields.concat(Whatsapp::FacebookApiClient::COEXISTENCE_FIELDS) if embedded_signup_on_waba?
     fields << 'calls' if calls_enabled_on_waba?
     fields
+  end
+
+  # Same WABA-wide reasoning as `calls`: `subscribed_fields` is an app-level subscription, so a manual
+  # sibling re-registering must not drop the coexistence fields an embedded signup sibling depends on.
+  def embedded_signup_on_waba?
+    return true if @channel.provider_config['source'] == 'embedded_signup'
+
+    Channel::Whatsapp
+      .where(provider: 'whatsapp_cloud')
+      .where.not(id: @channel.id)
+      .where("provider_config->>'business_account_id' = ?", @waba_id)
+      .where("provider_config->>'source' = 'embedded_signup'")
+      .exists?
   end
 
   # `subscribed_fields` is a WABA-wide app subscription, so keep `calls` whenever this inbox or

@@ -50,10 +50,33 @@ class Whatsapp::TemplateProcessorService
   end
 
   def process_header_components(processed_params, template)
-    return [] if processed_params['header'].blank?
+    header_data = apply_stored_media(processed_params['header'] || {}, template)
+    return [] if header_data.blank?
 
-    header_params = build_header_params(processed_params['header'], template)
+    header_params = build_header_params(header_data, template)
     header_params.present? ? [{ type: 'header', parameters: header_params }] : []
+  end
+
+  # Templates created through Chatwoot keep a copy of their media. Meta requires it on every send but
+  # only stores the approval sample, behind a signed URL that expires, so the stored copy fills in
+  # whenever the caller sent no URL — a campaign or automation saved earlier keeps working untouched.
+  def apply_stored_media(header_data, template)
+    return header_data if header_data['media_url'].present?
+
+    media_format = media_header_format(template)
+    return header_data if media_format.blank?
+
+    url = WhatsappTemplateMedia.url_for(channel.account_id, template['name'], template['language'])
+    return header_data if url.blank?
+
+    header_data.merge('media_url' => url, 'media_type' => header_data['media_type'].presence || media_format)
+  end
+
+  def media_header_format(template)
+    header_component = template['components']&.find { |component| component['type'] == 'HEADER' }
+    format = header_component&.dig('format').to_s.downcase
+
+    %w[image video document].include?(format) ? format : nil
   end
 
   def build_header_params(header_data, template)

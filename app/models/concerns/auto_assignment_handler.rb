@@ -38,6 +38,12 @@ module AutoAssignmentHandler
   end
 
   def should_run_auto_assignment?
+    # Conversations backfilled from WhatsApp coexistence history are created open, which reads here as a
+    # brand new conversation. Assigning them would flood the agents' queues with months old chats and burn
+    # the capacity meant for live traffic. Only the creating save is skipped, so if live traffic later
+    # reopens the conversation it is assigned normally.
+    return false if history_sync? && previously_new_record?
+
     return false unless inbox.enable_auto_assignment?
     # Assignment V2: Resolved/snoozed conversations still have an assignee, so bypass the
     # assignee-blank check below. The AssignmentJob needs to run to rebalance assignments.

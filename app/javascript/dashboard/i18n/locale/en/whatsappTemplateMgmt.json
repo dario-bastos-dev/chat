@@ -42,6 +42,112 @@
       "LANGUAGE": "Language",
       "INBOXES": "Inboxes",
       "LAST_SYNC_ATTEMPT": "Last sync attempt"
-    }
+    },
+    "TABLE": {
+      "NAME": "Name",
+      "CATEGORY": "Category",
+      "LANGUAGE": "Language",
+      "STATUS": "Status"
+    },
+    "CATEGORIES": {
+      "UTILITY": "Utility",
+      "MARKETING": "Marketing"
+    },
+    "BUTTON_TYPES": {
+      "QUICK_REPLY": "Quick reply",
+      "URL": "URL",
+      "PHONE_NUMBER": "Phone number"
+    },
+    "HEADER_FORMATS": {
+      "TEXT": "Text",
+      "IMAGE": "Image",
+      "VIDEO": "Video",
+      "DOCUMENT": "Document"
+    },
+    "FORM": {
+      "NAME": {
+        "LABEL": "Template name",
+        "PLACEHOLDER": "order_confirmed",
+        "HELP": "Automatically formatted: lowercase letters, numbers and underscores.",
+        "LOCKED": "The name cannot be changed after creation."
+      },
+      "CATEGORY": {
+        "LABEL": "Category"
+      },
+      "LANGUAGE": {
+        "LABEL": "Language"
+      },
+      "HEADER": {
+        "LABEL": "Header (optional)",
+        "PLACEHOLDER": "Hello {'{{'}customer_name{'}}'}"
+      },
+      "HEADER_FORMAT": {
+        "LABEL": "Header format",
+        "LOCKED": "The header format cannot be changed after creation."
+      },
+      "HEADER_EXAMPLE": {
+        "LABEL": "Header sample values"
+      },
+      "UPLOADING": "Uploading…",
+      "BODY": {
+        "LABEL": "Body",
+        "PLACEHOLDER": "Hi {'{{'}customer_name{'}}'}, your order {'{{'}order_id{'}}'} has been confirmed.",
+        "HELP": "Use {'{{'}name{'}}'} for named variables or {'{{'}1{'}}'} for numbered ones — do not mix the two."
+      },
+      "BODY_EXAMPLE": {
+        "LABEL": "Body sample values"
+      },
+      "FOOTER": {
+        "LABEL": "Footer (optional)",
+        "PLACEHOLDER": "Sent by the support team"
+      },
+      "BUTTONS": {
+        "LABEL": "Buttons (optional)",
+        "ADD": "Add button",
+        "TEXT_PLACEHOLDER": "Button label",
+        "URL_PLACEHOLDER": "https://example.com/orders/{'{{'}order_id{'}}'}",
+        "PHONE_PLACEHOLDER": "+15550100"
+      },
+      "PREVIEW": "Preview",
+      "SUBMIT": "Submit for approval",
+      "CANCEL": "Cancel",
+      "VARIABLE_PLACEHOLDER": "Sample value for {name}",
+      "SAVE": "Save and submit for review"
+    },
+    "ERRORS": {
+      "INVALID_NAME": "The name must contain only lowercase letters, numbers and underscores.",
+      "BODY_REQUIRED": "The body text is required.",
+      "BODY_EXAMPLE_MISMATCH": "Provide a sample value for every body variable.",
+      "HEADER_EXAMPLE_MISMATCH": "Provide a sample value for every header variable.",
+      "BUTTON_LABEL_REQUIRED": "Every button needs a label.",
+      "BUTTON_LABEL_TOO_LONG": "Button labels must be 25 characters or shorter.",
+      "INVALID_BUTTON_URL": "URL buttons accept at most one variable, and it must be at the end of the URL.",
+      "MEDIA_REQUIRED": "Upload a file for the media header.",
+      "UPLOAD_FAILED": "Could not upload the file. Please try again.",
+      "INVALID_VARIABLE_NAME": "The variable {name} must use lowercase letters, numbers and single underscores between words.",
+      "MIXED_VARIABLES": "Use either named or numbered variables across the whole template, not both."
+    },
+    "CREATE_SUCCESS": "Template submitted to Meta for approval.",
+    "CREATE_ERROR": "Could not create the template. Please try again.",
+    "DELETE_SUCCESS": "Template deleted successfully.",
+    "DELETE_ERROR": "Could not delete the template. Please try again.",
+    "CREATE": {
+      "TITLE": "New template",
+      "DESCRIPTION": "Submit a template to Meta for approval. It stays pending until Meta reviews it.",
+      "INBOX": "Inbox"
+    },
+    "DELETE": {
+      "BUTTON": "Delete template",
+      "TITLE": "Delete template",
+      "DESCRIPTION": "This deletes {name} on Meta and cannot be undone.",
+      "CONFIRM": "Delete"
+    },
+    "EDIT": {
+      "BUTTON": "Edit content",
+      "TITLE": "Edit template",
+      "DESCRIPTION": "Only the content changes. Name and language are fixed, and the template goes back to Meta for review."
+    },
+    "UPDATE_SUCCESS": "Template submitted to Meta for review.",
+    "UPDATE_ERROR": "Could not update the template. Please try again."
   }
 }

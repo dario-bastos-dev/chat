@@ -138,6 +138,20 @@ const validateSingleAction = action => {
     return ACTION_PARAMETERS_REQUIRED;
   }
 
+  // A send_message action carrying an object is a WhatsApp template. The object
+  // exists as soon as template mode is picked, so the rule is only complete once
+  // a template has actually been chosen.
+  if (action.action_name === 'send_message') {
+    const params = Array.isArray(action.action_params)
+      ? action.action_params[0]
+      : action.action_params;
+    const templateParams =
+      params && typeof params === 'object' ? params.template_params : null;
+    if (templateParams && !templateParams.name) {
+      return ACTION_PARAMETERS_REQUIRED;
+    }
+  }
+
   return null;
 };
 

@@ -184,6 +184,7 @@ describe Whatsapp::FacebookApiClient do
 
   describe '#subscribe_phone_number_webhook' do
     let(:waba_id) { 'test_waba_id' }
+    let(:default_fields) { %w[messages smb_message_echoes message_template_status_update] }
     let(:phone_number_id) { 'test_phone_id' }
     let(:callback_url) { 'https://example.com/webhook' }
     let(:verify_token) { 'test_verify_token' }
@@ -195,7 +196,7 @@ describe Whatsapp::FacebookApiClient do
         stub_request(:post, "https://graph.facebook.com/#{api_version}/#{waba_id}/subscribed_apps")
           .with(
             headers: { 'Authorization' => "Bearer #{access_token}", 'Content-Type' => 'application/json' },
-            body: { subscribed_fields: %w[messages smb_message_echoes] }.to_json
+            body: { subscribed_fields: default_fields }.to_json
           )
           .to_return(
             status: 200,

@@ -1,4 +1,5 @@
 class Api::V1::Accounts::MessageSequencesController < Api::V1::Accounts::BaseController
+  before_action :check_authorization
   before_action :fetch_message_sequence, only: [:show, :update, :destroy]
 
   def index
@@ -42,7 +43,8 @@ class Api::V1::Accounts::MessageSequencesController < Api::V1::Accounts::BaseCon
       :name, :activation_type, :activation_tag, :inbox_scope, :active,
       :macro_id, :macro_execution_time, :restrict_execution_time, :execution_start_hour, :execution_end_hour,
       steps_attributes: [:id, :position, :step_type, :content, :wait_time, :file, :macro_id, :_destroy, template_params: {}],
-      inbox_ids: []
+      inbox_ids: [],
+      allowed_weekdays: []
     )
   end
 

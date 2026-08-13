@@ -47,6 +47,7 @@ export default {
       description = '',
       name: title = '',
       allow_auto_assign: allowAutoAssign = true,
+      allow_offline_assignment: allowOfflineAssignment = false,
       icon = '',
       icon_color: iconColor = '',
     } = formData;
@@ -55,6 +56,7 @@ export default {
       description,
       title,
       allowAutoAssign,
+      allowOfflineAssignment,
       icon,
       iconColor,
     });
@@ -88,6 +90,7 @@ export default {
         description: this.state.description,
         name: this.state.title,
         allow_auto_assign: this.state.allowAutoAssign,
+        allow_offline_assignment: this.state.allowOfflineAssignment,
         icon: this.state.icon,
         icon_color: this.state.iconColor,
       });
@@ -158,6 +161,16 @@ export default {
         <input v-model="state.allowAutoAssign" type="checkbox" :value="true" />
         <label for="conversation_creation">
           {{ $t('TEAMS_SETTINGS.FORM.AUTO_ASSIGN.LABEL') }}
+        </label>
+      </div>
+      <div v-if="state.allowAutoAssign" class="w-full flex items-center gap-2">
+        <input
+          v-model="state.allowOfflineAssignment"
+          type="checkbox"
+          :value="true"
+        />
+        <label for="allow_offline_assignment">
+          {{ $t('TEAMS_SETTINGS.FORM.OFFLINE_ASSIGNMENT.LABEL') }}
         </label>
       </div>
       <div class="flex flex-row justify-end gap-2 py-2 px-0 w-full">

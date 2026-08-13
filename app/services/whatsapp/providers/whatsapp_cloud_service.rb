@@ -96,6 +96,10 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
     template_management_service.create_template(params)
   end
 
+  def update_message_template(template_id, params)
+    template_management_service.update_template(template_id, params)
+  end
+
   def delete_message_template(template_name)
     template_management_service.delete_template(template_name)
   end

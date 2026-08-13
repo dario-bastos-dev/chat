@@ -12,7 +12,8 @@ class MessageSequenceListener < BaseListener
 
     return if waiting_sequences.empty?
 
-    # Retoma as sequências definindo waiting_interaction como false
-    waiting_sequences.update_all(waiting_interaction: false)
+    # Retoma as sequências definindo waiting_interaction como false e reinicia a contagem do
+    # wait_time do próximo passo a partir do momento da retomada
+    waiting_sequences.update_all(waiting_interaction: false, last_step_executed_at: Time.current)
   end
 end

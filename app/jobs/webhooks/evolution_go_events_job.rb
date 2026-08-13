@@ -1,6 +1,9 @@
 class Webhooks::EvolutionGoEventsJob < ApplicationJob
   queue_as :high
 
+  # Grace period given to whatsmeow's own reconnection before we confirm a close event
+  CONNECTION_RECHECK_DELAY = 30.seconds
+
   def perform(params = {})
     @params = params.with_indifferent_access
     @event = @params[:event]
@@ -70,6 +73,10 @@ class Webhooks::EvolutionGoEventsJob < ApplicationJob
     elsif %w[close closed].include?(status.to_s)
       config['connection_status'] = 'close'
       config['connected'] = false
+
+      # Confirm the disconnection out of band instead of alerting right away: whatsmeow
+      # reconnects on its own after network blips, and the alert stops message ingestion.
+      Inboxes::CheckEvolutionGoConnectionsJob.set(wait: CONNECTION_RECHECK_DELAY).perform_later(channel.id)
     end
 
     channel.update_column(:provider_config, config)

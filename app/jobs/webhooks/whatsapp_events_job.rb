@@ -11,11 +11,18 @@ class Webhooks::WhatsappEventsJob < MutexApplicationJob
     return handle_template_status_update(params) if template_status_event?(params)
 
     channel = find_channel_from_whatsapp_business_payload(params)
+    backfill = coexistence_backfill_field?(params)
 
-    if channel_is_inactive?(channel)
+    # The backfill is one-shot and Meta never resends a chunk, so a channel awaiting reauthorization still
+    # ingests it — it only writes history, it never sends or answers anything. Suspended accounts still stop here.
+    if channel_is_inactive?(channel, allow_reauthorization_pending: backfill)
       Rails.logger.warn("Inactive WhatsApp channel: #{channel&.phone_number || "unknown - #{params[:phone_number]}"}")
       return
     end
+
+    # Coexistence backfills carry many contacts in a single payload, so they can't use the per-sender
+    # mutex below. Their own dedup is the message source_id lock inside the incoming message service.
+    return handle_coexistence_backfill(channel, params) if backfill
 
     sender_id = contact_sender_id(params)
     return process_events(channel, params) if sender_id.blank?
@@ -73,7 +80,7 @@ class Webhooks::WhatsappEventsJob < MutexApplicationJob
   # - "from" is the business number, "to" is the contact (reversed from regular messages)
   # - No "contacts" array in echo payload
   def message_echo_event?(params)
-    params.dig(:entry, 0, :changes, 0, :field) == 'smb_message_echoes'
+    webhook_field(params) == 'smb_message_echoes'
   end
 
   def handle_message_echo(channel, params)
@@ -91,8 +98,24 @@ class Webhooks::WhatsappEventsJob < MutexApplicationJob
 
   private
 
+  def webhook_field(params)
+    params.dig(:entry, 0, :changes, 0, :field)
+  end
+
+  def coexistence_backfill_field?(params)
+    %w[history smb_app_state_sync].include?(webhook_field(params))
+  end
+
+  def handle_coexistence_backfill(channel, params)
+    if webhook_field(params) == 'history'
+      Whatsapp::HistorySyncService.new(inbox: channel.inbox, params: params).perform
+    else
+      Whatsapp::StateSyncService.new(inbox: channel.inbox, params: params).perform
+    end
+  end
+
   def template_status_event?(params)
-    params.dig(:entry, 0, :changes, 0, :field) == 'message_template_status_update'
+    webhook_field(params) == 'message_template_status_update'
   end
 
   def handle_template_status_update(params)
@@ -141,10 +164,10 @@ class Webhooks::WhatsappEventsJob < MutexApplicationJob
     ].compact_blank.first
   end
 
-  def channel_is_inactive?(channel)
+  def channel_is_inactive?(channel, allow_reauthorization_pending: false)
     return true if channel.blank?
     # Only skip for embedded signup when reauth is required; manual flow uses API keys and should still receive webhooks
-    return true if channel.reauthorization_required? && embedded_signup_channel?(channel)
+    return true if !allow_reauthorization_pending && channel.reauthorization_required? && embedded_signup_channel?(channel)
     return true unless channel.account.active?
 
     false

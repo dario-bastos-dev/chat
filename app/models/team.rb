@@ -2,15 +2,16 @@
 #
 # Table name: teams
 #
-#  id                :bigint           not null, primary key
-#  allow_auto_assign :boolean          default(TRUE)
-#  description       :text
-#  icon              :string           default("")
-#  icon_color        :string           default("")
-#  name              :string           not null
-#  created_at        :datetime         not null
-#  updated_at        :datetime         not null
-#  account_id        :bigint           not null
+#  id                        :bigint           not null, primary key
+#  allow_auto_assign         :boolean          default(TRUE)
+#  allow_offline_assignment  :boolean          default(FALSE), not null
+#  description               :text
+#  icon                      :string           default("")
+#  icon_color                :string           default("")
+#  name                      :string           not null
+#  created_at                :datetime         not null
+#  updated_at                :datetime         not null
+#  account_id                :bigint           not null
 #
 # Indexes
 #

@@ -8,10 +8,20 @@ const props = defineProps({
   buttons: { type: Array, default: () => [] },
 });
 
+// Samples arrive in the order the placeholders first appear, which works for
+// both {{1}} and {{order_id}} without the preview caring which style is used.
+// A fresh regex per call keeps `lastIndex` from leaking between the two passes.
+const variablePattern = () => /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
+
 const interpolate = (text, examples) => {
   if (!text) return '';
-  return text.replace(/\{\{(\d+)\}\}/g, (match, index) => {
-    const sample = examples?.[Number(index) - 1];
+
+  const order = [
+    ...new Set([...text.matchAll(variablePattern())].map(match => match[1])),
+  ];
+
+  return text.replace(variablePattern(), (match, name) => {
+    const sample = examples?.[order.indexOf(name)];
     return sample || match;
   });
 };

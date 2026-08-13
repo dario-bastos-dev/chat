@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_06_210000) do
+ActiveRecord::Schema[7.1].define(version: 2026_08_12_081819) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -813,14 +813,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_06_210000) do
     t.bigint "conversation_id", null: false
     t.bigint "message_sequence_id", null: false
     t.boolean "active", default: true
-    t.integer "current_step", default: 0
     t.datetime "last_step_executed_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "waiting_interaction", default: false, null: false
+    t.bigint "current_step_id"
+    t.index ["active", "waiting_interaction"], name: "index_conv_msg_seq_on_active_and_waiting_interaction"
     t.index ["conversation_id", "message_sequence_id"], name: "idx_conv_msg_seq_uniq", unique: true
     t.index ["conversation_id"], name: "index_conversation_message_sequences_on_conversation_id"
+    t.index ["current_step_id"], name: "index_conversation_message_sequences_on_current_step_id"
     t.index ["message_sequence_id"], name: "index_conversation_message_sequences_on_message_sequence_id"
+  end
+
   create_table "conversation_outcomes", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "assistant_id", null: false
@@ -1335,6 +1339,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_06_210000) do
     t.boolean "restrict_execution_time", default: false
     t.integer "execution_start_hour", default: 8
     t.integer "execution_end_hour", default: 19
+    t.integer "allowed_weekdays", default: [0, 1, 2, 3, 4, 5, 6], null: false, array: true
     t.index ["account_id"], name: "index_message_sequences_on_account_id"
     t.index ["created_by_id"], name: "index_message_sequences_on_created_by_id"
     t.index ["macro_id"], name: "index_message_sequences_on_macro_id"
@@ -1650,6 +1655,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_06_210000) do
     t.datetime "updated_at", null: false
     t.string "icon", default: ""
     t.string "icon_color", default: ""
+    t.boolean "allow_offline_assignment", default: false, null: false
     t.index ["account_id"], name: "index_teams_on_account_id"
     t.index ["name", "account_id"], name: "index_teams_on_name_and_account_id", unique: true
   end
@@ -1751,6 +1757,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_06_210000) do
   add_foreign_key "conversation_deals", "conversations"
   add_foreign_key "conversation_deals", "deals", on_delete: :cascade
   add_foreign_key "conversation_message_sequences", "conversations"
+  add_foreign_key "conversation_message_sequences", "message_sequence_steps", column: "current_step_id"
   add_foreign_key "conversation_message_sequences", "message_sequences"
   add_foreign_key "deal_activities", "accounts"
   add_foreign_key "deal_activities", "deals", on_delete: :cascade

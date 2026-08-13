@@ -52,7 +52,10 @@
       "MANUAL_HELP": "This sequence will only start when someone manually activates it from the conversation's sequences panel.",
       "INBOX": "Limit to Inboxes",
       "ALL_INBOXES": "All Inboxes",
-      "SELECTED_INBOXES": "Only selected Inboxes (IDs)"
+      "SELECTED_INBOXES": "Only selected Inboxes (IDs)",
+      "WEEKDAYS": "Allowed days of the week",
+      "WEEKDAYS_HELP": "Messages will only be sent on the selected days. Outside of them, the sequence waits for the next allowed day.",
+      "WEEKDAYS_REQUIRED": "Select at least one allowed day."
     },
     "DELETE": {
       "TITLE": "Delete Sequence",

@@ -104,7 +104,14 @@
       "SYNC_ASSIGNEE_CONV_TO_DEAL": "Sincronizar responsável da conversa para o negócio",
       "SYNC_ASSIGNEE_DEAL_TO_CONV": "Sincronizar responsável do negócio para a conversa",
       "STATUS_WON": "Ganho",
-      "STATUS_LOST": "Perdido"
+      "STATUS_LOST": "Perdido",
+      "MESSAGE_MODE": {
+        "TEXT": "Mensagem",
+        "TEMPLATE": "Template"
+      },
+      "TEMPLATE_INBOX_PLACEHOLDER": "Selecione a caixa de entrada do template",
+      "TEMPLATE_PLACEHOLDER": "Selecione um template",
+      "NO_TEMPLATE_INBOX": "Nenhuma caixa de entrada do WhatsApp tem templates aprovados ainda."
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Ativar regra de automação",

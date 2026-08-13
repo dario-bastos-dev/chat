@@ -16,4 +16,10 @@ class Whatsapp::MessageDedupLock
   def acquire!
     ::Redis::Alfred.set(@key, true, nx: true, ex: @ttl)
   end
+
+  # Drops the lock so the message can be processed again. Only for callers that can retry a failed
+  # import: live webhooks are retried by Meta, so they keep the lock for its full TTL to stay deduped.
+  def release!
+    ::Redis::Alfred.delete(@key)
+  end
 end

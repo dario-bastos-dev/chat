@@ -4,6 +4,10 @@ class Whatsapp::FacebookApiClient
   # `message_template_status_update` keeps the cached template statuses in sync when Meta approves or rejects a template.
   WEBHOOK_DEFAULT_FIELDS = %w[messages smb_message_echoes message_template_status_update].freeze
 
+  # Coexistence backfill: the chat history Meta replays after onboarding and the business address book.
+  # Only embedded signup can produce them, so callers add these to keep manual-setup WABAs untouched.
+  COEXISTENCE_FIELDS = %w[history smb_app_state_sync].freeze
+
   def initialize(access_token = nil)
     @access_token = access_token
     @api_version = GlobalConfigService.load('WHATSAPP_API_VERSION', 'v22.0')
@@ -72,6 +76,19 @@ class Whatsapp::FacebookApiClient
 
     data = handle_response(response, 'Phone status check failed')
     data['code_verification_status'] == 'VERIFIED'
+  end
+
+  # Asks Meta to push the coexistence data captured by the WhatsApp Business app: `history` for the last
+  # 180 days of chats and `smb_app_state_sync` for the business address book. Both are delivered as webhooks.
+  # Only usable within 24h of an embedded signup onboarding, and only once per onboarding.
+  def trigger_smb_app_data_sync(phone_number_id, sync_type)
+    response = HTTParty.post(
+      "#{BASE_URI}/#{@api_version}/#{phone_number_id}/smb_app_data",
+      headers: request_headers,
+      body: { messaging_product: 'whatsapp', sync_type: sync_type }.to_json
+    )
+
+    handle_response(response, "SMB app data sync (#{sync_type}) failed")
   end
 
   def subscribe_phone_number_webhook(waba_id, phone_number_id, callback_url, verify_token, subscribed_fields: nil)

@@ -139,7 +139,7 @@ class Conversation < ApplicationRecord
   before_create :ensure_waiting_since
 
   after_update_commit :execute_after_update_commit_callbacks
-  after_create_commit :notify_conversation_creation
+  after_create_commit :notify_conversation_creation, unless: :history_sync?
   after_create_commit :load_attributes_created_by_db_triggers
   after_create_commit :attach_always_active_sequences
 
@@ -324,6 +324,13 @@ class Conversation < ApplicationRecord
     self.assignee_agent_bot = inbox.agent_bot
   end
 
+  # Conversations rebuilt from WhatsApp coexistence history are months old, so they must not be treated as
+  # live activity: no agent notifications, no conversation_created automations, no auto assignment, and
+  # any always-active sequence is attached parked instead of ready to send.
+  def history_sync?
+    additional_attributes['history_sync'].present?
+  end
+
   def notify_conversation_creation
     dispatcher_dispatch(CONVERSATION_CREATED)
   end
@@ -426,10 +433,10 @@ class Conversation < ApplicationRecord
       # Encontrar ou atrelar e resetar (como na nova regra definida de recomeçar a sequência)
       conv_seq = conversation_message_sequences.find_or_initialize_by(message_sequence_id: sequence.id)
       
-      # Se estava inativa ou é a primeira vez, bota no passo zero e ativa pro Cronjob passar listando!
-      if !conv_seq.active?
+      # Se estava inativa ou é a primeira vez, bota no primeiro passo e ativa pro Cronjob passar listando!
+      if conv_seq.new_record? || !conv_seq.active?
         conv_seq.active = true
-        conv_seq.current_step = 0
+        conv_seq.current_step = sequence.steps.order(:position).first
         conv_seq.last_step_executed_at = nil
       end
 
@@ -447,6 +454,11 @@ class Conversation < ApplicationRecord
     account.message_sequences.active.always_active.find_each do |sequence|
       conversation_message_sequences.find_or_create_by!(message_sequence_id: sequence.id) do |cms|
         cms.active = true
+        # A conversation rebuilt from WhatsApp history is dormant, so the sequence is attached but parked:
+        # `ready_for_execution` skips it, and MessageSequenceListener resumes it counting from the moment
+        # the contact writes again. Attaching it as ready would send follow-ups about a months old chat.
+        cms.waiting_interaction = history_sync?
+        cms.current_step = sequence.steps.order(:position).first
       end
     end
   rescue StandardError => e
