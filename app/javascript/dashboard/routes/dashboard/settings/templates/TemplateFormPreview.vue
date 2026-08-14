@@ -35,6 +35,17 @@ const isMediaHeader = computed(
 const mediaLabel = computed(
   () => props.header?.fileName || props.header?.format
 );
+
+// A picked file is previewed straight from the browser via an object URL; on
+// edit it is the URL already stored for the template. Documents have nothing to
+// render inline, so they keep the label.
+const mediaUrl = computed(() => props.header?.mediaUrl || '');
+const previewableImage = computed(
+  () => mediaUrl.value && props.header?.format === 'IMAGE'
+);
+const previewableVideo = computed(
+  () => mediaUrl.value && props.header?.format === 'VIDEO'
+);
 const bodyText = computed(() =>
   interpolate(props.body?.text, props.body?.example)
 );
@@ -48,8 +59,20 @@ const visibleButtons = computed(() =>
     <div
       class="flex flex-col gap-2 p-3 max-w-sm rounded-lg shadow-sm bg-n-background"
     >
+      <img
+        v-if="previewableImage"
+        :src="mediaUrl"
+        :alt="mediaLabel"
+        class="object-cover w-full h-32 rounded-md bg-n-slate-4"
+      />
+      <video
+        v-else-if="previewableVideo"
+        :src="mediaUrl"
+        controls
+        class="object-cover w-full h-32 rounded-md bg-n-slate-4"
+      />
       <div
-        v-if="isMediaHeader"
+        v-else-if="isMediaHeader"
         class="flex justify-center items-center h-24 text-xs rounded-md bg-n-slate-4 text-n-slate-11"
       >
         {{ mediaLabel }}

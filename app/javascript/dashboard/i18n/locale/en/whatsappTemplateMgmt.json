@@ -145,7 +145,7 @@
     "EDIT": {
       "BUTTON": "Edit content",
       "TITLE": "Edit template",
-      "DESCRIPTION": "Only the content changes. Name and language are fixed, and the template goes back to Meta for review."
+      "DESCRIPTION": "Only the content changes. Name, language, category and header format are fixed, and the template goes back to Meta for review."
     },
     "UPDATE_SUCCESS": "Template submitted to Meta for review.",
     "UPDATE_ERROR": "Could not update the template. Please try again."

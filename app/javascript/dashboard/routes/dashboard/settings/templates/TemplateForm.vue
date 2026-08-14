@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Input from 'dashboard/components-next/input/Input.vue';
 import Select from 'dashboard/components-next/select/Select.vue';
@@ -143,11 +143,24 @@ watch(
   { immediate: true }
 );
 
+// Object URL for the file just picked, so the preview shows the real media
+// instead of a placeholder. Kept out of `form` because `load` replaces that
+// wholesale and the URL has to be revoked, not copied.
+const mediaPreviewUrl = ref('');
+
+const setMediaPreview = file => {
+  if (mediaPreviewUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(mediaPreviewUrl.value);
+  }
+  mediaPreviewUrl.value = file ? URL.createObjectURL(file) : '';
+};
+
 const previewHeader = computed(() => ({
   format: form.headerFormat,
   text: form.headerText,
   example: form.headerExamples,
   fileName: form.mediaFileName,
+  mediaUrl: mediaPreviewUrl.value,
 }));
 const previewBody = computed(() => ({
   text: form.bodyText,
@@ -172,6 +185,7 @@ const handleHeaderFormatChange = () => {
   form.mediaHandle = '';
   form.mediaBlobId = '';
   form.mediaFileName = '';
+  setMediaPreview(null);
   if (isMediaHeader.value) {
     form.headerText = '';
     form.headerExamples = [];
@@ -194,10 +208,12 @@ const handleFileSelect = async event => {
     // instead of the approval sample, whose signed URL expires.
     form.mediaBlobId = data.blob_id || '';
     form.mediaFileName = file.name;
+    setMediaPreview(file);
   } catch (error) {
     form.mediaHandle = '';
     form.mediaBlobId = '';
     form.mediaFileName = '';
+    setMediaPreview(null);
     useAlert(
       error?.response?.data?.error ||
         t('WHATSAPP_TEMPLATE_MGMT.ERRORS.UPLOAD_FAILED')
@@ -326,16 +342,34 @@ const handleSubmit = () => {
   emit('submit', buildPayload());
 };
 
+// Same sources the template parser uses: our stored copy first, then Meta's
+// approval sample when it came back as a URL rather than a raw upload handle.
+const existingMediaUrl = template => {
+  if (template.chatwoot_media_url) return template.chatwoot_media_url;
+
+  const header = (template.components || []).find(
+    component => component.type?.toUpperCase() === 'HEADER'
+  );
+  const handle = header?.example?.header_handle?.[0] || '';
+  return /^https?:\/\//.test(handle) ? handle : '';
+};
+
 const load = template => {
   Object.assign(form, template ? templateToForm(template) : buildInitialState());
+  setMediaPreview(null);
+  // On edit the media already lives at Meta or in our storage; start from it.
+  mediaPreviewUrl.value = template ? existingMediaUrl(template) : '';
   errorMessage.value = '';
 };
 
 const reset = () => load(null);
 
-// The form fills itself from the prop instead of relying on the parent calling `load` at the right
-// moment: the panel sets the template and mounts this component in the same tick, so its ref is
-// still null when the parent tries, and the fields would stay empty on the first edit.
+onBeforeUnmount(() => setMediaPreview(null));
+
+// The form fills itself from the prop instead of relying on the parent calling
+// `load` at the right moment: the panel sets the template and mounts this
+// component in the same tick, so its ref is still null when the parent tries,
+// and the fields would stay empty on the first edit.
 watch(() => props.template, load, { immediate: true });
 
 defineExpose({ reset, load });
@@ -360,7 +394,11 @@ defineExpose({ reset, load });
         <label class="text-sm font-medium text-n-slate-12">
           {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.CATEGORY.LABEL') }}
         </label>
-        <Select v-model="form.category" :options="categoryOptions" />
+        <Select
+          v-model="form.category"
+          :options="categoryOptions"
+          :disabled="isEditing"
+        />
       </div>
       <div class="flex flex-col gap-1">
         <label class="text-sm font-medium text-n-slate-12">
@@ -390,7 +428,7 @@ defineExpose({ reset, load });
         </span>
       </div>
 
-      <div v-if="isMediaHeader" class="flex gap-3 items-center">
+      <div v-if="isMediaHeader" class="flex flex-col gap-2 items-start">
         <input
           ref="fileInputRef"
           type="file"
@@ -399,10 +437,16 @@ defineExpose({ reset, load });
           :disabled="isUploading"
           @change="handleFileSelect"
         />
-        <span v-if="isUploading" class="text-sm text-n-slate-11">
+        <span
+          v-if="isUploading"
+          class="px-3 py-1.5 max-w-full text-sm rounded-lg border border-n-weak bg-n-alpha-2 text-n-slate-11"
+        >
           {{ $t('WHATSAPP_TEMPLATE_MGMT.FORM.UPLOADING') }}
         </span>
-        <span v-else-if="form.mediaFileName" class="text-sm text-n-teal-11">
+        <span
+          v-else-if="form.mediaFileName"
+          class="px-3 py-1.5 max-w-full text-sm truncate rounded-lg border border-n-weak bg-n-alpha-2 text-n-slate-12"
+        >
           {{ form.mediaFileName }}
         </span>
       </div>

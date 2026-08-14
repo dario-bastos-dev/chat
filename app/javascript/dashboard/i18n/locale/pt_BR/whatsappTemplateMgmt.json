@@ -145,7 +145,7 @@
     "EDIT": {
       "BUTTON": "Editar conteúdo",
       "TITLE": "Editar template",
-      "DESCRIPTION": "Apenas o conteúdo muda. Nome, idioma e formato do cabeçalho são fixos, e o template volta para revisão da Meta."
+      "DESCRIPTION": "Apenas o conteúdo muda. Nome, idioma, categoria e formato do cabeçalho são fixos, e o template volta para revisão da Meta."
     },
     "UPDATE_SUCCESS": "Template enviado à Meta para revisão.",
     "UPDATE_ERROR": "Não foi possível atualizar o template. Tente novamente."
