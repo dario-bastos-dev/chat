@@ -126,6 +126,14 @@ class InboxPolicy < ApplicationPolicy
     @account_user.administrator?
   end
 
+  def evolution_go_settings?
+    @account_user.administrator?
+  end
+
+  def evolution_go_diagnostics?
+    @account_user.administrator?
+  end
+
   def set_inbound_calls?
     @account_user.administrator?
   end

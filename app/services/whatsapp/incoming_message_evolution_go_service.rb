@@ -50,20 +50,7 @@ class Whatsapp::IncomingMessageEvolutionGoService
       return
     end
 
-    # Distributed lock for idempotency
-    lock_key = "evogo:msg:#{message_id}"
-
-    if defined?(Redis::Lock)
-      begin
-        Redis::Lock.new(lock_key, expiration: 30, timeout: 0.1).lock do
-          process_message
-        end
-      rescue Redis::Lock::LockError
-        Rails.logger.info "[EVOLUTION_GO MSG] Duplicate prevented for #{message_id}"
-      end
-    else
-      process_message
-    end
+    process_with_dedup_lock
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO MSG] Error: #{e.message}"
     Rails.logger.debug "[EVOLUTION_GO MSG] Backtrace:\n#{e.backtrace.first(5).join("\n")}"
@@ -71,6 +58,23 @@ class Whatsapp::IncomingMessageEvolutionGoService
   end
 
   private
+
+  # EvoGO redelivers events, so the same message can land on two workers at once. The lock is
+  # released when processing raises, because the job re-raises for Sidekiq to retry and a held
+  # lock would make the retry skip the message entirely.
+  def process_with_dedup_lock
+    return process_message if message_id.blank?
+
+    dedup_lock = Whatsapp::MessageDedupLock.new(message_id)
+    return Rails.logger.info("[EVOLUTION_GO MSG] Duplicate prevented for #{message_id}") unless dedup_lock.acquire!
+
+    begin
+      process_message
+    rescue StandardError
+      dedup_lock.release!
+      raise
+    end
+  end
 
   def process_message
     direction = from_me? ? 'outgoing' : 'incoming'
@@ -240,7 +244,46 @@ class Whatsapp::IncomingMessageEvolutionGoService
       message_params.dig('imageMessage', 'caption') ||
       message_params.dig('videoMessage', 'caption') ||
       message_params.dig('documentMessage', 'caption') ||
+      interactive_reply_content ||
+      poll_content ||
+      location_content ||
       ''
+  end
+
+  # Button, list and template replies: the contact picked an option and its label is the
+  # message. Without this they arrive as an empty bubble.
+  def interactive_reply_content
+    message_params.dig('buttonsResponseMessage', 'selectedDisplayText') ||
+      message_params.dig('listResponseMessage', 'title') ||
+      message_params.dig('templateButtonReplyMessage', 'selectedDisplayText')
+  end
+
+  def poll_content
+    poll = message_params['pollCreationMessage'] || message_params['pollCreationMessageV3']
+    return if poll.blank?
+
+    options = Array(poll['options']).filter_map { |option| option['optionName'].presence }
+    [poll['name'], *options.map { |option| "- #{option}" }].compact.join("\n").presence
+  end
+
+  def location_content
+    location = message_params['locationMessage']
+    return if location.blank?
+
+    [
+      location['name'].presence,
+      location['address'].presence,
+      "https://maps.google.com/?q=#{location['degreesLatitude']},#{location['degreesLongitude']}"
+    ].compact.join("\n")
+  end
+
+  # Reactions and protocol frames (revoke, ephemeral settings, key distribution) carry no
+  # content and no media, so storing them would leave a blank bubble in the timeline.
+  def renderable_message?
+    return false if message_params.key?('reactionMessage')
+    return false if message_params.key?('protocolMessage')
+
+    text_content.present? || detect_media.present?
   end
 
   # --- Edited message handling ---
@@ -256,10 +299,12 @@ class Whatsapp::IncomingMessageEvolutionGoService
     original_id = message_params.dig('protocolMessage', 'key', 'ID')
     return if original_id.blank?
 
-    message = Message.find_by(source_id: original_id)
+    # Scoped to the inbox: source_id is not unique across accounts, and a global lookup would
+    # let one channel rewrite another account's message.
+    message = inbox.messages.find_by(source_id: original_id)
     return if message.nil?
 
-    message.update!(content: "#{edited_text}\n\n_(Editada)_")
+    message.update!(content: "#{edited_text}#{I18n.t('conversations.messages.edited_suffix')}")
     Rails.logger.info "[EVOLUTION_GO MSG] Updated message #{message.id} (edited)"
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO MSG] Edit handling error: #{e.message}"
@@ -305,6 +350,12 @@ class Whatsapp::IncomingMessageEvolutionGoService
           source_id: contact_source_id
         )
       end
+
+      # No contact carries this phone yet, but the payload names the same person twice and the
+      # @lid half may already be stored from an earlier lid-only message. Without this lookup
+      # the builder below mints a second contact, and the swap in step 5 promotes nothing
+      # because by then it is holding the freshly created one.
+      contact_inbox ||= inbox.contact_inboxes.find_by(source_id: payload_lid_source_id) if payload_lid_source_id.present?
     end
 
     # 3. Se ainda não achou, e é um LID, verifica se já temos o ContactInbox do LID ou mapeamento
@@ -330,21 +381,37 @@ class Whatsapp::IncomingMessageEvolutionGoService
     ).perform
 
     # 5. JID Swap corrigido
-    if contact_inbox.contact.identifier.to_s.include?('@lid') && contact_jid.to_s.include?('@s.whatsapp.net')
-      Rails.logger.info "[EVOLUTION_GO MSG] JID Swap: Atualizando source_id de #{contact_inbox.source_id} para #{contact_source_id}"
-      
-      # Atualiza a source_id do contact inbox e dados do contato
-      contact_inbox.update!(source_id: contact_source_id)
-      contact_inbox.contact.update!(
-        phone_number: contact_phone_number,
-        identifier: contact_jid
-      )
-    end
+    swap_lid_source_id(contact_inbox)
 
     @contact_inbox = contact_inbox
     @contact = contact_inbox.contact
 
     update_contact_name_if_needed
+  end
+
+  # Promotes a contact first seen by LID to its real phone number once WhatsApp reveals it.
+  def swap_lid_source_id(contact_inbox)
+    return unless contact_inbox.contact.identifier.to_s.include?('@lid')
+    return unless contact_jid.to_s.include?('@s.whatsapp.net')
+
+    # (inbox_id, source_id) is unique. If the phone source_id already belongs to another
+    # contact_inbox the rename raises, and the job would retry on that forever.
+    if inbox.contact_inboxes.where.not(id: contact_inbox.id).exists?(source_id: contact_source_id)
+      Rails.logger.warn "[EVOLUTION_GO MSG] JID Swap skipped: source_id #{contact_source_id} already taken in inbox #{inbox.id}"
+      return
+    end
+
+    # identifier is unique per account, so another contact already holding this JID would make
+    # the update raise and leave the job retrying forever.
+    if inbox.account.contacts.where.not(id: contact_inbox.contact_id).exists?(identifier: contact_jid)
+      Rails.logger.warn "[EVOLUTION_GO MSG] JID Swap skipped: identifier #{contact_jid} already taken in account #{inbox.account_id}"
+      return
+    end
+
+    Rails.logger.info "[EVOLUTION_GO MSG] JID Swap: #{contact_inbox.source_id} → #{contact_source_id}"
+
+    contact_inbox.update!(source_id: contact_source_id)
+    contact_inbox.contact.update!(phone_number: contact_phone_number, identifier: contact_jid)
   end
 
   def find_existing_contact_inbox
@@ -392,14 +459,14 @@ class Whatsapp::IncomingMessageEvolutionGoService
     nil
   end
 
-  # Save LID → phone mapping when processing incoming messages.
+  # Save LID → phone mapping. Outgoing echoes carry the pair as well — Chat holds the contact's
+  # @lid and RecipientAlt its phone — and they are often the only place both halves appear.
   def save_lid_mapping_if_needed
-    return if from_me?
     return if @contact.blank?
 
-    # Identify which JID is the LID and which is the Phone (Sender or SenderAlt)
-    lid_jid = [sender_jid, sender_alt_jid].find { |j| j.to_s.include?('@lid') }
-    phone_jid = [sender_jid, sender_alt_jid].find { |j| j.to_s.include?('@s.whatsapp.net') }
+    candidates = from_me? ? [chat_jid, recipient_alt_jid] : [sender_jid, sender_alt_jid]
+    lid_jid = candidates.find { |j| j.to_s.include?('@lid') }
+    phone_jid = candidates.find { |j| j.to_s.include?('@s.whatsapp.net') }
 
     lid_value = extract_lid_digits(lid_jid)
     return if lid_value.blank?
@@ -514,6 +581,11 @@ class Whatsapp::IncomingMessageEvolutionGoService
   def create_message
     return if message_id.present? && inbox.messages.exists?(source_id: message_id)
 
+    unless renderable_message?
+      Rails.logger.info "[EVOLUTION_GO MSG] Skipping message #{message_id} with no renderable content"
+      return
+    end
+
     attrs = {
       account_id: inbox.account_id,
       inbox_id: inbox.id,
@@ -531,10 +603,9 @@ class Whatsapp::IncomingMessageEvolutionGoService
       attrs[:sender] = @contact
     end
 
-    @message = @conversation.messages.build(attrs)
+    @message = @conversation.messages.create!(attrs)
 
-    process_attachments_inline
-    @message.save!
+    enqueue_attachment_fetch
   end
 
   # Build content_attributes hash, including in_reply_to if present.
@@ -543,16 +614,34 @@ class Whatsapp::IncomingMessageEvolutionGoService
   def message_content_attributes
     attrs = {}
     attrs[:in_reply_to_external_id] = quoted_message_id if quoted_message_id.present?
+    # Author of this message, so a later reply can quote it without guessing the addressing
+    # mode. WhatsApp rejects a quote whose participant is in the wrong form.
+    attrs[:sender_jid] = from_me? ? owner_jid : contact_jid
     attrs
   end
 
-  # EvoGO marks quoted messages with data.isQuoted=true and provides
-  # the original message ID in data.quoted.stanzaID.
-  # Fallback: also check contextInfo.stanzaID inside the message payload.
+  # Our own JID, as WhatsApp addressed it on this message.
+  def owner_jid
+    return sender_jid if sender_jid.present?
+
+    phone = inbox.channel.phone_number.to_s.gsub(/^\+/, '')
+    "#{phone}@s.whatsapp.net" if phone.present?
+  end
+
+  # EvoGO marks quoted messages with data.isQuoted=true and provides the original message ID
+  # in data.quoted.stanzaID. Replies also carry it in the message's own contextInfo, which is
+  # the only copy present on some payloads.
   def quoted_message_id
     return @quoted_message_id if defined?(@quoted_message_id)
 
-    @quoted_message_id = data_params.dig('quoted', 'stanzaID')
+    @quoted_message_id = data_params.dig('quoted', 'stanzaID').presence || context_info['stanzaID'].presence
+  end
+
+  # contextInfo hangs off whichever message variant is present (extendedTextMessage,
+  # imageMessage, …), so it is looked up rather than addressed directly.
+  def context_info
+    @context_info ||= message_params.values.find { |v| v.is_a?(Hash) && v['contextInfo'].is_a?(Hash) }
+                                    &.dig('contextInfo') || {}
   end
 
   # --- Attachment handling ---
@@ -561,41 +650,24 @@ class Whatsapp::IncomingMessageEvolutionGoService
   # - Media data is in imageMessage, audioMessage, videoMessage, documentMessage
   # - mediaUrl points to MinIO bucket
 
-  def process_attachments_inline
+  # Downloading here would hold a high-queue worker for the length of the transfer, so the
+  # message lands first and the media is fetched out of band, as the Evolution channel does.
+  def enqueue_attachment_fetch
     media_payload = detect_media
     return unless media_payload
 
     type, data = media_payload
 
-    # Get the mediaUrl from Message level (EvoGO specific)
-    media_url = message_params['mediaUrl']
     mimetype = message_params['mimetype'] || data['mimetype']
     filename = data['fileName'] || generate_filename(type, mimetype)
 
     # Prefer MinIO URL (mediaUrl) over WhatsApp CDN (data URL)
-    url = media_url.presence || data['URL'] || data['url']
-
+    url = message_params['mediaUrl'].presence || data['URL'] || data['url']
     return if url.blank?
 
-    Rails.logger.info "[EVOLUTION_GO MSG] Processing #{type} attachment from URL"
-
-    begin
-      io = URI.open(url, open_timeout: 10, read_timeout: 30)
-
-      @message.attachments.new(
-        account_id: @message.account_id,
-        file_type: map_file_type(type),
-        file: {
-          io: io,
-          filename: filename,
-          content_type: mimetype || 'application/octet-stream'
-        }
-      )
-
-      Rails.logger.info "[EVOLUTION_GO MSG] ✅ Attachment prepared (type: #{type}, mime: #{mimetype})"
-    rescue StandardError => e
-      Rails.logger.error "[EVOLUTION_GO MSG] ⚠️ Attachment failed (non-blocking): #{e.message}"
-    end
+    Webhooks::EvolutionGoMediaJob.perform_later(
+      @message.id, url, map_file_type(type).to_s, filename, mimetype
+    )
   end
 
   def detect_media

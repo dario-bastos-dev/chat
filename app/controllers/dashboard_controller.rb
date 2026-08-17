@@ -89,8 +89,12 @@ class DashboardController < ActionController::Base
       AZURE_APP_ID: GlobalConfigService.load('AZURE_APP_ID', ''),
       GIT_SHA: GIT_HASH,
       ALLOWED_LOGIN_METHODS: allowed_login_methods,
-      evolutionApiConfigured: GlobalConfigService.load('EVOLUTION_API_URL', '').present?,
-      evolutionGoApiConfigured: GlobalConfigService.load('EVOLUTIONGO_API_URL', '').present?,
+      # Both halves are required: the providers refuse to talk to the API without a token,
+      # so reporting "configured" on the URL alone offers a channel that cannot connect.
+      evolutionApiConfigured: GlobalConfigService.load('EVOLUTION_API_URL', '').present? &&
+        GlobalConfigService.load('EVOLUTION_API_TOKEN', '').present?,
+      evolutionGoApiConfigured: GlobalConfigService.load('EVOLUTIONGO_API_URL', '').present? &&
+        GlobalConfigService.load('EVOLUTIONGO_API_TOKEN', '').present?,
       ACTIVE_PLATFORM_BANNERS: active_platform_banners
     }
   end

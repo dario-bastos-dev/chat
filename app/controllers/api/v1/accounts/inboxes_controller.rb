@@ -237,7 +237,14 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   def evolution_go_create_instance
     return render json: { error: 'Not an Evolution GO channel' }, status: :bad_request unless evolution_go_channel?
 
-    result = @inbox.channel.provider_service.create_instance
+    service = @inbox.channel.provider_service
+    # Creating again would mint new credentials and leave the previous instance running on the
+    # EvoGO side with nothing pointing at it.
+    if service.instance_id.present?
+      return render json: { success: false, error: 'Instance already exists for this inbox' }, status: :unprocessable_entity
+    end
+
+    result = service.create_instance
     render json: result
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO] Create instance error: #{e.message}"
@@ -252,6 +259,50 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO] Disconnect error: #{e.message}"
     render json: { error: e.message, success: false }, status: :internal_server_error
+  end
+
+  # Reads the behaviour settings straight off the instance and realigns provider_config with
+  # them, so the form does not keep showing a write that never landed.
+  def evolution_go_settings
+    return render json: { error: 'Not an Evolution GO channel', success: false }, status: :bad_request unless evolution_go_channel?
+
+    result = @inbox.channel.provider_service.fetch_advanced_settings
+    return render json: result, status: :unprocessable_entity unless result[:success]
+
+    settings = result[:settings] || {}
+    @inbox.channel.merge_provider_config!(
+      'always_online' => settings['alwaysOnline'],
+      'read_messages' => settings['readMessages']
+    )
+
+    render json: result
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] Fetch settings error: #{e.message}"
+    render json: { error: e.message, success: false }, status: :internal_server_error
+  end
+
+  def evolution_go_diagnostics
+    return render json: { error: 'Not an Evolution GO channel' }, status: :bad_request unless evolution_go_channel?
+
+    service = @inbox.channel.provider_service
+    config = @inbox.channel.provider_config || {}
+
+    render json: {
+      inbox_id: @inbox.id,
+      phone_number: @inbox.channel.phone_number,
+      api_configured: service.evolution_go_configured?,
+      api_url: service.api_base_url,
+      instance_id: service.instance_id,
+      instance_token_present: service.instance_token.present?,
+      cached_state: config.slice('connected', 'connection_status', 'business_name', 'jid', 'lid', 'connected_at'),
+      live_status: service.get_connection_status(force_api_check: true),
+      advanced_settings: service.fetch_advanced_settings,
+      instance_info: service.instance_info,
+      recent_logs: service.instance_logs(limit: params[:limit] || 50)
+    }
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO DIAGNOSTICS] Error: #{e.class} - #{e.message}"
+    render json: { error: e.message }, status: :internal_server_error
   end
 
   private
@@ -363,6 +414,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     [:name, :avatar, :greeting_enabled, :greeting_message, :enable_email_collect, :csat_survey_enabled,
      :enable_auto_assignment, :working_hours_enabled, :out_of_office_message, :timezone, :allow_messages_after_resolved,
      :lock_to_single_conversation, :portal_id, :sender_name_type, :business_name, :unread_reset_mode,
+     { greeting_items: [:title, :value, :uri] },
      { csat_config: [:display_type, :message, :button_text, :language,
                      { survey_rules: [:operator, { values: [] }],
                        template: [:name, :template_id, :friendly_name, :content_sid, :approval_sid, :created_at, :language, :status] }] }]

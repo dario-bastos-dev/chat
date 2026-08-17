@@ -4,6 +4,8 @@ class Inboxes::CheckEvolutionGoConnectionsJob < ApplicationJob
   # HTTP status codes that indicate the instance is invalid and must be recreated
   CRITICAL_ERROR_CODES = [400, 401, 404].freeze
 
+  RECREATE_COOLDOWN = 1.hour
+
   # Runs for every Evolution GO channel on the cron schedule, or for a single channel
   # when a CONNECTION close webhook asks for an out-of-band check.
   def perform(channel_id = nil)
@@ -54,9 +56,7 @@ class Inboxes::CheckEvolutionGoConnectionsJob < ApplicationJob
     config = channel.provider_config || {}
     return if config['connected'] == true && config['connection_status'] == 'open'
 
-    config['connected'] = true
-    config['connection_status'] = 'open'
-    channel.update_column(:provider_config, config)
+    channel.merge_provider_config!('connected' => true, 'connection_status' => 'open')
     Rails.logger.info "[EVOLUTION_GO_HEALTH] Channel #{channel.id} is connected, synced local state"
   end
 
@@ -64,6 +64,8 @@ class Inboxes::CheckEvolutionGoConnectionsJob < ApplicationJob
     Rails.logger.info "[EVOLUTION_GO_HEALTH] Channel #{channel.id} disconnected, attempting reconnect"
 
     reconnect_result = service.reconnect_instance
+    reconnect_result = service.force_reconnect_instance unless reconnect_result[:success]
+
     unless reconnect_result[:success]
       Rails.logger.error "[EVOLUTION_GO_HEALTH] Reconnect request failed for channel #{channel.id}"
       mark_disconnected(channel)
@@ -83,14 +85,22 @@ class Inboxes::CheckEvolutionGoConnectionsJob < ApplicationJob
     end
   end
 
+  # 400/401/404 mean the instance is gone on the EvoGO side. Recreating is destructive — it
+  # mints new credentials and costs the user a QR scan — so it is rate limited instead of
+  # firing on every cron pass while the API stays unhappy.
   def handle_critical_error(channel, service)
+    last_attempt = channel.provider_config['instance_recreated_at']
+    if last_attempt.present? && Time.zone.parse(last_attempt) > RECREATE_COOLDOWN.ago
+      Rails.logger.warn "[EVOLUTION_GO_HEALTH] Channel #{channel.id} recreated at #{last_attempt}, within cooldown"
+      return
+    end
+
     Rails.logger.error "[EVOLUTION_GO_HEALTH] Critical error for channel #{channel.id}, recreating instance"
+    channel.merge_provider_config!('instance_recreated_at' => Time.current.iso8601)
 
-    # Delete the broken instance
     service.delete_instance
-
-    # Create a fresh instance
     result = service.create_instance
+
     if result[:success]
       Rails.logger.info "[EVOLUTION_GO_HEALTH] Channel #{channel.id} instance recreated successfully"
     else
@@ -102,10 +112,7 @@ class Inboxes::CheckEvolutionGoConnectionsJob < ApplicationJob
   end
 
   def mark_disconnected(channel)
-    config = channel.reload.provider_config || {}
-    config['connected'] = false
-    config['connection_status'] = 'close'
-    channel.update_column(:provider_config, config)
+    channel.merge_provider_config!('connected' => false, 'connection_status' => 'close')
     channel.prompt_reauthorization! unless channel.reauthorization_required?
   end
 end

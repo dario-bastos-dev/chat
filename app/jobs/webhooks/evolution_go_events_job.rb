@@ -22,7 +22,10 @@ class Webhooks::EvolutionGoEventsJob < ApplicationJob
     when 'CONNECTION'
       process_connection_event(channel)
     else
-      Rails.logger.debug "[EVOLUTION_GO JOB] Unhandled event: #{@event}"
+      # Warn, not debug: the connection event name is not documented anywhere, and this log
+      # is how we find out what EvoGO actually sends when a number drops.
+      Rails.logger.warn "[EVOLUTION_GO JOB] Unhandled event: #{@event.inspect} | " \
+                        "data keys: #{(@params[:data] || {}).keys} | channel: #{@channel_id}"
     end
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO JOB] Error: #{e.message}"
@@ -42,15 +45,16 @@ class Webhooks::EvolutionGoEventsJob < ApplicationJob
     data = @params[:data] || {}
     business_name = data['BusinessName']
     jid = data['jid'] || data['ID']
+    # Our own LID. Outgoing echoes address us by it in LID chats, so quoting one of our
+    # messages there needs this and not the phone JID.
+    lid = data['LID']
 
-    config = channel.provider_config || {}
-    config['connection_status'] = 'open'
-    config['connected'] = true
-    config['business_name'] = business_name if business_name.present?
-    config['jid'] = jid if jid.present?
-    config['connected_at'] = Time.current.iso8601
+    updates = { 'connection_status' => 'open', 'connected' => true, 'connected_at' => Time.current.iso8601 }
+    updates['business_name'] = business_name if business_name.present?
+    updates['jid'] = jid if jid.present?
+    updates['lid'] = lid if lid.present?
 
-    channel.update_column(:provider_config, config)
+    channel.merge_provider_config!(updates)
 
     # Clear reauthorization alert when the channel reconnects via QR/pairing
     channel.reauthorized! if channel.reauthorization_required?
@@ -62,24 +66,18 @@ class Webhooks::EvolutionGoEventsJob < ApplicationJob
     data = @params[:data] || {}
     status = data['status'] || data['state']
 
-    config = channel.provider_config || {}
-
     if status == 'open'
-      config['connection_status'] = 'open'
-      config['connected'] = true
+      channel.merge_provider_config!('connection_status' => 'open', 'connected' => true)
 
       # Clear reauthorization alert when connection is restored
       channel.reauthorized! if channel.reauthorization_required?
     elsif %w[close closed].include?(status.to_s)
-      config['connection_status'] = 'close'
-      config['connected'] = false
+      channel.merge_provider_config!('connection_status' => 'close', 'connected' => false)
 
       # Confirm the disconnection out of band instead of alerting right away: whatsmeow
       # reconnects on its own after network blips, and the alert stops message ingestion.
       Inboxes::CheckEvolutionGoConnectionsJob.set(wait: CONNECTION_RECHECK_DELAY).perform_later(channel.id)
     end
-
-    channel.update_column(:provider_config, config)
     Rails.logger.info "[EVOLUTION_GO JOB] Connection event: #{status} for channel #{channel.id}"
   end
 

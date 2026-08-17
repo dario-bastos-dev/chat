@@ -13,16 +13,24 @@ class MessageTemplates::Template::Greeting
   private
 
   delegate :contact, :account, to: :conversation
-  delegate :inbox, to: :message
 
   def greeting_message_params
-    content = @conversation.inbox&.greeting_message
-
-    {
+    inbox = @conversation.inbox
+    params = {
       account_id: @conversation.account_id,
       inbox_id: @conversation.inbox_id,
       message_type: :template,
-      content: content
+      content: inbox&.greeting_message
     }
+
+    return params if inbox&.greeting_items.blank?
+
+    params.merge(content_type: :input_select, content_attributes: { items: greeting_items(inbox) })
+  end
+
+  def greeting_items(inbox)
+    inbox.greeting_items.map do |item|
+      { title: item['title'], value: item['value'].presence || item['title'], uri: item['uri'].presence }.compact
+    end
   end
 end

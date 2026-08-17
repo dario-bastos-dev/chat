@@ -1,85 +1,72 @@
-<script>
-import { mapGetters } from 'vuex';
+<script setup>
+import { ref, computed } from 'vue';
+import { useStore, useStoreGetters } from 'dashboard/composables/store';
+import { useI18n } from 'vue-i18n';
 import { useVuelidate } from '@vuelidate/core';
-import { useAlert } from 'dashboard/composables';
 import { required } from '@vuelidate/validators';
-import router from '../../../../index';
+import { useAlert } from 'dashboard/composables';
 import { isPhoneE164OrEmpty } from 'shared/helpers/Validators';
+import router from '../../../../index';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import WootSwitch from 'dashboard/components-next/switch/Switch.vue';
 import NextInput from 'dashboard/components-next/input/Input.vue';
 
-export default {
-  components: {
-    NextButton,
-    WootSwitch,
-    NextInput,
-  },
-  setup() {
-    return { v$: useVuelidate() };
-  },
-  data() {
-    return {
-      inboxName: '',
-      phoneNumber: '',
-      alwaysOnline: false,
-      readMessages: false,
-      delayEnabled: true,
-      delayTime: 2,
-    };
-  },
-  computed: {
-    ...mapGetters({ uiFlags: 'inboxes/getUIFlags' }),
-  },
-  validations: {
-    inboxName: { required },
-    phoneNumber: { required, isPhoneE164OrEmpty },
-  },
-  methods: {
-    async createChannel() {
-      this.v$.$touch();
-      if (this.v$.$invalid) {
-        return;
-      }
+const store = useStore();
+const getters = useStoreGetters();
+const { t } = useI18n();
 
-      try {
-        const channel = await this.$store.dispatch('inboxes/createChannel', {
-          name: this.inboxName?.trim(),
-          channel: {
-            type: 'whatsapp',
-            phone_number: this.phoneNumber,
-            provider: 'evolution_go',
-            provider_config: {
-              always_online: this.alwaysOnline,
-              read_messages: this.readMessages,
-              delay_enabled: this.delayEnabled,
-              delay_time: this.delayTime,
-            },
-          },
-        });
+const uiFlags = computed(() => getters['inboxes/getUIFlags'].value);
 
-        router.replace({
-          name: 'settings_inboxes_add_agents',
-          params: {
-            page: 'new',
-            inbox_id: channel.id,
-          },
-        });
-      } catch (error) {
-        useAlert(
-          error.message ||
-            this.$t('INBOX_MGMT.ADD.WHATSAPP_LITE.API.ERROR_MESSAGE')
-        );
-      }
-    },
-  },
+const inboxName = ref('');
+const phoneNumber = ref('');
+const alwaysOnline = ref(false);
+const readMessages = ref(false);
+const delayEnabled = ref(true);
+const delayTime = ref(2);
+
+const rules = {
+  inboxName: { required },
+  phoneNumber: { required, isPhoneE164OrEmpty },
+};
+
+const v$ = useVuelidate(rules, { inboxName, phoneNumber });
+
+const createChannel = async () => {
+  v$.value.$touch();
+  if (v$.value.$invalid) return;
+
+  try {
+    const channel = await store.dispatch('inboxes/createChannel', {
+      name: inboxName.value?.trim(),
+      channel: {
+        type: 'whatsapp',
+        phone_number: phoneNumber.value,
+        provider: 'evolution_go',
+        provider_config: {
+          always_online: alwaysOnline.value,
+          read_messages: readMessages.value,
+          delay_enabled: delayEnabled.value,
+          delay_time: delayTime.value,
+        },
+      },
+    });
+
+    router.replace({
+      name: 'settings_inboxes_add_agents',
+      params: { page: 'new', inbox_id: channel.id },
+    });
+  } catch (error) {
+    useAlert(
+      error.message || t('INBOX_MGMT.ADD.WHATSAPP_LITE.API.ERROR_MESSAGE')
+    );
+  }
 };
 </script>
 
 <template>
-  <form class="flex flex-wrap flex-col mx-0" @submit.prevent="createChannel()">
-    <div class="flex-shrink-0 flex-grow-0">
+  <form class="flex flex-col flex-wrap mx-0" @submit.prevent="createChannel">
+    <div class="flex-grow-0 flex-shrink-0">
       <label :class="{ error: v$.inboxName.$error }">
         {{ $t('INBOX_MGMT.ADD.WHATSAPP_LITE.INBOX_NAME.LABEL') }}
         <input
@@ -96,7 +83,7 @@ export default {
       </label>
     </div>
 
-    <div class="flex-shrink-0 flex-grow-0">
+    <div class="flex-grow-0 flex-shrink-0">
       <label :class="{ error: v$.phoneNumber.$error }">
         {{ $t('INBOX_MGMT.ADD.WHATSAPP_LITE.PHONE_NUMBER.LABEL') }}
         <input
@@ -113,70 +100,85 @@ export default {
       </label>
     </div>
 
-    <!-- Evolution GO Behavior Settings -->
     <div class="mt-6">
-      <h3 class="text-base font-medium text-n-slate-12 mb-4">
+      <h3 class="mb-4 text-base font-medium text-n-slate-12">
         {{ $t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.TITLE') }}
       </h3>
 
       <div
-        class="flex flex-col gap-4 border border-n-slate-3 rounded-lg p-4 bg-n-alpha-1"
+        class="flex flex-col gap-4 p-4 border rounded-lg border-n-weak bg-n-alpha-1"
       >
-        <!-- Always Online -->
         <div class="flex items-center justify-between">
           <div class="flex flex-col">
-            <span class="text-sm font-medium text-n-slate-12">{{
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.ALWAYS_ONLINE.TITLE'
-              )
-            }}</span>
-            <span class="text-xs text-n-slate-10">{{
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.ALWAYS_ONLINE.DESC'
-              )
-            }}</span>
+            <span class="text-sm font-medium text-n-slate-12">
+              {{
+                $t(
+                  'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.ALWAYS_ONLINE.TITLE'
+                )
+              }}
+            </span>
+            <span class="text-xs text-n-slate-10">
+              {{
+                $t(
+                  'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.ALWAYS_ONLINE.DESC'
+                )
+              }}
+            </span>
           </div>
           <WootSwitch v-model="alwaysOnline" />
         </div>
 
-        <!-- Read Messages -->
         <div class="flex items-center justify-between">
           <div class="flex flex-col">
-            <span class="text-sm font-medium text-n-slate-12">{{
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.READ_MESSAGES.TITLE'
-              )
-            }}</span>
-            <span class="text-xs text-n-slate-10">{{
-              $t(
-                'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.READ_MESSAGES.DESC'
-              )
-            }}</span>
+            <span class="text-sm font-medium text-n-slate-12">
+              {{
+                $t(
+                  'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.READ_MESSAGES.TITLE'
+                )
+              }}
+            </span>
+            <span class="text-xs text-n-slate-10">
+              {{
+                $t(
+                  'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.READ_MESSAGES.DESC'
+                )
+              }}
+            </span>
           </div>
           <WootSwitch v-model="readMessages" />
         </div>
 
-        <!-- Delay Setting -->
         <div class="flex items-center justify-between">
           <div class="flex flex-col">
-            <span class="text-sm font-medium text-n-slate-12">{{
-              $t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TITLE')
-            }}</span>
-            <span class="text-xs text-n-slate-10">{{
-              $t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.DESC')
-            }}</span>
+            <span class="text-sm font-medium text-n-slate-12">
+              {{
+                $t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TITLE')
+              }}
+            </span>
+            <span class="text-xs text-n-slate-10">
+              {{
+                $t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.DESC')
+              }}
+            </span>
           </div>
           <WootSwitch v-model="delayEnabled" />
         </div>
 
-        <div v-if="delayEnabled" class="ml-0 mt-2 p-2">
-          <NextInput
-            v-model="delayTime"
-            type="number"
-            :label="$t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TIME_LABEL')"
-            :placeholder="$t('INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TIME_PLACEHOLDER')"
-          />
-        </div>
+        <NextInput
+          v-if="delayEnabled"
+          v-model="delayTime"
+          type="number"
+          :label="
+            $t(
+              'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TIME_LABEL'
+            )
+          "
+          :placeholder="
+            $t(
+              'INBOX_MGMT.ADD.WHATSAPP_LITE.EVOLUTION_SETTINGS.DELAY.TIME_PLACEHOLDER'
+            )
+          "
+        />
       </div>
     </div>
 

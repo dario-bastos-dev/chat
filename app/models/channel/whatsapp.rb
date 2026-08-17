@@ -45,6 +45,7 @@ class Channel::Whatsapp < ApplicationRecord
   after_create :create_evolution_go_instance, if: :evolution_go_provider?
   after_update :update_evolution_settings, if: :evolution_provider?
   after_update :update_evolution_go_settings, if: :evolution_go_provider?
+  before_update :protect_evolution_go_provider_config, if: :evolution_go_provider?
   after_update_commit :log_credentials_transfer, if: :saved_change_to_provider_config?
   before_destroy :teardown_webhooks, unless: -> { evolution_provider? || evolution_go_provider? }
   before_destroy :delete_evolution_instance, if: :evolution_provider?
@@ -190,6 +191,24 @@ class Channel::Whatsapp < ApplicationRecord
     provider_config['history_sync'] = payload
   end
 
+  # Connection state lands in provider_config from several directions at once: webhook workers,
+  # the health cron and the settings form. Rewriting the whole document would let a stale
+  # snapshot clobber the credentials another worker just wrote — losing instance_token orphans
+  # the inbox — so only the given keys are touched. Going through SQL also skips
+  # validate_provider_config, which would re-check the channel on every status flip.
+  def merge_provider_config!(attributes = {}, remove: [])
+    payload = attributes.stringify_keys
+    removed = Array(remove).map(&:to_s)
+
+    # rubocop:disable Rails/SkipsModelValidations
+    Channel::Whatsapp.where(id: id).update_all(
+      ['provider_config = (provider_config || ?::jsonb) - ?::text[]', payload.to_json, "{#{removed.join(',')}}"]
+    )
+    # rubocop:enable Rails/SkipsModelValidations
+
+    provider_config.merge!(payload).except!(*removed)
+  end
+
   def mark_message_templates_updated
     # rubocop:disable Rails/SkipsModelValidations
     update_column(:message_templates_last_updated, Time.zone.now)
@@ -226,6 +245,21 @@ class Channel::Whatsapp < ApplicationRecord
 
   def evolution_go_provider?
     provider == 'evolution_go'
+  end
+
+  # provider_config here is mostly server state: credentials minted on create, plus connection
+  # status written by webhooks and the health cron. The settings form only knows the behaviour
+  # toggles, so incoming values are merged over the stored ones and the credentials always come
+  # from the database — a stale browser copy can neither drop state nor rewind a live token.
+  # Worker writes go through merge_provider_config!, which bypasses callbacks by design.
+  def protect_evolution_go_provider_config
+    stored = provider_config_was
+    return if stored.blank?
+
+    merged = stored.merge(provider_config || {})
+    merged['instance_token'] = stored['instance_token'] if stored['instance_token'].present?
+    merged['instance_id'] = stored['instance_id'] if stored['instance_id'].present?
+    self.provider_config = merged
   end
 
   # Logs only the embedded signup → manual migration (the save drops the

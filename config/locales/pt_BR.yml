@@ -138,6 +138,9 @@ pt_BR:
       invalid_token_permissions: 'O token de acesso não tem as permissões necessárias para o WhatsApp.'
       phone_info_fetch_failed: 'Falha ao obter a informação do número de telefone. Por favor, tente novamente.'
       phone_number_already_exists: 'Já existe um canal para este número de telefone: %{phone_number}. Entre em contato com o suporte se o erro persistir'
+      evolution_go:
+        logout_success: 'Desconectado com sucesso'
+        logout_local_only: 'Desconectado localmente'
       reauthorization:
         generic: 'Falha ao reautenticar o WhatsApp. Por favor, tente novamente.'
         not_supported: 'Reautenticação não é suportado por este tipo de canal WhatsApp.'
@@ -281,6 +284,7 @@ pt_BR:
       instagram_shared_story_content: 'Story compartilhado'
       instagram_shared_post_content: 'Post compartilhado'
       deleted: Esta mensagem foi excluída
+      edited_suffix: "\n\n_(Editada)_"
       whatsapp:
         list_button_label: 'Escolha um item'
         call_permission_request_body: 'Gostaríamos de ligar para você em relação à sua conversa.'

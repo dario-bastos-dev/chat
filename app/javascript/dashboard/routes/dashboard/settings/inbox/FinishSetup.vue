@@ -357,7 +357,8 @@ async function fetchEvoGoQRCode() {
     const { data } = await InboxesAPI.getEvolutionGoQRCode(route.params.inbox_id);
 
     if (!data.success) {
-      evoGoError.value = data.error || 'Erro ao buscar QR Code';
+      evoGoError.value =
+      data.error || t('INBOX_MGMT.EVOLUTION_GO_INSTANCE.QR_ERROR');
       return;
     }
 
@@ -366,7 +367,8 @@ async function fetchEvoGoQRCode() {
       startEvoGoPolling();
     }
   } catch (error) {
-    evoGoError.value = error.message || 'Erro ao conectar';
+    evoGoError.value =
+      error.message || t('INBOX_MGMT.EVOLUTION_GO_INSTANCE.CONNECT_ERROR');
   } finally {
     evoGoLoading.value = false;
   }
@@ -387,7 +389,8 @@ async function fetchEvoGoPairingCode() {
     );
 
     if (!data.success) {
-      evoGoError.value = data.error || 'Erro ao buscar código';
+      evoGoError.value =
+      data.error || t('INBOX_MGMT.EVOLUTION_GO_INSTANCE.PAIRING_ERROR');
       return;
     }
 
@@ -399,7 +402,8 @@ async function fetchEvoGoPairingCode() {
       startEvoGoPolling();
     }
   } catch (error) {
-    evoGoError.value = error.message || 'Erro ao conectar';
+    evoGoError.value =
+      error.message || t('INBOX_MGMT.EVOLUTION_GO_INSTANCE.CONNECT_ERROR');
   } finally {
     evoGoLoading.value = false;
   }

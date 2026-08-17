@@ -46,6 +46,11 @@ x-base-config: &base-config
   RAILS_ENV: production
   EVOLUTION_API_URL: ${EVOLUTION_API_URL}
   EVOLUTION_API_TOKEN: ${EVOLUTION_API_TOKEN}
+  EVOLUTIONGO_API_URL: ${EVOLUTIONGO_API_URL}
+  EVOLUTIONGO_API_TOKEN: ${EVOLUTIONGO_API_TOKEN}
+  # Required when Evolution GO builds media URLs on an internal host (e.g. http://minio:9000):
+  # SafeFetch blocks private-network downloads otherwise and attachments never arrive.
+  SAFE_FETCH_ALLOW_PRIVATE_NETWORK: ${SAFE_FETCH_ALLOW_PRIVATE_NETWORK:-false}
 
 services:
   rails:

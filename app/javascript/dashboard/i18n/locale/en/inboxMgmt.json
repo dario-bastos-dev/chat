@@ -382,14 +382,6 @@
             "TITLE": "Read Messages",
             "DESC": "Automatically mark messages as read"
           },
-          "READ_STATUS": {
-            "TITLE": "Read Status",
-            "DESC": "Automatically mark status as viewed"
-          },
-          "SYNC_HISTORY": {
-            "TITLE": "Sync Full History",
-            "DESC": "Sync full history upon scanning QR Code"
-          },
           "DELAY": {
             "TITLE": "Message Delay",
             "DESC": "Add a delay before sending messages (simulates typing)",
@@ -831,8 +823,7 @@
       "QR_ERROR": "Error generating QR Code",
       "CONNECT_WITH_QR": "QR Code",
       "CONNECT_WITH_PAIRING": "Code",
-      "PAIRING_CODE": "Pairing Code:",
-      "SETTINGS_AUTO_SAVE": "Note: Changes to these settings are saved automatically."
+      "PAIRING_CODE": "Pairing Code:"
     },
     "EVOLUTION_GO_INSTANCE": {
       "TITLE": "Evolution GO Instance Configuration",
@@ -846,12 +837,19 @@
       "CONNECT_BUTTON": "Connect WhatsApp",
       "DISCONNECT_BUTTON": "Disconnect",
       "DISCONNECT_SUCCESS": "WhatsApp disconnected successfully",
+      "DISCONNECT_ERROR": "Could not disconnect",
       "CLOSE_BUTTON": "Close",
+      "LOADING": "Loading...",
       "SELECT_CONNECTION_METHOD": "Select a connection method",
       "QR_ERROR": "Error generating QR Code",
+      "QR_EMPTY": "Evolution GO returned no QR Code",
+      "PAIRING_ERROR": "Error generating the pairing code",
+      "PAIRING_EMPTY": "Evolution GO returned neither a code nor a QR Code",
+      "CONNECT_ERROR": "Could not connect",
       "CONNECT_WITH_QR": "QR Code",
       "CONNECT_WITH_PAIRING": "Code",
-      "PAIRING_CODE": "Pairing Code:"
+      "PAIRING_CODE": "Pairing Code:",
+      "PAIRING_CODE_HINT": "Enter this code in your WhatsApp"
     },
     "CHANNEL_PREFERENCES": "Channel Preferences",
     "WIDGET_FEATURES": "Widget features",
@@ -1001,6 +999,15 @@
       "USE_INBOX_AVATAR_FOR_BOT": "Use inbox name and avatar for the bot"
     },
     "SETTINGS_POPUP": {
+      "GREETING_QUICK_REPLIES": {
+        "LABEL": "Greeting buttons",
+        "HELP_TEXT": "Show tappable buttons below the greeting. Up to {maxItems} buttons, {maxTitleLength} characters each. Leave the link empty for a quick reply, which only appears in the Instagram app and disappears once the contact taps it.",
+        "LINK_HELP_TEXT": "Buttons with a link stay in the conversation and open the URL. Every button must have a link once one of them does, since Instagram cannot mix both kinds in the same message.",
+        "PLACEHOLDER": "Button text",
+        "LINK_PLACEHOLDER": "Link (optional), e.g. https://example.com",
+        "ADD": "Add button",
+        "REMOVE": "Remove button"
+      },
       "MESSENGER_HEADING": "Messenger Script",
       "MESSENGER_SUB_HEAD": "Place this button inside your body tag",
       "ALLOWED_DOMAINS": {

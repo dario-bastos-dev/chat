@@ -3,6 +3,10 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   # - Global token (EVOLUTIONGO_API_TOKEN) for creating instances
   # - Instance token (stored in provider_config) for all other operations
 
+  SUBSCRIBED_EVENTS = %w[MESSAGE CONNECTION READ_RECEIPT].freeze
+  # Attachment types WhatsApp renders with a caption.
+  CAPTIONABLE_TYPES = %w[image video file].freeze
+
   def api_base_url
     @api_base_url ||= begin
       url = GlobalConfig.get('EVOLUTIONGO_API_URL')['EVOLUTIONGO_API_URL'] || ENV.fetch('EVOLUTIONGO_API_URL', nil)
@@ -31,13 +35,19 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   def create_instance
     return { success: false, error: 'Evolution GO API not configured' } unless evolution_go_configured?
 
-    # Step 1: Create instance with global token
+    # Step 1: Create instance with global token.
+    # The id is generated here instead of read back from the response: every later call
+    # (advanced-settings, delete, health check) is keyed by it, and a blank id silently
+    # disables all of them.
     generated_token = SecureRandom.uuid
+    generated_instance_id = SecureRandom.uuid
     instance_name = "chat_#{whatsapp_channel.phone_number&.gsub(/^\+/, '')}"
 
     create_body = {
       name: instance_name,
-      token: generated_token
+      token: generated_token,
+      instanceId: generated_instance_id,
+      advancedSettings: advanced_settings_payload
     }
 
     response = evolution_request(
@@ -55,20 +65,18 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
     parsed = response.parsed_response
     new_instance_token = parsed.dig('data', 'token') || parsed['token'] || generated_token
-    new_instance_id = parsed.dig('data', 'id') || parsed['id']
+    new_instance_id = parsed.dig('data', 'id') || parsed['id'] || generated_instance_id
 
     Rails.logger.info "[EVOLUTION_GO] Instance created. ID: #{new_instance_id}"
 
     # Save instance credentials to provider_config
-    config = whatsapp_channel.provider_config || {}
-    config['instance_token'] = new_instance_token
-    config['instance_id'] = new_instance_id.to_s
-    whatsapp_channel.update_column(:provider_config, config)
+    whatsapp_channel.merge_provider_config!(
+      'instance_token' => new_instance_token,
+      'instance_id' => new_instance_id.to_s
+    )
 
-    # Step 2: Configure advanced settings
-    configure_advanced_settings
-
-    # Step 3: Start connection (register webhook + subscribe events)
+    # Step 2: Start connection (register webhook + subscribe events).
+    # Advanced settings ride along with the create call above.
     start_connection
 
     { success: true, data: parsed }
@@ -80,21 +88,11 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   def configure_advanced_settings
     return unless instance_id.present? && instance_token.present?
 
-    config = whatsapp_channel.provider_config || {}
-
-    settings = {
-      alwaysOnline: ['true', true].include?(config['always_online']),
-      readMessages: ['true', true].include?(config['read_messages']),
-      rejectCall: false,
-      ignoreGroups: true,
-      ignoreStatus: true
-    }
-
     response = evolution_request(
       :put,
       "#{api_base_url}/instance/#{instance_id}/advanced-settings",
       headers: instance_headers,
-      body: settings.to_json,
+      body: advanced_settings_payload.to_json,
       timeout: 15
     )
 
@@ -105,16 +103,104 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     end
   end
 
-  def start_connection
+  # Reads the settings the instance is actually running with. provider_config only records what
+  # we last tried to write, and configure_advanced_settings swallows a failed PUT, so the two
+  # can drift apart without anyone noticing.
+  def fetch_advanced_settings
+    return { success: false, error: 'Instance not created' } unless instance_id.present? && instance_token.present?
+
+    response = evolution_request(
+      :get,
+      "#{api_base_url}/instance/#{instance_id}/advanced-settings",
+      headers: instance_headers,
+      timeout: 15
+    )
+
+    unless response.success?
+      Rails.logger.error "[EVOLUTION_GO] Fetch advanced settings failed: #{response.code} - #{response.body}"
+      return { success: false, error: response.message }
+    end
+
+    data = response.parsed_response['data'] || response.parsed_response
+
+    { success: true, settings: data }
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] Fetch advanced settings error: #{e.class} - #{e.message}"
+    { success: false, error: e.message }
+  end
+
+  # Instances known to the EvoGO server, used to find ones no channel points at any more.
+  # Global token: this asks about the server, not about one instance.
+  def list_instances
+    return { success: false, error: 'Evolution GO API not configured' } unless evolution_go_configured?
+
+    response = evolution_request(
+      :get,
+      "#{api_base_url}/instance/all",
+      headers: global_headers,
+      timeout: 30
+    )
+
+    unless response.success?
+      return { success: false, error: response.message }
+    end
+
+    parsed = response.parsed_response
+    { success: true, instances: Array.wrap(parsed['data'] || parsed) }
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] List instances error: #{e.class} - #{e.message}"
+    { success: false, error: e.message }
+  end
+
+  def instance_info
+    return { success: false, error: 'Instance not created' } unless instance_id.present?
+
+    response = evolution_request(
+      :get,
+      "#{api_base_url}/instance/info/#{instance_id}",
+      headers: instance_headers,
+      timeout: 15
+    )
+
+    return { success: false, error: response.message } unless response.success?
+
+    { success: true, info: response.parsed_response['data'] || response.parsed_response }
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] Instance info error: #{e.class} - #{e.message}"
+    { success: false, error: e.message }
+  end
+
+  def instance_logs(level: nil, limit: 100)
+    return { success: false, error: 'Instance not created' } unless instance_id.present?
+
+    query = { limit: limit }
+    query[:level] = level if level.present?
+
+    response = evolution_request(
+      :get,
+      "#{api_base_url}/instance/logs/#{instance_id}?#{query.to_query}",
+      headers: instance_headers,
+      timeout: 30
+    )
+
+    return { success: false, error: response.message } unless response.success?
+
+    { success: true, logs: response.parsed_response['data'] || response.parsed_response }
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] Instance logs error: #{e.class} - #{e.message}"
+    { success: false, error: e.message }
+  end
+
+  def start_connection(phone_number: nil)
     return unless instance_token.present?
 
     webhook_url = build_webhook_url
-    phone = whatsapp_channel.phone_number.to_s.gsub(/^\+/, '')
+    phone = (phone_number || whatsapp_channel.phone_number).to_s.gsub(/^\+/, '')
 
     body = {
       immediate: true,
       phone: phone,
-      subscribe: %w[MESSAGE CONNECTION READ_RECEIPT],
+      subscribe: SUBSCRIBED_EVENTS,
       webhookUrl: webhook_url,
       rabbitmqEnable: 'disabled',
       websocketEnable: 'disabled',
@@ -146,28 +232,19 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       timeout: 15
     )
 
-    # If successful OR the instance is already not found (404), update local status to disconnected.
-    # We preserve instance_token and instance_id locally so that subsequent recreation attempts
-    # are not blocked by the Job guard clause if they fail mid-process.
+    # Treat 404 as success: the instance is already gone, which is the outcome we wanted.
+    # instance_token and instance_id are kept so the health job can still identify the channel
+    # if a later recreation fails midway.
     if response.success? || response.code == 404
       Rails.logger.info "[EVOLUTION_GO] Instance #{instance_id} deleted successfully (or already nonexistent)"
 
-      config = whatsapp_channel.provider_config || {}
-      config['connected'] = false
-      config['connection_status'] = 'close'
-      config.delete('business_name')
-      config.delete('jid')
-      config.delete('connected_at')
-      whatsapp_channel.update_column(:provider_config, config)
+      clear_connection_state
 
       { success: true }
     else
       Rails.logger.error "[EVOLUTION_GO] Delete instance API failed with code #{response.code}"
-      
-      config = whatsapp_channel.provider_config || {}
-      config['connected'] = false
-      config['connection_status'] = 'close'
-      whatsapp_channel.update_column(:provider_config, config)
+
+      whatsapp_channel.merge_provider_config!('connected' => false, 'connection_status' => 'close')
 
       { success: false, error: "HTTP #{response.code}: #{response.message}" }
     end
@@ -227,9 +304,13 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     # Reset connection state before starting new pairing attempt
     reset_connection_state
 
+    # /instance/pair takes no webhookUrl, so without this the number pairs and the inbox
+    # receives nothing. Mirrors what get_qr_code already does.
+    start_connection(phone_number: phone)
+
     body = {
       phone: phone,
-      subscribe: %w[MESSAGE CONNECTION READ_RECEIPT]
+      subscribe: SUBSCRIBED_EVENTS
     }
 
     response = evolution_request(
@@ -302,10 +383,14 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
         fully_connected = api_connected && logged_in
 
         if fully_connected
-          config['connected'] = true
-          config['connection_status'] = 'open'
-          config['business_name'] = name if name.present?
-          whatsapp_channel.update_column(:provider_config, config)
+          updates = { 'connected' => true, 'connection_status' => 'open' }
+          updates['business_name'] = name if name.present?
+          whatsapp_channel.merge_provider_config!(updates)
+        elsif config['connection_status'] != 'connecting'
+          # Only ever writing the connected side left the cache claiming a live number long
+          # after it dropped, and the fast path above answers straight from that cache.
+          # 'connecting' is left alone: a pairing attempt is in flight.
+          whatsapp_channel.merge_provider_config!('connected' => false, 'connection_status' => 'close')
         end
 
         {
@@ -348,6 +433,33 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     { success: false, error: e.message }
   end
 
+  # Harder variant of reconnect: tears the session down and dials again. Used when a plain
+  # reconnect has not brought the number back.
+  def force_reconnect_instance
+    return { success: false, error: 'Instance not created' } unless instance_id.present? && instance_token.present?
+
+    phone = whatsapp_channel.phone_number.to_s.gsub(/^\+/, '')
+
+    response = evolution_request(
+      :post,
+      "#{api_base_url}/instance/forcereconnect/#{instance_id}",
+      headers: instance_headers,
+      body: { number: phone }.to_json,
+      timeout: 30
+    )
+
+    if response.success?
+      Rails.logger.info "[EVOLUTION_GO] Force reconnect requested for instance #{instance_id}"
+      { success: true }
+    else
+      Rails.logger.error "[EVOLUTION_GO] Force reconnect failed: #{response.code} - #{response.body}"
+      { success: false, error: response.message }
+    end
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] Force reconnect error: #{e.class} - #{e.message}"
+    { success: false, error: e.message }
+  end
+
   def logout
     unless evolution_go_configured? && instance_token.present?
       return { success: false, error: 'Evolution GO API not configured' }
@@ -361,21 +473,15 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     )
 
     # Update local state regardless of API response
-    config = whatsapp_channel.provider_config || {}
-    config['connected'] = false
-    config['connection_status'] = 'close'
-    config.delete('business_name')
-    config.delete('jid')
-    config.delete('connected_at')
-    whatsapp_channel.update_column(:provider_config, config)
+    clear_connection_state
 
     if response.success?
       Rails.logger.info "[EVOLUTION_GO] Logout successful for instance #{instance_id}"
-      { success: true, message: 'Desconectado com sucesso' }
+      { success: true, message: I18n.t('errors.whatsapp.evolution_go.logout_success') }
     else
       Rails.logger.error "[EVOLUTION_GO] Logout API failed: #{response.code} - #{response.body}"
       # Still return success since we cleared local state
-      { success: true, message: 'Desconectado localmente' }
+      { success: true, message: I18n.t('errors.whatsapp.evolution_go.logout_local_only') }
     end
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO] Logout error: #{e.message}"
@@ -412,31 +518,36 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
   def send_message(phone_number_or_jid, message)
     unless evolution_go_configured? && instance_token.present?
-      Rails.logger.error "[EVOLUTION_GO] ❌ send_message BLOCKED: " \
+      Rails.logger.error "[EVOLUTION_GO] send_message blocked: " \
                          "api_base_url=#{api_base_url.present?} global_api_token=#{global_api_token.present?} " \
                          "instance_token=#{instance_token.present?}"
       return
     end
 
     if phone_number_or_jid.blank?
-      Rails.logger.error "[EVOLUTION_GO] ❌ send_message BLOCKED: phone_number_or_jid is blank"
+      Rails.logger.error "[EVOLUTION_GO] send_message blocked: phone_number_or_jid is blank"
       return
     end
 
     formatted_number = extract_phone_number(phone_number_or_jid)
     if formatted_number.blank?
-      Rails.logger.error "[EVOLUTION_GO] ❌ send_message BLOCKED: extract_phone_number returned blank for '#{phone_number_or_jid}'"
+      Rails.logger.error "[EVOLUTION_GO] send_message blocked: extract_phone_number returned blank for '#{phone_number_or_jid}'"
       return nil
     end
 
     Rails.logger.info "[EVOLUTION_GO] Sending to #{formatted_number} (source: #{phone_number_or_jid}) | " \
                       "JID: #{format_recipient_jid(formatted_number)} | attachments: #{message.attachments.count}"
 
-    if message.attachments.any?
-      send_message_with_attachments(formatted_number, message)
-    else
-      send_text_message(formatted_number, message)
-    end
+    reserved_id = reserve_source_id(message)
+
+    sent_id = if message.attachments.any?
+                send_message_with_attachments(formatted_number, message, reserved_id)
+              else
+                send_text_message(formatted_number, message, reserved_id)
+              end
+
+    release_source_id(message, reserved_id) if sent_id.blank?
+    sent_id
   end
 
   def delete_message(phone_number_or_jid, external_id)
@@ -462,10 +573,10 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     )
 
     if response.success?
-      Rails.logger.info "[EVOLUTION_GO] ✅ Message deleted. ID: #{external_id}"
+      Rails.logger.info "[EVOLUTION_GO] Message deleted. ID: #{external_id}"
       true
     else
-      Rails.logger.error "[EVOLUTION_GO] ❌ Delete message failed: #{response.code} - #{response.body}"
+      Rails.logger.error "[EVOLUTION_GO] Delete message failed: #{response.code} - #{response.body}"
       false
     end
   rescue StandardError => e
@@ -510,32 +621,69 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     }
   end
 
+  # Only alwaysOnline and readMessages are user facing; the rest is fixed for this integration.
+  def advanced_settings_payload
+    config = whatsapp_channel.provider_config || {}
+
+    {
+      alwaysOnline: ['true', true].include?(config['always_online']),
+      readMessages: ['true', true].include?(config['read_messages']),
+      rejectCall: false,
+      ignoreGroups: true,
+      ignoreStatus: true
+    }
+  end
+
   def build_webhook_url
     base_url = GlobalConfig.get('FRONTEND_URL')['FRONTEND_URL'] || ENV.fetch('FRONTEND_URL', 'http://localhost:3000')
     phone = whatsapp_channel.phone_number.to_s.gsub(/^\+/, '')
     "#{base_url}/webhooks/evolution_go/#{phone}"
   end
 
+  SESSION_KEYS = %w[business_name jid connected_at].freeze
+
   def reset_connection_state
-    config = whatsapp_channel.provider_config || {}
-    config['connected'] = false
-    config['connection_status'] = 'connecting'
-    config.delete('business_name')
-    config.delete('jid')
-    config.delete('connected_at')
-    whatsapp_channel.update_column(:provider_config, config)
+    clear_connection_state(status: 'connecting')
+  end
+
+  def clear_connection_state(status: 'close')
+    whatsapp_channel.merge_provider_config!(
+      { 'connected' => false, 'connection_status' => status },
+      remove: SESSION_KEYS
+    )
   end
 
   # --- Send methods (private) ---
 
-  def send_text_message(phone_number, message)
+  # EvoGO echoes our own outgoing messages back through the Message webhook, and that echo can
+  # beat the send response back. Claiming the id up front and persisting it before the request
+  # means the webhook finds the message already stored and skips it instead of duplicating it.
+  # A fresh id is always generated: campaigns pre-fill source_id with a placeholder that must
+  # not reach WhatsApp.
+  def reserve_source_id(message)
+    id = SecureRandom.hex(16).upcase
+    message.update_column(:source_id, id)
+    id
+  end
+
+  # Nothing reached WhatsApp, so the reserved id would point at a message that does not exist.
+  def release_source_id(message, reserved_id)
+    return if message.source_id != reserved_id
+
+    message.update_column(:source_id, nil)
+  end
+
+  def send_text_message(phone_number, message, message_id = nil)
+    recipient_jid = format_recipient_jid(phone_number)
+
     body = {
-      number: format_recipient_jid(phone_number),
+      number: recipient_jid,
       text: message.outgoing_content,
       delay: message_delay
     }
+    body[:id] = message_id if message_id.present?
 
-    quoted = quoted_context(message)
+    quoted = quoted_context(message, recipient_jid)
     body[:quoted] = quoted if quoted.present?
 
     response = evolution_request(
@@ -548,10 +696,10 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
     if response.success?
       msg_id = response.parsed_response.dig('data', 'Info', 'ID')
-      Rails.logger.info "[EVOLUTION_GO] ✅ Text sent. ID: #{msg_id}"
+      Rails.logger.info "[EVOLUTION_GO] Text sent. ID: #{msg_id}"
       msg_id
     else
-      Rails.logger.error "[EVOLUTION_GO] ❌ Send text failed: #{response.code} - #{response.body}"
+      Rails.logger.error "[EVOLUTION_GO] Send text failed: #{response.code} - #{response.body}"
       nil
     end
   rescue StandardError => e
@@ -559,85 +707,76 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     nil
   end
 
-  def send_message_with_attachments(phone_number, message)
-    message_id = nil
+  def send_message_with_attachments(phone_number, message, reserved_id)
+    caption = message.outgoing_content.presence
+    # WhatsApp renders a caption only on visual media, and it belongs to a single one of them —
+    # repeating it per attachment delivers the text once per file.
+    caption_target = message.attachments.find { |a| CAPTIONABLE_TYPES.include?(a.file_type.to_s) }
 
-    message.attachments.each do |attachment|
-      response = send_attachment(phone_number, attachment, message)
-      message_id ||= response if response.present?
-    end
+    sent_ids = message.attachments.each_with_index.map do |attachment, index|
+      send_attachment(
+        phone_number, attachment, message,
+        # Only the first send can carry the reserved id, since that is the one stored as source_id.
+        message_id: index.zero? ? reserved_id : nil,
+        caption: attachment == caption_target ? caption : nil
+      )
+    end.compact
 
-    # If text + only audio attachments (no caption support), send text separately
-    if message.content.present? && message.attachments.none? { |a| %w[image video file].include?(a.file_type.to_s) }
-      text_response = send_text_message(phone_number, message)
-      message_id ||= text_response
-    end
+    # Nothing in the batch can hold a caption (audio only), so the text needs its own message.
+    sent_ids << send_text_message(phone_number, message) if caption.present? && caption_target.nil?
 
-    message_id
+    record_extra_source_ids(message, sent_ids)
+    sent_ids.compact.first
   end
 
-  def send_attachment(phone_number, attachment, message)
+  # A Chatwoot message with N attachments becomes N WhatsApp messages, but source_id holds one.
+  # The rest are kept so deletion can reach every part instead of orphaning the tail.
+  def record_extra_source_ids(message, sent_ids)
+    extras = sent_ids.compact.reject { |id| id == message.source_id }
+    return if extras.blank?
+
+    message.update_column(:content_attributes, (message.content_attributes || {}).merge('external_ids' => extras))
+  end
+
+  # Every media type goes through /send/media: EvoGO exposes no /send/audio endpoint.
+  def send_attachment(phone_number, attachment, message, message_id: nil, caption: nil)
     file_url = attachment_url(attachment)
-    file_type = attachment.file_type.to_s
+    media_type = case attachment.file_type.to_s
+                 when 'image' then 'image'
+                 when 'video' then 'video'
+                 when 'audio' then 'audio'
+                 else 'document'
+                 end
 
-    if file_type == 'audio'
-      body = {
-        number: format_recipient_jid(phone_number),
-        audio: file_url,
-        delay: message_delay
-      }
-      quoted = quoted_context(message)
-      body[:quoted] = quoted if quoted.present?
+    recipient_jid = format_recipient_jid(phone_number)
 
-      Rails.logger.info "[EVOLUTION_GO_DEBUG] Sending audio to #{phone_number} | URL: #{file_url}"
-      Rails.logger.info "[EVOLUTION_GO_DEBUG] Body: #{body.to_json}"
+    body = {
+      number: recipient_jid,
+      type: media_type,
+      url: file_url,
+      filename: attachment.file.filename.to_s,
+      delay: message_delay
+    }
+    body[:id] = message_id if message_id.present?
+    body[:caption] = caption if caption.present?
 
-      response = evolution_request(
-        :post,
-        "#{api_base_url}/send/audio",
-        headers: instance_headers,
-        body: body.to_json,
-        timeout: 30
-      )
-    else
-      media_type = case file_type
-                   when 'image' then 'image'
-                   when 'video' then 'video'
-                   else 'document'
-                   end
+    quoted = quoted_context(message, recipient_jid)
+    body[:quoted] = quoted if quoted.present?
 
-      caption = %w[image video file document].include?(file_type) ? (message.outgoing_content.presence || '') : nil
-
-      body = {
-        number: format_recipient_jid(phone_number),
-        type: media_type,
-        url: file_url,
-        filename: attachment.file.filename.to_s,
-        delay: message_delay
-      }
-      body[:caption] = caption if caption.present?
-
-      quoted = quoted_context(message)
-      body[:quoted] = quoted if quoted.present?
-
-      Rails.logger.info "[EVOLUTION_GO_DEBUG] Sending #{media_type} to #{phone_number} | Filename: #{attachment.file.filename.to_s} | FileType: #{file_type} | URL: #{file_url}"
-      Rails.logger.info "[EVOLUTION_GO_DEBUG] Body: #{body.to_json}"
-
-      response = evolution_request(
-        :post,
-        "#{api_base_url}/send/media",
-        headers: instance_headers,
-        body: body.to_json,
-        timeout: 30
-      )
-    end
+    response = evolution_request(
+      :post,
+      "#{api_base_url}/send/media",
+      headers: instance_headers,
+      body: body.to_json,
+      timeout: 30
+    )
 
     if response.success?
       msg_id = response.parsed_response.dig('data', 'Info', 'ID') || response.parsed_response.dig('data', 'key', 'id')
-      Rails.logger.info "[EVOLUTION_GO] ✅ Media sent. ID: #{msg_id}"
+      Rails.logger.info "[EVOLUTION_GO] Media sent (#{media_type}). ID: #{msg_id}"
       msg_id
     else
-      Rails.logger.error "[EVOLUTION_GO] ❌ Send media failed: #{response.code} - #{response.body}"
+      Rails.logger.error "[EVOLUTION_GO] Send media failed (#{media_type}): #{response.code} - #{response.body}"
       nil
     end
   rescue StandardError => e
@@ -658,7 +797,7 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
   # Build quoted context for reply messages.
   # EvoGO expects { messageId, participant } format.
-  def quoted_context(message)
+  def quoted_context(message, recipient_jid)
     reply_to_id = message.content_attributes&.dig('in_reply_to_external_id') ||
                   message.content_attributes&.dig(:in_reply_to_external_id)
     return nil if reply_to_id.blank?
@@ -666,11 +805,13 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     original_message = message.conversation&.messages&.find_by(source_id: reply_to_id)
     return nil unless original_message
 
-    # Determine participant: the sender of the original message
-    participant = if original_message.incoming?
+    # Ingested messages record the JID WhatsApp actually used for their author; only messages
+    # composed here have to be resolved by hand.
+    participant = original_message.content_attributes&.dig('sender_jid').presence ||
+                  if original_message.incoming?
                     contact_jid_for(message.conversation)
                   else
-                    owner_jid
+                    owner_jid(recipient_jid)
                   end
 
     {
@@ -684,7 +825,14 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     "#{phone}@s.whatsapp.net" if phone.present?
   end
 
-  def owner_jid
+  # In a LID chat WhatsApp knows us by our own LID, captured at PairSuccess, not by the phone
+  # JID — quoting one of our messages there fails when addressed the other way.
+  def owner_jid(recipient_jid)
+    if recipient_jid.to_s.end_with?('@lid')
+      lid = whatsapp_channel.provider_config&.dig('lid').to_s.split(':').first
+      return "#{lid}@lid" if lid.present?
+    end
+
     phone = whatsapp_channel.phone_number.to_s.gsub(/^\+/, '')
     "#{phone}@s.whatsapp.net" if phone.present?
   end
@@ -712,14 +860,14 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     "#{source_id}@s.whatsapp.net"
   end
 
+  # delay_time is stored in seconds. Older builds stored milliseconds and told the two apart by
+  # a > 100 threshold, which turned any delay above 100s into milliseconds; the values were
+  # normalized by NormalizeEvolutionGoDelayTime.
   def message_delay
     config = whatsapp_channel.provider_config || {}
     return 0 if [false, 'false'].include?(config['delay_enabled'])
 
-    val = (config['delay_time'] || 2).to_i
-    # If the value is > 100, it's likely already in milliseconds (legacy)
-    # Otherwise, convert from seconds to ms
-    val > 100 ? val : val * 1000
+    (config['delay_time'] || 2).to_i * 1000
   end
 
   class EvolutionResponse
