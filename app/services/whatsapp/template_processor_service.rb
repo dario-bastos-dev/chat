@@ -45,8 +45,96 @@ class Whatsapp::TemplateProcessorService
     components.concat(process_body_components(processed_params, template))
     components.concat(process_footer_components(processed_params))
     components.concat(process_button_components(processed_params))
+    components.concat(process_order_details_components(processed_params))
 
     @template_params = components
+  end
+
+  # A payment template is not sent like the others: instead of text parameters, the whole order rides
+  # in the button component as an action. Meta rejects the send when any required piece is missing, so
+  # an incomplete order produces no component at all rather than a malformed one.
+  # https://developers.facebook.com/documentation/business-messaging/whatsapp/payments/payments-br/orderdetailstemplate/
+  def process_order_details_components(processed_params)
+    order = processed_params['order_details']
+    return [] if order.blank?
+
+    settings = payment_settings(order)
+    return [] if settings.blank? || order['reference_id'].blank?
+
+    [{
+      type: 'button',
+      sub_type: 'order_details',
+      index: 0,
+      parameters: [{ type: 'action', action: { order_details: order_details_payload(order, settings) } }]
+    }]
+  end
+
+  def order_details_payload(order, settings)
+    {
+      reference_id: order['reference_id'],
+      type: order['goods_type'].presence || 'digital-goods',
+      payment_type: 'br',
+      payment_settings: settings,
+      currency: 'BRL',
+      total_amount: { value: amount_in_cents(order['total_amount']), offset: 100 }
+    }
+  end
+
+  # Meta takes the amount as an integer in the currency's smallest unit, paired with offset 100 for
+  # BRL.
+  def amount_in_cents(amount)
+    (normalize_decimal(amount.to_s) * 100).round
+  end
+
+  # Accepts "129,90" and "129.90" as well as "1.234,56" and "1,234.56": whichever separator comes
+  # last is the decimal one and the other is grouping. Stripping dots blindly would read "129.90" as
+  # 12990 and charge the customer a hundred times the intended amount.
+  def normalize_decimal(value)
+    digits = value.gsub(/[^\d.,]/, '')
+    return 0.to_d if digits.blank?
+    return digits.tr(',', '.').to_d unless digits.include?('.') && digits.include?(',')
+
+    if digits.rindex(',') > digits.rindex('.')
+      digits.delete('.').tr(',', '.').to_d
+    else
+      digits.delete(',').to_d
+    end
+  end
+
+  def payment_settings(order)
+    case order['payment_type']
+    when 'pix_dynamic_code' then pix_settings(order)
+    when 'boleto' then boleto_settings(order)
+    when 'payment_link' then payment_link_settings(order)
+    else []
+    end
+  end
+
+  def pix_settings(order)
+    required = order.values_at('pix_code', 'pix_merchant_name', 'pix_key', 'pix_key_type')
+    return [] if required.any?(&:blank?)
+
+    [{
+      type: 'pix_dynamic_code',
+      pix_dynamic_code: {
+        code: order['pix_code'],
+        merchant_name: order['pix_merchant_name'],
+        key: order['pix_key'],
+        key_type: order['pix_key_type']
+      }
+    }]
+  end
+
+  def boleto_settings(order)
+    return [] if order['boleto_digitable_line'].blank?
+
+    [{ type: 'boleto', boleto: { digitable_line: order['boleto_digitable_line'] } }]
+  end
+
+  def payment_link_settings(order)
+    return [] if order['payment_link_uri'].blank?
+
+    [{ type: 'payment_link', payment_link: { uri: order['payment_link_uri'] } }]
   end
 
   def process_header_components(processed_params, template)
@@ -58,18 +146,33 @@ class Whatsapp::TemplateProcessorService
   end
 
   # Templates created through Chatwoot keep a copy of their media. Meta requires it on every send but
-  # only stores the approval sample, behind a signed URL that expires, so the stored copy fills in
-  # whenever the caller sent no URL — a campaign or automation saved earlier keeps working untouched.
+  # only stores the approval sample, behind a signed URL that expires, so the stored copy is what the
+  # send points Meta at.
+  #
+  # That URL is signed and short-lived, so it is resolved here instead of being taken from the caller:
+  # a campaign or automation persists the parameters it was built with and would replay a link that
+  # already expired, which Meta answers with #131053. A URL the user typed in place of the stored
+  # media is left untouched.
   def apply_stored_media(header_data, template)
-    return header_data if header_data['media_url'].present?
-
     media_format = media_header_format(template)
     return header_data if media_format.blank?
 
-    url = WhatsappTemplateMedia.url_for(channel.account_id, template['name'], template['language'])
-    return header_data if url.blank?
+    stored = WhatsappTemplateMedia.find_by(account_id: channel.account_id, template_name: template['name'], language: template['language'])
+    stored_url = stored&.url
+    return header_data if stored_url.blank? || external_media?(header_data['media_url'], stored_url)
 
-    header_data.merge('media_url' => url, 'media_type' => header_data['media_type'].presence || media_format)
+    header_data.merge('media_url' => stored_url, 'media_type' => header_data['media_type'].presence || media_format)
+  end
+
+  # Media the user pointed at by hand, which lives on someone else's host and is theirs to keep. The
+  # host and not the file: the stored copy can be replaced when the template is edited, and a caller
+  # holding the previous URL still means "the media this template carries".
+  def external_media?(media_url, stored_url)
+    return false if media_url.blank?
+
+    URI.parse(media_url.to_s).host != URI.parse(stored_url).host
+  rescue URI::InvalidURIError
+    true
   end
 
   def media_header_format(template)

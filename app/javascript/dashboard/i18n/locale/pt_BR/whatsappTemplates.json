@@ -44,7 +44,26 @@
       "DOCUMENT_NAME_PLACEHOLDER": "Informe o nome do arquivo do documento (ex.: Comprovante_2025.pdf)",
       "BUTTON_PARAMETER": "Insira o parâmetro do botão",
       "MEDIA_FROM_TEMPLATE": "Usando a mídia aprovada junto com este template.",
-      "MEDIA_REPLACE": "Usar outra URL"
+      "MEDIA_REPLACE": "Usar outra URL",
+      "ORDER": {
+        "TITLE": "Cobrança",
+        "REFERENCE_ID": "Referência do pedido",
+        "TOTAL_AMOUNT": "Valor total (ex.: 129,90)",
+        "PIX_CODE": "Código Pix copia e cola",
+        "PIX_MERCHANT": "Nome do titular da conta",
+        "PIX_KEY": "Chave Pix",
+        "BOLETO_LINE": "Linha digitável do boleto",
+        "PAYMENT_LINK": "https://link-de-pagamento",
+        "GOODS_TYPES": {
+          "digital-goods": "Produto digital",
+          "physical-goods": "Produto físico"
+        },
+        "PAYMENT_TYPES": {
+          "pix_dynamic_code": "Código Pix",
+          "boleto": "Código do boleto",
+          "payment_link": "Link de pagamento"
+        }
+      }
     }
   }
 }

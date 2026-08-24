@@ -126,6 +126,66 @@ const showMediaInputs = computed(
   () => !isMediaFromTemplate.value || isOverridingMedia.value
 );
 
+// A payment template carries its order in the button component instead of text
+// parameters, so the parser collects the charge here and hands it over under
+// `order_details`.
+const GOODS_TYPES = ['digital-goods', 'physical-goods'];
+const PAYMENT_TYPES = ['pix_dynamic_code', 'boleto', 'payment_link'];
+const PIX_KEY_TYPES = ['CNPJ', 'CPF', 'EMAIL', 'PHONE', 'EVP'];
+
+const hasOrderDetails = computed(() =>
+  (findComponentByType(props.template, COMPONENT_TYPES.BUTTONS)?.buttons || [])
+    .some(button => button.type?.toUpperCase() === 'ORDER_DETAILS')
+);
+
+const orderDetails = computed(() => processedParams.value.order_details || {});
+
+const updateOrderDetail = (key, value) => {
+  processedParams.value.order_details ??= {};
+  processedParams.value.order_details[key] = value;
+};
+
+// Mirrors the backend rule: whichever separator comes last is the decimal one.
+// Diverging here would let a value through that the send reads differently.
+const parseAmount = value => {
+  const digits = String(value ?? '').replace(/[^\d.,]/g, '');
+  if (!digits) return 0;
+
+  const lastComma = digits.lastIndexOf(',');
+  const lastDot = digits.lastIndexOf('.');
+  if (lastComma > -1 && lastDot > -1) {
+    return lastComma > lastDot
+      ? Number(digits.replace(/\./g, '').replace(',', '.'))
+      : Number(digits.replace(/,/g, ''));
+  }
+  return Number(digits.replace(',', '.'));
+};
+
+const isOrderDetailsIncomplete = computed(() => {
+  if (!hasOrderDetails.value) return false;
+
+  const order = orderDetails.value;
+  if (!order.reference_id?.trim() || !parseAmount(order.total_amount)) {
+    return true;
+  }
+
+  if (order.payment_type === 'pix_dynamic_code') {
+    return !(
+      order.pix_code?.trim() &&
+      order.pix_merchant_name?.trim() &&
+      order.pix_key?.trim() &&
+      order.pix_key_type
+    );
+  }
+  if (order.payment_type === 'boleto') {
+    return !order.boleto_digitable_line?.trim();
+  }
+  if (order.payment_type === 'payment_link') {
+    return !order.payment_link_uri?.trim();
+  }
+  return true;
+});
+
 const formatType = computed(() => {
   const format = headerComponent.value?.format;
   return format ? format.charAt(0) + format.slice(1).toLowerCase() : '';
@@ -161,10 +221,16 @@ const renderedTemplate = computed(() => {
   );
 });
 
-// Completeness validation is shared with the mobile app via @chatwoot/utils.
-const isFormInvalid = computed(
-  () => !isWhatsAppComplete(props.template, processedParams.value)
-);
+// Completeness validation is shared with the mobile app via @chatwoot/utils,
+// which only knows about text parameters — the order is stripped out and
+// checked separately.
+const isFormInvalid = computed(() => {
+  const { order_details: _order, ...textParams } = processedParams.value;
+  return (
+    !isWhatsAppComplete(props.template, textParams) ||
+    isOrderDetailsIncomplete.value
+  );
+});
 
 const v$ = useVuelidate(
   {
@@ -184,6 +250,19 @@ const initializeTemplateParameters = () => {
 
   if (boundMediaUrl.value && params.header && !params.header.media_url) {
     params.header.media_url = boundMediaUrl.value;
+  }
+
+  if (hasOrderDetails.value) {
+    // mergeTemplateParameters only walks the skeleton, which has no order, so a
+    // charge saved on an automation or sequence step is taken straight from
+    // initialParams or it would be lost here.
+    params.order_details = {
+      goods_type: GOODS_TYPES[0],
+      payment_type: PAYMENT_TYPES[0],
+      pix_key_type: PIX_KEY_TYPES[0],
+      ...(props.initialParams?.order_details || {}),
+      ...(params.order_details || {}),
+    };
   }
 
   isOverridingMedia.value = false;
@@ -244,6 +323,8 @@ watch(
 
 defineExpose({
   processedParams,
+  hasOrderDetails,
+  isOrderDetailsIncomplete,
   hasVariables,
   hasMediaHeader,
   isDocumentTemplate,
@@ -304,7 +385,7 @@ defineExpose({
       </div>
     </div>
 
-    <div v-if="hasVariables || hasMediaHeader">
+    <div v-if="hasVariables || hasMediaHeader || hasOrderDetails">
       <div v-if="hasMediaHeader" class="mb-4">
         <p class="mb-2.5 text-sm font-semibold">
           {{
@@ -421,6 +502,110 @@ defineExpose({
           />
         </div>
       </div>
+    <div v-if="hasOrderDetails" class="flex flex-col gap-2.5 mb-4">
+      <p class="text-sm font-semibold">
+        {{ $t('WHATSAPP_TEMPLATES.PARSER.ORDER.TITLE') }}
+      </p>
+
+      <div class="grid gap-2.5 sm:grid-cols-2">
+        <Input
+          :model-value="orderDetails.reference_id || ''"
+          type="text"
+          :placeholder="$t('WHATSAPP_TEMPLATES.PARSER.ORDER.REFERENCE_ID')"
+          @update:model-value="
+            value => updateOrderDetail('reference_id', value)
+          "
+        />
+        <Input
+          :model-value="orderDetails.total_amount || ''"
+          type="text"
+          :placeholder="$t('WHATSAPP_TEMPLATES.PARSER.ORDER.TOTAL_AMOUNT')"
+          @update:model-value="
+            value => updateOrderDetail('total_amount', value)
+          "
+        />
+      </div>
+
+      <div class="grid gap-2.5 sm:grid-cols-2">
+        <select
+          :value="orderDetails.goods_type"
+          class="py-2 px-3 w-full text-sm rounded-lg border outline-none border-n-weak bg-n-alpha-black2 text-n-slate-12"
+          @change="event => updateOrderDetail('goods_type', event.target.value)"
+        >
+          <option v-for="type in GOODS_TYPES" :key="type" :value="type">
+            {{ $t(`WHATSAPP_TEMPLATES.PARSER.ORDER.GOODS_TYPES.${type}`) }}
+          </option>
+        </select>
+        <select
+          :value="orderDetails.payment_type"
+          class="py-2 px-3 w-full text-sm rounded-lg border outline-none border-n-weak bg-n-alpha-black2 text-n-slate-12"
+          @change="
+            event => updateOrderDetail('payment_type', event.target.value)
+          "
+        >
+          <option v-for="type in PAYMENT_TYPES" :key="type" :value="type">
+            {{ $t(`WHATSAPP_TEMPLATES.PARSER.ORDER.PAYMENT_TYPES.${type}`) }}
+          </option>
+        </select>
+      </div>
+
+      <template v-if="orderDetails.payment_type === 'pix_dynamic_code'">
+        <Input
+          :model-value="orderDetails.pix_code || ''"
+          type="text"
+          :placeholder="$t('WHATSAPP_TEMPLATES.PARSER.ORDER.PIX_CODE')"
+          @update:model-value="value => updateOrderDetail('pix_code', value)"
+        />
+        <div class="grid gap-2.5 sm:grid-cols-3">
+          <Input
+            :model-value="orderDetails.pix_merchant_name || ''"
+            type="text"
+            :placeholder="$t('WHATSAPP_TEMPLATES.PARSER.ORDER.PIX_MERCHANT')"
+            @update:model-value="
+              value => updateOrderDetail('pix_merchant_name', value)
+            "
+          />
+          <Input
+            :model-value="orderDetails.pix_key || ''"
+            type="text"
+            :placeholder="$t('WHATSAPP_TEMPLATES.PARSER.ORDER.PIX_KEY')"
+            @update:model-value="value => updateOrderDetail('pix_key', value)"
+          />
+          <select
+            :value="orderDetails.pix_key_type"
+            class="py-2 px-3 w-full text-sm rounded-lg border outline-none border-n-weak bg-n-alpha-black2 text-n-slate-12"
+            @change="
+              event => updateOrderDetail('pix_key_type', event.target.value)
+            "
+          >
+            <option v-for="type in PIX_KEY_TYPES" :key="type" :value="type">
+              {{ type }}
+            </option>
+          </select>
+        </div>
+      </template>
+
+      <Input
+        v-else-if="orderDetails.payment_type === 'boleto'"
+        :model-value="orderDetails.boleto_digitable_line || ''"
+        type="text"
+        :placeholder="$t('WHATSAPP_TEMPLATES.PARSER.ORDER.BOLETO_LINE')"
+        @update:model-value="
+          value => updateOrderDetail('boleto_digitable_line', value)
+        "
+      />
+
+      <Input
+        v-else
+        :model-value="orderDetails.payment_link_uri || ''"
+        type="url"
+        :placeholder="$t('WHATSAPP_TEMPLATES.PARSER.ORDER.PAYMENT_LINK')"
+        @update:model-value="
+          value => updateOrderDetail('payment_link_uri', value)
+        "
+      />
+    </div>
+
       <p
         v-if="v$.$dirty && v$.$invalid"
         class="p-2.5 text-center rounded-md bg-n-ruby-9/20 text-n-ruby-9"

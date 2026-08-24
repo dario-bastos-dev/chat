@@ -39,7 +39,9 @@ class Whatsapp::TemplateParameterConverterService
     return false unless processed_params.is_a?(Hash)
 
     # Enhanced format has component-based structure
-    component_keys = %w[body header footer buttons]
+    # order_details belongs here too: a payment template often carries no text variables at all, and
+    # without it the params would be mistaken for the legacy format and rewritten, losing the charge.
+    component_keys = %w[body header footer buttons order_details]
     has_component_structure = processed_params.keys.any? { |k| component_keys.include?(k) }
 
     # Additional validation for enhanced format

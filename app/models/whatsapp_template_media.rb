@@ -38,10 +38,6 @@ class WhatsappTemplateMedia < ApplicationRecord
     end
   end
 
-  def self.url_for(account_id, template_name, language)
-    find_by(account_id: account_id, template_name: template_name, language: language)&.url
-  end
-
   def url
     return unless file.attached?
 

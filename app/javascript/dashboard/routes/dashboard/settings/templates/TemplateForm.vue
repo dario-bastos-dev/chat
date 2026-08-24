@@ -29,7 +29,16 @@ const CATEGORIES = ['UTILITY', 'MARKETING'];
 const BUTTON_TEXT_MAX_LENGTH = 25;
 const TEMPLATE_NAME_MAX_LENGTH = 512;
 const LANGUAGES = ['pt_BR', 'en', 'en_US', 'es', 'es_ES'];
-const BUTTON_TYPES = ['QUICK_REPLY', 'URL', 'PHONE_NUMBER'];
+const BUTTON_TYPES = [
+  'QUICK_REPLY',
+  'URL',
+  'PHONE_NUMBER',
+  'COPY_CODE',
+  'ORDER_DETAILS',
+];
+// Meta renders its own label on these, so the text field is hidden for them.
+const LABELLESS_BUTTON_TYPES = ['COPY_CODE'];
+const COPY_CODE_MAX_LENGTH = 15;
 const HEADER_FORMATS = ['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT'];
 const MEDIA_ACCEPT = {
   IMAGE: 'image/jpeg,image/png',
@@ -172,6 +181,7 @@ const addButton = () => {
   form.buttons.push({
     type: 'QUICK_REPLY',
     text: '',
+    code: '',
     url: '',
     phone_number: '',
   });
@@ -267,13 +277,36 @@ const validate = () => {
   ) {
     return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.MIXED_VARIABLES');
   }
-  if (form.buttons.some(button => !button.text.trim())) {
+  const labelled = form.buttons.filter(
+    button => !LABELLESS_BUTTON_TYPES.includes(button.type)
+  );
+  if (labelled.some(button => !button.text.trim())) {
     return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.BUTTON_LABEL_REQUIRED');
   }
-  if (
-    form.buttons.some(button => button.text.length > BUTTON_TEXT_MAX_LENGTH)
-  ) {
+  if (labelled.some(button => button.text.length > BUTTON_TEXT_MAX_LENGTH)) {
     return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.BUTTON_LABEL_TOO_LONG');
+  }
+  const copyCodeButtons = form.buttons.filter(
+    button => button.type === 'COPY_CODE'
+  );
+  if (copyCodeButtons.some(button => !button.code?.trim())) {
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.COPY_CODE_REQUIRED');
+  }
+  if (
+    copyCodeButtons.some(button => button.code.length > COPY_CODE_MAX_LENGTH)
+  ) {
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.COPY_CODE_TOO_LONG');
+  }
+  if (copyCodeButtons.length > 1) {
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.COPY_CODE_LIMIT');
+  }
+  // A payment button replaces the whole call to action area, so Meta rejects
+  // it next to any other button.
+  const paymentButtons = form.buttons.filter(
+    button => button.type === 'ORDER_DETAILS'
+  );
+  if (paymentButtons.length && form.buttons.length > 1) {
+    return t('WHATSAPP_TEMPLATE_MGMT.ERRORS.PAYMENT_BUTTON_ALONE');
   }
   const invalidUrlButton = form.buttons.find(
     button => button.type === 'URL' && !isValidButtonUrl(button.url)
@@ -327,6 +360,14 @@ const buildPayload = () => {
           text: button.text,
           phone_number: button.phone_number,
         };
+      }
+      // `code` and not `example`: the latter is reserved for the URL
+      // button's array of samples.
+      if (button.type === 'COPY_CODE') {
+        return { type: 'COPY_CODE', code: button.code };
+      }
+      if (button.type === 'ORDER_DETAILS') {
+        return { type: 'ORDER_DETAILS', text: button.text };
       }
       return { type: 'QUICK_REPLY', text: button.text };
     });
@@ -531,13 +572,22 @@ defineExpose({ reset, load });
       >
         <Select v-model="button.type" :options="buttonTypeOptions" />
         <Input
+          v-if="!LABELLESS_BUTTON_TYPES.includes(button.type)"
           v-model="button.text"
           :placeholder="
             $t('WHATSAPP_TEMPLATE_MGMT.FORM.BUTTONS.TEXT_PLACEHOLDER')
           "
         />
         <Input
-          v-if="button.type === 'URL'"
+          v-if="button.type === 'COPY_CODE'"
+          v-model="button.code"
+          :maxlength="COPY_CODE_MAX_LENGTH"
+          :placeholder="
+            $t('WHATSAPP_TEMPLATE_MGMT.FORM.BUTTONS.CODE_PLACEHOLDER')
+          "
+        />
+        <Input
+          v-else-if="button.type === 'URL'"
           v-model="button.url"
           :placeholder="
             $t('WHATSAPP_TEMPLATE_MGMT.FORM.BUTTONS.URL_PLACEHOLDER')

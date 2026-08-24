@@ -1,6 +1,12 @@
 class Whatsapp::TemplateManagementService
   CATEGORIES = %w[MARKETING UTILITY AUTHENTICATION].freeze
-  BUTTON_TYPES = %w[QUICK_REPLY URL PHONE_NUMBER].freeze
+  BUTTON_TYPES = %w[QUICK_REPLY URL PHONE_NUMBER COPY_CODE ORDER_DETAILS].freeze
+  # Meta fixes the label on these, so they carry no text of their own.
+  LABELLESS_BUTTON_TYPES = %w[COPY_CODE].freeze
+  # A payment button turns the whole template into an order details one, which Meta flags at the top
+  # level rather than on the component.
+  ORDER_DETAILS_FORMAT = 'ORDER_DETAILS'.freeze
+  COPY_CODE_MAX_LENGTH = 15
   MEDIA_FORMATS = %w[IMAGE VIDEO DOCUMENT].freeze
   NAME_FORMAT = /\A[a-z0-9_]{1,512}\z/
   # Placeholders are either all numeric ({{1}}) or all named ({{order_id}});
@@ -56,13 +62,19 @@ class Whatsapp::TemplateManagementService
   def build_request_body(params)
     validate!(params)
 
-    {
+    body = {
       name: params[:name],
       language: params[:language].presence || DEFAULT_LANGUAGE,
       category: params[:category],
       parameter_format: parameter_format(params),
       components: build_components(params)
     }
+    body[:display_format] = ORDER_DETAILS_FORMAT if order_details_template?(params)
+    body
+  end
+
+  def order_details_template?(params)
+    Array(params[:buttons]).any? { |button| button[:type] == 'ORDER_DETAILS' }
   end
 
   def build_update_body(params)
@@ -172,6 +184,12 @@ class Whatsapp::TemplateManagementService
       payload
     when 'PHONE_NUMBER'
       { type: 'PHONE_NUMBER', text: button[:text], phone_number: button[:phone_number] }
+    when 'COPY_CODE'
+      # No label: Meta renders its own. Sent as `code` because `example` is reserved for the URL
+      # button's array of samples, and strong params cannot permit one key as both scalar and array.
+      { type: 'COPY_CODE', example: button[:code] }
+    when 'ORDER_DETAILS'
+      { type: 'ORDER_DETAILS', text: button[:text] }
     else
       { type: 'QUICK_REPLY', text: button[:text] }
     end
@@ -236,16 +254,41 @@ class Whatsapp::TemplateManagementService
 
     types = buttons.pluck(:type)
     raise ValidationError, "Button type must be one of #{BUTTON_TYPES.join(', ')}" unless types.all? { |type| BUTTON_TYPES.include?(type) }
-    raise ValidationError, 'Buttons require a label' if buttons.any? { |button| button[:text].blank? }
+    raise ValidationError, 'Buttons require a label' if labelled_buttons(buttons).any? { |button| button[:text].blank? }
     raise ValidationError, "Button labels must be under #{BUTTON_TEXT_MAX_LENGTH} characters" if button_label_too_long?(buttons)
     raise ValidationError, 'A template supports at most 2 URL buttons' if types.count('URL') > 2
     raise ValidationError, 'A template supports at most 1 phone number button' if types.count('PHONE_NUMBER') > 1
+    raise ValidationError, 'A template supports at most 1 copy code button' if types.count('COPY_CODE') > 1
 
     validate_url_buttons!(buttons.select { |button| button[:type] == 'URL' })
+    validate_copy_code_buttons!(buttons.select { |button| button[:type] == 'COPY_CODE' })
+    validate_order_details_buttons!(buttons, types)
+  end
+
+  def labelled_buttons(buttons)
+    buttons.reject { |button| LABELLESS_BUTTON_TYPES.include?(button[:type]) }
+  end
+
+  def validate_copy_code_buttons!(buttons)
+    buttons.each do |button|
+      code = button[:code].to_s
+      raise ValidationError, 'Copy code buttons require an example code' if code.blank?
+      raise ValidationError, "Copy code examples must be #{COPY_CODE_MAX_LENGTH} characters or shorter" if code.length > COPY_CODE_MAX_LENGTH
+    end
+  end
+
+  # The payment button replaces the whole call to action area, so Meta rejects it next to any other
+  # button type.
+  def validate_order_details_buttons!(buttons, types)
+    count = types.count('ORDER_DETAILS')
+    return if count.zero?
+
+    raise ValidationError, 'A template supports at most 1 payment button' if count > 1
+    raise ValidationError, 'A payment button cannot be combined with other buttons' if buttons.length > 1
   end
 
   def button_label_too_long?(buttons)
-    buttons.any? { |button| button[:text].to_s.length > BUTTON_TEXT_MAX_LENGTH }
+    labelled_buttons(buttons).any? { |button| button[:text].to_s.length > BUTTON_TEXT_MAX_LENGTH }
   end
 
   # Meta only accepts a single variable per URL button and it must be the last
