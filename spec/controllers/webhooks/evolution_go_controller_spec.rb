@@ -110,5 +110,13 @@ RSpec.describe 'Webhooks::EvolutionGoController', type: :request do
           expect(payload['channel_id']).to eq(channel.id)
         }
     end
+
+    # The token authenticates the webhook, so it should not be parked in Redis or shown in the
+    # Sidekiq admin UI once the check has already passed.
+    it 'strips the instance token before enqueuing' do
+      expect { post_webhook(message_payload) }
+        .to have_enqueued_job(Webhooks::EvolutionGoEventsJob)
+        .with { |payload| expect(payload).not_to have_key('instanceToken') }
+    end
   end
 end

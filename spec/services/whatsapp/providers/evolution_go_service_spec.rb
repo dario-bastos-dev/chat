@@ -93,6 +93,76 @@ describe Whatsapp::Providers::EvolutionGoService do
     end
   end
 
+  describe 'interactive messages' do
+    def interactive_message(item_count)
+      items = Array.new(item_count) { |i| { 'title' => "Option #{i}", 'value' => "opt_#{i}" } }
+      create(
+        :message,
+        conversation: conversation,
+        inbox: channel.inbox,
+        message_type: :outgoing,
+        content: 'Pick one',
+        content_type: 'input_select',
+        content_attributes: { 'items' => items }
+      )
+    end
+
+    it 'sends three options or fewer as reply buttons' do
+      stub_send('send/button')
+
+      service.send_message('5511988887777', interactive_message(3))
+
+      expect(WebMock).to have_requested(:post, 'https://evogo.test/send/button')
+        .with { |req|
+          payload = JSON.parse(req.body)
+          payload['description'] == 'Pick one' &&
+            payload['buttons'].length == 3 &&
+            payload['buttons'].first == { 'type' => 'reply', 'displayText' => 'Option 0', 'id' => 'opt_0' }
+        }
+    end
+
+    it 'sends more than three options as a list' do
+      stub_send('send/list')
+
+      service.send_message('5511988887777', interactive_message(4))
+
+      expect(WebMock).to have_requested(:post, 'https://evogo.test/send/list')
+        .with { |req|
+          payload = JSON.parse(req.body)
+          payload['sections'].first['rows'].length == 4 &&
+            payload['sections'].first['rows'].first == { 'rowId' => 'opt_0', 'title' => 'Option 0' }
+        }
+    end
+
+    it 'omits title and footer when the caller did not set them' do
+      stub_send('send/button')
+
+      service.send_message('5511988887777', interactive_message(2))
+
+      expect(WebMock).to have_requested(:post, 'https://evogo.test/send/button')
+        .with { |req| !JSON.parse(req.body).key?('title') && !JSON.parse(req.body).key?('footer') }
+    end
+
+    it 'forwards title and footer when they are present' do
+      stub_send('send/button')
+      message = interactive_message(2)
+      message.update!(content_attributes: message.content_attributes.merge('title' => 'Menu', 'footer' => 'Loja'))
+
+      service.send_message('5511988887777', message)
+
+      expect(WebMock).to have_requested(:post, 'https://evogo.test/send/button')
+        .with { |req| JSON.parse(req.body).values_at('title', 'footer') == %w[Menu Loja] }
+    end
+
+    it 'does not send the interactive message as plain text' do
+      stub_send('send/button')
+
+      service.send_message('5511988887777', interactive_message(2))
+
+      expect(WebMock).not_to have_requested(:post, 'https://evogo.test/send/text')
+    end
+  end
+
   describe '#get_connection_status' do
     def stub_status(connected:, logged_in:)
       stub_request(:get, 'https://evogo.test/instance/status')

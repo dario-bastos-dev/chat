@@ -333,7 +333,7 @@ onBeforeUnmount(stopPolling);
                 <img :src="qrCode" class="object-contain size-64" alt="" />
               </div>
               <p class="text-sm text-center text-n-slate-11">
-                {{ $t('INBOX_MGMT.FINISH.SCAN_QR_CODE') }}
+                {{ $t('INBOX_MGMT.EVOLUTION_GO_INSTANCE.QR_HINT') }}
               </p>
               <NextButton
                 faded

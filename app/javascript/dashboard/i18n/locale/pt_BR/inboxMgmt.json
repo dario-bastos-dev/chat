@@ -863,6 +863,7 @@
       "SELECT_CONNECTION_METHOD": "Selecione um método de conexão",
       "QR_ERROR": "Erro ao gerar QR Code",
       "QR_EMPTY": "A Evolution GO não retornou um QR Code",
+      "QR_HINT": "Escaneie este código no WhatsApp em Aparelhos conectados",
       "PAIRING_ERROR": "Erro ao gerar o código de pareamento",
       "PAIRING_EMPTY": "A Evolution GO não retornou código nem QR Code",
       "CONNECT_ERROR": "Erro ao conectar",

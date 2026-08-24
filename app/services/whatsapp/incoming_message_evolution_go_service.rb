@@ -401,10 +401,12 @@ class Whatsapp::IncomingMessageEvolutionGoService
       return
     end
 
-    # identifier is unique per account, so another contact already holding this JID would make
-    # the update raise and leave the job retrying forever.
-    if inbox.account.contacts.where.not(id: contact_inbox.contact_id).exists?(identifier: contact_jid)
-      Rails.logger.warn "[EVOLUTION_GO MSG] JID Swap skipped: identifier #{contact_jid} already taken in account #{inbox.account_id}"
+    # identifier and phone_number are both unique per account, so another contact already holding
+    # either one would make the update raise and leave the job retrying forever.
+    taken = inbox.account.contacts.where.not(id: contact_inbox.contact_id)
+    if taken.exists?(identifier: contact_jid) || taken.exists?(phone_number: contact_phone_number)
+      Rails.logger.warn "[EVOLUTION_GO MSG] JID Swap skipped: #{contact_jid} already belongs to another contact " \
+                        "in account #{inbox.account_id}"
       return
     end
 
@@ -419,8 +421,15 @@ class Whatsapp::IncomingMessageEvolutionGoService
   end
 
   # Auxiliar para identificar o LID no payload
+  # The JIDs that name the contact in this payload, never the business itself. On an outgoing
+  # echo Sender holds our own lid and the contact is in Chat, so a lookup that scans both
+  # directions at once resolves to the business number and picks the wrong contact.
+  def contact_candidate_jids
+    from_me? ? [chat_jid, recipient_alt_jid] : [sender_jid, sender_alt_jid]
+  end
+
   def payload_lid_source_id
-    lid_jid = [sender_jid, sender_alt_jid, recipient_alt_jid].find { |j| j.to_s.include?('@lid') }
+    lid_jid = contact_candidate_jids.find { |j| j.to_s.include?('@lid') }
     return nil if lid_jid.blank?
 
     extract_lid_digits(lid_jid)
@@ -464,9 +473,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
   def save_lid_mapping_if_needed
     return if @contact.blank?
 
-    candidates = from_me? ? [chat_jid, recipient_alt_jid] : [sender_jid, sender_alt_jid]
-    lid_jid = candidates.find { |j| j.to_s.include?('@lid') }
-    phone_jid = candidates.find { |j| j.to_s.include?('@s.whatsapp.net') }
+    lid_jid = contact_candidate_jids.find { |j| j.to_s.include?('@lid') }
+    phone_jid = contact_candidate_jids.find { |j| j.to_s.include?('@s.whatsapp.net') }
 
     lid_value = extract_lid_digits(lid_jid)
     return if lid_value.blank?

@@ -6,6 +6,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   SUBSCRIBED_EVENTS = %w[MESSAGE CONNECTION READ_RECEIPT].freeze
   # Attachment types WhatsApp renders with a caption.
   CAPTIONABLE_TYPES = %w[image video file].freeze
+  # WhatsApp renders up to three options as buttons; past that it has to be a list.
+  MAX_REPLY_BUTTONS = 3
 
   def api_base_url
     @api_base_url ||= begin
@@ -538,6 +540,9 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     Rails.logger.info "[EVOLUTION_GO] Sending to #{formatted_number} (source: #{phone_number_or_jid}) | " \
                       "JID: #{format_recipient_jid(formatted_number)} | attachments: #{message.attachments.count}"
 
+    # /send/button and /send/list take no `id`, so there is nothing to claim up front for them.
+    return send_interactive_message(formatted_number, message) if message.content_type == 'input_select'
+
     reserved_id = reserve_source_id(message)
 
     sent_id = if message.attachments.any?
@@ -736,6 +741,82 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     return if extras.blank?
 
     message.update_column(:content_attributes, (message.content_attributes || {}).merge('external_ids' => extras))
+  end
+
+  # Chatwoot models an interactive message as content_type input_select, with the options in
+  # content_attributes.items ([{title:, value:}]). Same split the Cloud and 360dialog providers
+  # use: buttons while they fit, a list past that.
+  # Neither endpoint accepts an `id`, so these two cannot pre-claim the source_id the way text
+  # and media do — the webhook echo is deduped by the exists?(source_id:) check alone.
+  def send_interactive_message(phone_number, message)
+    items = Array(message.content_attributes&.dig('items'))
+
+    if items.size <= MAX_REPLY_BUTTONS
+      send_button_message(phone_number, message, items)
+    else
+      send_list_message(phone_number, message, items)
+    end
+  end
+
+  def send_button_message(phone_number, message, items)
+    body = interactive_body(phone_number, message).merge(
+      buttons: items.map { |item| { type: 'reply', displayText: item['title'], id: item['value'] } }
+    )
+
+    post_send('send/button', body, 'Buttons')
+  end
+
+  def send_list_message(phone_number, message, items)
+    rows = items.map { |item| { rowId: item['value'], title: item['title'] } }
+
+    body = interactive_body(phone_number, message).merge(
+      buttonText: I18n.t('conversations.messages.whatsapp.list_button_label'),
+      sections: [{ rows: rows }]
+    )
+
+    post_send('send/list', body, 'List')
+  end
+
+  # description carries the message body. title and footer are optional headers EvoGO renders
+  # around it, and only a caller that sets them in content_attributes has anything to put there.
+  def interactive_body(phone_number, message)
+    recipient_jid = format_recipient_jid(phone_number)
+    attributes = message.content_attributes || {}
+
+    body = {
+      number: recipient_jid,
+      description: message.outgoing_content,
+      delay: message_delay
+    }
+    body[:title] = attributes['title'] if attributes['title'].present?
+    body[:footer] = attributes['footer'] if attributes['footer'].present?
+
+    quoted = quoted_context(message, recipient_jid)
+    body[:quoted] = quoted if quoted.present?
+
+    body
+  end
+
+  def post_send(endpoint, body, label)
+    response = evolution_request(
+      :post,
+      "#{api_base_url}/#{endpoint}",
+      headers: instance_headers,
+      body: body.to_json,
+      timeout: 30
+    )
+
+    if response.success?
+      msg_id = response.parsed_response.dig('data', 'Info', 'ID') || response.parsed_response.dig('data', 'key', 'id')
+      Rails.logger.info "[EVOLUTION_GO] #{label} sent. ID: #{msg_id}"
+      msg_id
+    else
+      Rails.logger.error "[EVOLUTION_GO] #{label} failed: #{response.code} - #{response.body}"
+      nil
+    end
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO] #{label} error: #{e.class} - #{e.message}"
+    nil
   end
 
   # Every media type goes through /send/media: EvoGO exposes no /send/audio endpoint.

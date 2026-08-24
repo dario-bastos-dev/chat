@@ -29,9 +29,11 @@ class Webhooks::EvolutionGoController < ActionController::API
 
     Rails.logger.info "[EVOLUTION_GO] Webhook: #{event} | Channel: #{channel.id}"
 
-    # ASYNC processing via Sidekiq (fast response to Evolution GO API)
+    # ASYNC processing via Sidekiq (fast response to Evolution GO API).
+    # instanceToken is dropped: it was already checked above and nothing downstream reads it,
+    # so keeping it would park the credential in Redis and in the Sidekiq admin UI.
     Webhooks::EvolutionGoEventsJob.perform_later(
-      payload.merge('channel_id' => channel.id).deep_stringify_keys
+      payload.except('instanceToken', :instanceToken).merge('channel_id' => channel.id).deep_stringify_keys
     )
 
     head :ok

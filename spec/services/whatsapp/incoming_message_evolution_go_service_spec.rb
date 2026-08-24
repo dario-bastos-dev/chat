@@ -229,6 +229,52 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
     end
   end
 
+  # On an outgoing echo Sender holds the business's own @lid and the contact is named by Chat,
+  # so anything scanning both directions at once resolves to the wrong person.
+  describe 'outgoing echoes' do
+    let(:params) do
+      {
+        'event' => 'Message',
+        'data' => {
+          'Info' => {
+            'ID' => 'wamid-from-me',
+            'IsFromMe' => true,
+            'IsGroup' => false,
+            'Chat' => '27041265119351@lid',
+            'Sender' => '246085134118923@lid',
+            'SenderAlt' => '',
+            'RecipientAlt' => '5511988887777@s.whatsapp.net',
+            'PushName' => 'Business',
+            'Type' => 'text'
+          },
+          'Message' => { 'conversation' => 'sent from the phone' }
+        }
+      }
+    end
+
+    let!(:owner_contact_inbox) do
+      # A contact_inbox keyed by the business's own lid: the lookup must not land on it.
+      contact = create(:contact, account: inbox.account, identifier: '246085134118923@lid')
+      create(:contact_inbox, inbox: inbox, contact: contact, source_id: '246085134118923')
+    end
+
+    it 'attributes the message to the recipient, not to the owner lid' do
+      service.perform
+
+      message = inbox.messages.last
+      expect(message.message_type).to eq('outgoing')
+      expect(message.conversation.contact_id).not_to eq(owner_contact_inbox.contact_id)
+      expect(message.conversation.contact.phone_number).to eq('+5511988887777')
+    end
+
+    it 'maps the contact lid from Chat, not the owner lid from Sender' do
+      service.perform
+
+      expect(Channel::WhatsappLidMapping.find_by(account_id: inbox.account_id, lid: '246085134118923')).to be_nil
+      expect(Channel::WhatsappLidMapping.find_by(account_id: inbox.account_id, lid: '27041265119351')).to be_present
+    end
+  end
+
   describe 'groups and broadcasts' do
     context 'when the message comes from a group' do
       let(:info) { super().merge('IsGroup' => true) }

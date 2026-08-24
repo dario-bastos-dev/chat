@@ -843,6 +843,7 @@
       "SELECT_CONNECTION_METHOD": "Select a connection method",
       "QR_ERROR": "Error generating QR Code",
       "QR_EMPTY": "Evolution GO returned no QR Code",
+      "QR_HINT": "Scan this code in WhatsApp under Linked devices",
       "PAIRING_ERROR": "Error generating the pairing code",
       "PAIRING_EMPTY": "Evolution GO returned neither a code nor a QR Code",
       "CONNECT_ERROR": "Could not connect",

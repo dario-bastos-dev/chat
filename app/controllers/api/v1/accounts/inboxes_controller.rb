@@ -270,10 +270,12 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     return render json: result, status: :unprocessable_entity unless result[:success]
 
     settings = result[:settings] || {}
-    @inbox.channel.merge_provider_config!(
-      'always_online' => settings['alwaysOnline'],
-      'read_messages' => settings['readMessages']
-    )
+    # Only keys the instance actually reported: a response in an unexpected shape would
+    # otherwise blank out the stored toggles and the next save would push those blanks back.
+    updates = {}
+    updates['always_online'] = settings['alwaysOnline'] unless settings['alwaysOnline'].nil?
+    updates['read_messages'] = settings['readMessages'] unless settings['readMessages'].nil?
+    @inbox.channel.merge_provider_config!(updates) if updates.any?
 
     render json: result
   rescue StandardError => e
