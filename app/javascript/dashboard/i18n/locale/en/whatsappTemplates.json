@@ -44,7 +44,26 @@
       "DOCUMENT_NAME_PLACEHOLDER": "Enter document filename (e.g., Invoice_2025.pdf)",
       "BUTTON_PARAMETER": "Enter button parameter",
       "MEDIA_FROM_TEMPLATE": "Using the media approved with this template.",
-      "MEDIA_REPLACE": "Use another URL"
+      "MEDIA_REPLACE": "Use another URL",
+      "ORDER": {
+        "TITLE": "Payment request",
+        "REFERENCE_ID": "Order reference",
+        "TOTAL_AMOUNT": "Total amount (e.g. 129.90)",
+        "PIX_CODE": "Pix copy and paste code",
+        "PIX_MERCHANT": "Account holder name",
+        "PIX_KEY": "Pix key",
+        "BOLETO_LINE": "Boleto digitable line",
+        "PAYMENT_LINK": "https://payment-link",
+        "GOODS_TYPES": {
+          "digital-goods": "Digital goods",
+          "physical-goods": "Physical goods"
+        },
+        "PAYMENT_TYPES": {
+          "pix_dynamic_code": "Pix code",
+          "boleto": "Boleto code",
+          "payment_link": "Payment link"
+        }
+      }
     }
   }
 }

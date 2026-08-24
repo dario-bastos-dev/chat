@@ -49,8 +49,10 @@ const previewableVideo = computed(
 const bodyText = computed(() =>
   interpolate(props.body?.text, props.body?.example)
 );
+// A copy code button carries no label of its own, so it still shows up in the
+// preview with the label Meta renders for it.
 const visibleButtons = computed(() =>
-  props.buttons.filter(button => button.text)
+  props.buttons.filter(button => button.text || button.type === 'COPY_CODE')
 );
 </script>
 
@@ -101,7 +103,11 @@ const visibleButtons = computed(() =>
           :key="index"
           class="py-1 text-sm text-center truncate text-n-brand"
         >
-          {{ button.text }}
+          {{
+            button.type === 'COPY_CODE'
+              ? $t('WHATSAPP_TEMPLATE_MGMT.PREVIEW.COPY_CODE_LABEL')
+              : button.text
+          }}
         </span>
       </div>
     </div>

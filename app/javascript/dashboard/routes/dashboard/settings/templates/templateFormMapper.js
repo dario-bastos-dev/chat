@@ -34,6 +34,9 @@ const readButtons = components => {
   return buttons.map(button => ({
     type: button.type?.toUpperCase() || 'QUICK_REPLY',
     text: button.text || '',
+    // Meta returns the copy code sample under `example`; the form keeps it as
+    // `code` so it does not clash with the URL button's array of samples.
+    code: button.example || '',
     url: button.url || '',
     phone_number: button.phone_number || '',
   }));

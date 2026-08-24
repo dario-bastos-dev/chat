@@ -41,7 +41,8 @@
       "CATEGORY": "Category",
       "LANGUAGE": "Language",
       "INBOXES": "Inboxes",
-      "LAST_SYNC_ATTEMPT": "Last sync attempt"
+      "LAST_SYNC_ATTEMPT": "Last sync attempt",
+      "COPY_CODE_LABEL": "Copy code"
     },
     "TABLE": {
       "NAME": "Name",
@@ -56,7 +57,9 @@
     "BUTTON_TYPES": {
       "QUICK_REPLY": "Quick reply",
       "URL": "URL",
-      "PHONE_NUMBER": "Phone number"
+      "PHONE_NUMBER": "Phone number",
+      "COPY_CODE": "Copy offer code",
+      "ORDER_DETAILS": "Request payment"
     },
     "HEADER_FORMATS": {
       "TEXT": "Text",
@@ -106,7 +109,8 @@
         "ADD": "Add button",
         "TEXT_PLACEHOLDER": "Button label",
         "URL_PLACEHOLDER": "https://example.com/orders/{'{{'}order_id{'}}'}",
-        "PHONE_PLACEHOLDER": "+15550100"
+        "PHONE_PLACEHOLDER": "+15550100",
+        "CODE_PLACEHOLDER": "Sample code (max 15)"
       },
       "PREVIEW": "Preview",
       "SUBMIT": "Submit for approval",
@@ -125,7 +129,11 @@
       "MEDIA_REQUIRED": "Upload a file for the media header.",
       "UPLOAD_FAILED": "Could not upload the file. Please try again.",
       "INVALID_VARIABLE_NAME": "The variable {name} must use lowercase letters, numbers and single underscores between words.",
-      "MIXED_VARIABLES": "Use either named or numbered variables across the whole template, not both."
+      "MIXED_VARIABLES": "Use either named or numbered variables across the whole template, not both.",
+      "COPY_CODE_REQUIRED": "Copy code buttons need a sample code.",
+      "COPY_CODE_TOO_LONG": "The code must be 15 characters or shorter.",
+      "COPY_CODE_LIMIT": "A template supports at most one copy code button.",
+      "PAYMENT_BUTTON_ALONE": "A payment button cannot be combined with other buttons."
     },
     "CREATE_SUCCESS": "Template submitted to Meta for approval.",
     "CREATE_ERROR": "Could not create the template. Please try again.",

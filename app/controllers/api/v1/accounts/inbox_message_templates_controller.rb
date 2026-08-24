@@ -152,7 +152,7 @@ class Api::V1::Accounts::InboxMessageTemplatesController < Api::V1::Accounts::Ba
       header: [:text, :format, :media_handle, { example: [] }],
       body: [:text, { example: [] }],
       footer: [:text],
-      buttons: [:type, :text, :url, :phone_number, { example: [] }]
+      buttons: [:type, :text, :url, :phone_number, :code, { example: [] }]
     ).to_h.deep_symbolize_keys
   end
 
