@@ -758,6 +758,16 @@ RSpec.describe Conversation do
       end
     end
 
+    context 'when the bot inbox is configured to start conversations as open' do
+      let!(:bot_inbox) { create(:agent_bot_inbox, initial_conversation_status: 'open') }
+      let(:conversation) { create(:conversation, inbox: bot_inbox.inbox) }
+
+      it 'returns conversation status as open while still assigning the bot' do
+        expect(conversation.status).to eq('open')
+        expect(conversation.assignee_agent_bot).to eq(bot_inbox.agent_bot)
+      end
+    end
+
     context 'with campaigns in inbox without bot' do
       let(:account) { create(:account) }
       let(:inbox) { create(:inbox, account: account) }

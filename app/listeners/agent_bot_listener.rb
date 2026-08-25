@@ -3,6 +3,8 @@ class AgentBotListener < BaseListener
     conversation = extract_conversation_and_account(event)[0]
     inbox = conversation.inbox
     event_name = __method__.to_s
+    return unless event_enabled_for_inbox?(inbox, event_name)
+
     payload = conversation.webhook_data.merge(event: event_name)
     agent_bots_for(inbox, conversation).each { |agent_bot| process_webhook_bot_event(agent_bot, payload) }
   end
@@ -11,6 +13,8 @@ class AgentBotListener < BaseListener
     conversation = extract_conversation_and_account(event)[0]
     inbox = conversation.inbox
     event_name = __method__.to_s
+    return unless event_enabled_for_inbox?(inbox, event_name)
+
     payload = conversation.webhook_data.merge(event: event_name)
     agent_bots_for(inbox, conversation).each { |agent_bot| process_webhook_bot_event(agent_bot, payload) }
   end
@@ -20,6 +24,8 @@ class AgentBotListener < BaseListener
     changed_attributes = extract_changed_attributes(event)
     inbox = conversation.inbox
     event_name = __method__.to_s
+    return unless event_enabled_for_inbox?(inbox, event_name)
+
     payload = conversation.webhook_data.merge(event: event_name, changed_attributes: changed_attributes)
     agent_bots_for(inbox, conversation).each { |agent_bot| process_webhook_bot_event(agent_bot, payload) }
   end
@@ -29,6 +35,8 @@ class AgentBotListener < BaseListener
     changed_attributes = extract_changed_attributes(event)
     inbox = conversation.inbox
     event_name = __method__.to_s
+    return unless event_enabled_for_inbox?(inbox, event_name)
+
     payload = conversation.webhook_data.merge(event: event_name, changed_attributes: changed_attributes)
     agent_bots_for(inbox, conversation).each { |agent_bot| process_webhook_bot_event(agent_bot, payload) }
   end
@@ -39,6 +47,8 @@ class AgentBotListener < BaseListener
     return unless message.webhook_sendable?
 
     method_name = __method__.to_s
+    return unless event_enabled_for_inbox?(inbox, method_name)
+
     agent_bots_for(inbox, message.conversation).each { |agent_bot| process_message_event(method_name, agent_bot, message, event) }
   end
 
@@ -48,6 +58,8 @@ class AgentBotListener < BaseListener
     return unless message.webhook_sendable?
 
     method_name = __method__.to_s
+    return unless event_enabled_for_inbox?(inbox, method_name)
+
     agent_bots_for(inbox, message.conversation).each { |agent_bot| process_message_event(method_name, agent_bot, message, event) }
   end
 
@@ -55,12 +67,21 @@ class AgentBotListener < BaseListener
     contact_inbox = event.data[:contact_inbox]
     inbox = contact_inbox.inbox
     event_name = __method__.to_s
+    return unless event_enabled_for_inbox?(inbox, event_name)
+
     payload = contact_inbox.webhook_data.merge(event: event_name)
     payload[:event_info] = event.data[:event_info]
     agent_bots_for(inbox).each { |agent_bot| process_webhook_bot_event(agent_bot, payload) }
   end
 
   private
+
+  def event_enabled_for_inbox?(inbox, event_name)
+    agent_bot_inbox = inbox.agent_bot_inbox
+    return true unless agent_bot_inbox&.active?
+
+    agent_bot_inbox.event_enabled?(event_name)
+  end
 
   def agent_bots_for(inbox, conversation = nil)
     bots = []

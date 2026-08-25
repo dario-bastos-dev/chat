@@ -72,6 +72,9 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     if @agent_bot
       agent_bot_inbox = @inbox.agent_bot_inbox || AgentBotInbox.new(inbox: @inbox)
       agent_bot_inbox.agent_bot = @agent_bot
+      agent_bot_inbox.initial_conversation_status = params[:initial_conversation_status] if params[:initial_conversation_status].present?
+      # `.key?` (not `.present?`): an explicit empty array means "disable all bot events" and must be persisted, not dropped.
+      agent_bot_inbox.event_names = params[:event_names] if params.key?(:event_names)
       agent_bot_inbox.save!
     elsif @inbox.agent_bot_inbox.present?
       @inbox.agent_bot_inbox.destroy!

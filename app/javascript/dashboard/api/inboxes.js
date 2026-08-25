@@ -23,9 +23,11 @@ class Inboxes extends CacheEnabledApiClient {
     return axios.get(`${this.url}/${inboxId}/agent_bot`);
   }
 
-  setAgentBot(inboxId, botId) {
+  setAgentBot(inboxId, botId, config = {}) {
     return axios.post(`${this.url}/${inboxId}/set_agent_bot`, {
       agent_bot: botId,
+      initial_conversation_status: config.initialConversationStatus,
+      event_names: config.eventNames,
     });
   }
 

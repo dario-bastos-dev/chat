@@ -817,6 +817,7 @@ onMounted(() => {
   store.dispatch('setChatStatusFilter', activeStatus.value);
   store.dispatch('setChatSortFilter', activeSortBy.value);
   resetAndFetchData();
+  store.dispatch('agentBots/get');
   if (hasActiveFolders.value) {
     store.dispatch('campaigns/get');
   }

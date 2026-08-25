@@ -356,6 +356,24 @@ describe Conversations::FilterService do
         expect(result[:conversations].pluck(:campaign_id).sort).to eq [campaign_2.id, campaign_1.id].sort
       end
 
+      it 'filter conversations assigned to a bot using is_present filter_operator' do
+        agent_bot = create(:agent_bot, account: account)
+        bot_conversation = create(:conversation, account: account, inbox: inbox, assignee: nil, assignee_agent_bot: agent_bot)
+
+        params[:payload] = [
+          {
+            attribute_key: 'assignee_agent_bot_id',
+            filter_operator: 'is_present',
+            values: [],
+            query_operator: nil,
+            custom_attribute_type: ''
+          }.with_indifferent_access
+        ]
+        result = filter_service.new(params, user_1, account).perform
+
+        expect(result[:conversations].pluck(:id)).to eq [bot_conversation.id]
+      end
+
       it 'handles invalid query conditions' do
         params[:payload] = [
           {

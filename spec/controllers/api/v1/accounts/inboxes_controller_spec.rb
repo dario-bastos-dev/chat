@@ -1271,6 +1271,33 @@ RSpec.describe 'Inboxes API', type: :request do
         expect(response).to have_http_status(:not_found)
         expect(inbox.reload.agent_bot).to be_nil
       end
+
+      it 'sets the initial conversation status and event names' do
+        post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/set_agent_bot",
+             headers: admin.create_new_auth_token,
+             params: valid_params.merge(
+               initial_conversation_status: 'open',
+               event_names: %w[conversation_opened message_created]
+             ),
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        agent_bot_inbox = inbox.reload.agent_bot_inbox
+        expect(agent_bot_inbox.initial_conversation_status).to eq 'open'
+        expect(agent_bot_inbox.event_names).to eq %w[conversation_opened message_created]
+      end
+
+      it 'persists an explicit empty event_names list instead of dropping it' do
+        create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot, event_names: ['conversation_opened'])
+
+        post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/set_agent_bot",
+             headers: admin.create_new_auth_token,
+             params: valid_params.merge(event_names: []),
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(inbox.reload.agent_bot_inbox.event_names).to eq []
+      end
     end
   end
 

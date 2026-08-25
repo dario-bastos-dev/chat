@@ -28,6 +28,14 @@ conversations:
       - "not_equal_to"
       - "is_present"
       - "is_not_present"
+  assignee_agent_bot_id:
+    attribute_type: "standard"
+    data_type: "text"
+    filter_operators:
+      - "equal_to"
+      - "not_equal_to"
+      - "is_present"
+      - "is_not_present"
   inbox_id:
     attribute_type: "standard"
     data_type: "text"

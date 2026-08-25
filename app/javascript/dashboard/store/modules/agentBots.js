@@ -18,6 +18,7 @@ export const state = {
     isDisconnecting: false,
   },
   agentBotInbox: {},
+  agentBotInboxConfig: {},
 };
 
 export const getters = {
@@ -34,6 +35,19 @@ export const getters = {
   getActiveAgentBot: $state => inboxId => {
     const associatedAgentBotId = $state.agentBotInbox[Number(inboxId)];
     return getters.getBot($state)(associatedAgentBotId);
+  },
+  getAgentBotInboxConfig: $state => inboxId => {
+    return (
+      $state.agentBotInboxConfig[Number(inboxId)] || {
+        initialConversationStatus: 'pending',
+        eventNames: [
+          'conversation_opened',
+          'message_created',
+          'conversation_status_changed',
+          'webwidget_triggered',
+        ],
+      }
+    );
   },
 };
 
@@ -140,8 +154,16 @@ export const actions = {
     commit(types.SET_AGENT_BOT_UI_FLAG, { isFetchingAgentBot: true });
     try {
       const { data } = await InboxesAPI.getAgentBot(inboxId);
-      const { agent_bot: agentBot = {} } = data || {};
+      const { agent_bot: agentBot = {}, agent_bot_inbox: agentBotInbox = {} } =
+        data || {};
       commit(types.SET_AGENT_BOT_INBOX, { agentBotId: agentBot.id, inboxId });
+      if (agentBotInbox.initial_conversation_status) {
+        commit(types.SET_AGENT_BOT_INBOX_CONFIG, {
+          inboxId,
+          initialConversationStatus: agentBotInbox.initial_conversation_status,
+          eventNames: agentBotInbox.event_names,
+        });
+      }
     } catch (error) {
       throwErrorMessage(error);
     } finally {
@@ -149,11 +171,22 @@ export const actions = {
     }
   },
 
-  setAgentBotInbox: async ({ commit }, { inboxId, botId }) => {
+  setAgentBotInbox: async (
+    { commit },
+    { inboxId, botId, initialConversationStatus, eventNames }
+  ) => {
     commit(types.SET_AGENT_BOT_UI_FLAG, { isSettingAgentBot: true });
     try {
-      await InboxesAPI.setAgentBot(inboxId, botId);
+      await InboxesAPI.setAgentBot(inboxId, botId, {
+        initialConversationStatus,
+        eventNames,
+      });
       commit(types.SET_AGENT_BOT_INBOX, { agentBotId: botId, inboxId });
+      commit(types.SET_AGENT_BOT_INBOX_CONFIG, {
+        inboxId,
+        initialConversationStatus,
+        eventNames,
+      });
     } catch (error) {
       throwErrorMessage(error);
     } finally {
@@ -211,6 +244,15 @@ export const mutations = {
     $state.agentBotInbox = {
       ...$state.agentBotInbox,
       [inboxId]: agentBotId,
+    };
+  },
+  [types.SET_AGENT_BOT_INBOX_CONFIG](
+    $state,
+    { inboxId, initialConversationStatus, eventNames }
+  ) {
+    $state.agentBotInboxConfig = {
+      ...$state.agentBotInboxConfig,
+      [inboxId]: { initialConversationStatus, eventNames },
     };
   },
   [types.UPDATE_AGENT_BOT_AVATAR]($state, { id, thumbnail }) {

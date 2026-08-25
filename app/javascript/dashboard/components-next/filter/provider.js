@@ -57,6 +57,7 @@ export function useConversationFilterContext() {
 
   const labels = useMapGetter('labels/getLabels');
   const agents = useMapGetter('agents/getAgents');
+  const agentBots = useMapGetter('agentBots/getBots');
   const inboxes = useMapGetter('inboxes/getInboxes');
   const teams = useMapGetter('teams/getTeams');
   const campaigns = useMapGetter('campaigns/getAllCampaigns');
@@ -150,6 +151,22 @@ export function useConversationFilterContext() {
         return {
           id: agent.id,
           name: agent.name,
+        };
+      }),
+      dataType: 'text',
+      filterOperators: presenceOperators.value,
+      attributeModel: 'standard',
+    },
+    {
+      attributeKey: CONVERSATION_ATTRIBUTES.ASSIGNEE_AGENT_BOT_ID,
+      value: CONVERSATION_ATTRIBUTES.ASSIGNEE_AGENT_BOT_ID,
+      attributeName: t('FILTER.ATTRIBUTES.ASSIGNEE_BOT_NAME'),
+      label: t('FILTER.ATTRIBUTES.ASSIGNEE_BOT_NAME'),
+      inputType: 'searchSelect',
+      options: agentBots.value.map(bot => {
+        return {
+          id: bot.id,
+          name: bot.name,
         };
       }),
       dataType: 'text',

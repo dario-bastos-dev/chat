@@ -22,7 +22,21 @@
       "DISCONNECTED_SUCCESS_MESSAGE": "Bot desconectado com sucesso.",
       "ERROR_MESSAGE": "Não foi possível atualizar o agente robô. Por favor, tente novamente mais tarde.",
       "DISCONNECTED_ERROR_MESSAGE": "Não foi possível desconectar o agente robô. Por favor, tente novamente mais tarde.",
-      "SELECT_PLACEHOLDER": "Selecionar Robô"
+      "SELECT_PLACEHOLDER": "Selecionar Robô",
+      "INITIAL_STATUS": {
+        "TITLE": "Status da conversa",
+        "DESC": "Escolha o status que a conversa deve receber quando este bot assumi-la.",
+        "PENDING": "Pendente",
+        "OPEN": "Aberta"
+      },
+      "EVENTS": {
+        "TITLE": "Eventos que ativam o bot",
+        "DESC": "Escolha quais eventos devem notificar este bot.",
+        "CONVERSATION_OPENED": "Nova conversa criada",
+        "MESSAGE_CREATED": "Nova mensagem recebida",
+        "CONVERSATION_STATUS_CHANGED": "Status da conversa alterado ou atualizado",
+        "WEBWIDGET_TRIGGERED": "Widget do site acionado"
+      }
     },
     "ADD": {
       "TITLE": "Criar Robô",

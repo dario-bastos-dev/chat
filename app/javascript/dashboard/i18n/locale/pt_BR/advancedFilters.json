@@ -49,6 +49,7 @@
     "ATTRIBUTES": {
       "STATUS": "Status",
       "ASSIGNEE_NAME": "Agente atribuído",
+      "ASSIGNEE_BOT_NAME": "Bot atribuído",
       "INBOX_NAME": "Caixa de Entrada",
       "TEAM_NAME": "Nome do Time",
       "CONTACT": "Contato",

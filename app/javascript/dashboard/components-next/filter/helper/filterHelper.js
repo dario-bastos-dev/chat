@@ -5,6 +5,7 @@ export const CONVERSATION_ATTRIBUTES = {
   STATUS: 'status',
   PRIORITY: 'priority',
   ASSIGNEE_ID: 'assignee_id',
+  ASSIGNEE_AGENT_BOT_ID: 'assignee_agent_bot_id',
   INBOX_ID: 'inbox_id',
   TEAM_ID: 'team_id',
   CONTACT_ID: 'contact_id',

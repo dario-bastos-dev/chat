@@ -39,6 +39,12 @@ describe AgentBotListener do
         listener.message_created(event)
       end
 
+      it 'does not send message to agent bot when the message_created event is disabled for the inbox' do
+        create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot, event_names: ['conversation_opened'])
+        expect(AgentBots::WebhookJob).not_to receive(:perform_later)
+        listener.message_created(event)
+      end
+
       context 'when conversation has a different assignee agent bot' do
         let!(:conversation_bot) { create(:agent_bot) }
 
