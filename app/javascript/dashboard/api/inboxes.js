@@ -141,6 +141,10 @@ class Inboxes extends CacheEnabledApiClient {
     return axios.post(`${this.url}/${inboxId}/evolution_go_disconnect`);
   }
 
+  getEvolutionGoSettings(inboxId) {
+    return axios.get(`${this.url}/${inboxId}/evolution_go_settings`);
+  }
+
   createCSATTemplate(inboxId, template) {
     return axios.post(`${this.url}/${inboxId}/csat_template`, {
       template,

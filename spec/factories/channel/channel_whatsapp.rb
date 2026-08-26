@@ -89,12 +89,22 @@ FactoryBot.define do
     transient do
       sync_templates { true }
       validate_provider_config { true }
+      # Evolution and Evolution GO reach the provider API on create/update/destroy. Left on,
+      # a channel built here would abort creation with "API not configured".
+      provider_instance_callbacks { true }
     end
 
     before(:create) do |channel_whatsapp, options|
       # since factory already has the required message templates, we just need to bypass it getting updated
       channel_whatsapp.define_singleton_method(:sync_templates) { nil } unless options.sync_templates
       channel_whatsapp.define_singleton_method(:validate_provider_config) { nil } unless options.validate_provider_config
+
+      unless options.provider_instance_callbacks
+        %i[create_evolution_instance create_evolution_go_instance delete_evolution_instance
+           delete_evolution_go_instance update_evolution_settings update_evolution_go_settings].each do |callback|
+          channel_whatsapp.define_singleton_method(callback) { nil }
+        end
+      end
       if channel_whatsapp.provider == 'whatsapp_cloud'
         # Add 'source' => 'embedded_signup' to skip after_commit :setup_webhooks callback in tests
         # The callback is for manual setup flow; embedded signup handles webhook setup explicitly

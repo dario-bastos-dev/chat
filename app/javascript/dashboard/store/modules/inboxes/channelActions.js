@@ -5,10 +5,26 @@ import { ACCOUNT_EVENTS } from '../../../helper/AnalyticsHelper/events';
 
 export const buildInboxData = inboxParams => {
   const formData = new FormData();
-  const { channel = {}, ...inboxProperties } = inboxParams;
+  const {
+    channel = {},
+    greeting_items: greetingItems,
+    ...inboxProperties
+  } = inboxParams;
   Object.keys(inboxProperties).forEach(key => {
     formData.append(key, inboxProperties[key]);
   });
+  // FormData stringifies values, so a list of objects has to be appended key by key
+  if (greetingItems) {
+    if (greetingItems.length) {
+      greetingItems.forEach(item => {
+        formData.append('greeting_items[][title]', item.title);
+        formData.append('greeting_items[][value]', item.value || item.title);
+        formData.append('greeting_items[][uri]', item.uri || '');
+      });
+    } else {
+      formData.append('greeting_items[]', '');
+    }
+  }
   const { selectedFeatureFlags, ...channelParams } = channel;
   // selectedFeatureFlags needs to be empty when creating a website channel
   if (selectedFeatureFlags) {

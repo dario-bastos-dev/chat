@@ -13,19 +13,20 @@ class Webhooks::EvolutionGoContactAvatarJob < ApplicationJob
 
     return if avatar_url.blank?
 
-    # Download and attach avatar
+    # The URL is whatever the API returned, so it goes through SafeFetch: scheme is pinned to
+    # http/https and the response has to actually be an image.
     begin
-      io = URI.open(avatar_url, open_timeout: 10, read_timeout: 20)
-      
-      contact.avatar.attach(
-        io: io,
-        filename: "avatar_#{contact_id}.jpg",
-        content_type: 'image/jpeg'
-      )
-      
-      Rails.logger.info "[EVOLUTION_GO AVATAR] ✅ Avatar attached for Contact #{contact_id}"
+      SafeFetch.fetch(avatar_url, allowed_content_type_prefixes: ['image/']) do |result|
+        contact.avatar.attach(
+          io: result.tempfile,
+          filename: "avatar_#{contact_id}.jpg",
+          content_type: result.content_type.presence || 'image/jpeg'
+        )
+      end
+
+      Rails.logger.info "[EVOLUTION_GO AVATAR] Avatar attached for Contact #{contact_id}"
     rescue StandardError => e
-      Rails.logger.error "[EVOLUTION_GO AVATAR] Failed to download avatar from #{avatar_url}: #{e.message}"
+      Rails.logger.error "[EVOLUTION_GO AVATAR] Failed to download avatar for Contact #{contact_id}: #{e.class} - #{e.message}"
     end
   end
 end

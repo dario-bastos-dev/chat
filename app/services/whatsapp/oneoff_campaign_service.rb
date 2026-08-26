@@ -215,11 +215,14 @@ class Whatsapp::OneoffCampaignService
     Rails.logger.info "[WHATSAPP LITE CAMPAIGN] Sending message to #{to} via #{channel.provider}"
     
     if conversation.nil?
-      contact_inbox = ContactInbox.find_or_create_by!(
-        contact: contact,
-        inbox: campaign.inbox,
-        source_id: to.to_s.gsub(/^\+/, '')
-      )
+      # Reuse whatever contact_inbox the contact already has here: incoming messages may have
+      # created it under a LID source_id, and keying on the phone would fork a second one.
+      contact_inbox = campaign.inbox.contact_inboxes.find_by(contact: contact) ||
+                      ContactInbox.find_or_create_by!(
+                        contact: contact,
+                        inbox: campaign.inbox,
+                        source_id: to.to_s.gsub(/^\+/, '')
+                      )
       conversation = Conversation.where(
         contact_id: contact.id,
         inbox_id: campaign.inbox.id

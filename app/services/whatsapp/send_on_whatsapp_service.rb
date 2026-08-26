@@ -32,12 +32,23 @@ class Whatsapp::SendOnWhatsappService < Base::SendOnChannelService
                                          lang_code: lang_code,
                                          parameters: processed_parameters
                                        }, message)
-    message.update!(source_id: message_id) if message_id.present?
+    record_delivery_outcome(message_id)
   end
 
   def send_session_message
     message_id = channel.send_message(message.conversation.contact_inbox.source_id, message)
-    message.update!(source_id: message_id) if message_id.present?
+    record_delivery_outcome(message_id)
+  end
+
+  # No id back means the provider never handed the message to WhatsApp. Without this the message
+  # keeps the "sent" it was created with, so the agent sees a delivered bubble for something that
+  # never left. Cloud and 360dialog parse a provider-specific reason and mark the failure
+  # themselves; that is left untouched and only the providers that return a bare nil are covered.
+  def record_delivery_outcome(message_id)
+    return message.update!(source_id: message_id) if message_id.present?
+    return if message.failed?
+
+    message.update!(status: :failed, external_error: I18n.t('errors.whatsapp.message_not_sent'))
   end
 
   def template_params

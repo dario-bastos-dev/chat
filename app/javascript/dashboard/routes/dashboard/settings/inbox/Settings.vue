@@ -22,6 +22,7 @@ import InboxHealthAPI from 'dashboard/api/inboxHealth';
 import PreChatFormSettings from './PreChatForm/Settings.vue';
 import WeeklyAvailability from './components/WeeklyAvailability.vue';
 import GreetingsEditor from 'shared/components/GreetingsEditor.vue';
+import GreetingQuickReplies from './components/GreetingQuickReplies.vue';
 import ConfigurationPage from './settingsPage/ConfigurationPage.vue';
 import CustomerSatisfactionPage from './settingsPage/CustomerSatisfactionPage.vue';
 import CollaboratorsPage from './settingsPage/CollaboratorsPage.vue';
@@ -61,6 +62,7 @@ export default {
     CustomerSatisfactionPage,
     FacebookReauthorize,
     GreetingsEditor,
+    GreetingQuickReplies,
     PreChatFormSettings,
     SettingIntroBanner,
     SettingsToggleSection,
@@ -104,6 +106,7 @@ export default {
       avatarUrl: '',
       greetingEnabled: true,
       greetingMessage: '',
+      greetingItems: [],
       emailCollectEnabled: false,
       senderNameType: 'friendly',
       businessName: '',
@@ -328,7 +331,8 @@ export default {
       if (
         this.isATwilioChannel ||
         this.isATwitterInbox ||
-        this.isAFacebookInbox
+        this.isAFacebookInbox ||
+        this.isAnInstagramChannel
       )
         return true;
       return false;
@@ -530,6 +534,7 @@ export default {
       this.webhookUrl = this.inbox.webhook_url;
       this.greetingEnabled = this.inbox.greeting_enabled || false;
       this.greetingMessage = this.inbox.greeting_message || '';
+      this.greetingItems = this.inbox.greeting_items || [];
       this.emailCollectEnabled = this.inbox.enable_email_collect;
       this.senderNameType = this.inbox.sender_name_type;
       this.businessName = this.inbox.business_name;
@@ -668,6 +673,7 @@ export default {
           unread_reset_mode: this.unreadResetMode,
           greeting_enabled: this.greetingEnabled,
           greeting_message: this.greetingMessage || '',
+          greeting_items: this.greetingItems.filter(item => item.title?.trim()),
           portal_id: this.selectedPortalSlug
             ? this.portals.find(
                 portal => portal.slug === this.selectedPortalSlug
@@ -1302,6 +1308,10 @@ export default {
                       )
                     "
                     :richtext="!textAreaChannels"
+                  />
+                  <GreetingQuickReplies
+                    v-if="isAnInstagramChannel"
+                    v-model="greetingItems"
                   />
                 </template>
               </SettingsToggleSection>

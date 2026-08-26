@@ -8,11 +8,19 @@
 # Rather than patching every individual migration that happens to run into
 # this, clear the connection's prepared statement cache after each
 # migration step so every migration always queries against a fresh plan.
+#
+# The clear has to happen after the migration's DDL transaction commits, not
+# inside it: clearing the cache emits a DEALLOCATE per cached statement, and
+# the adapter swallows failures there. A swallowed failure leaves the
+# transaction aborted, so Rails' own `INSERT INTO schema_migrations` right
+# after the migration blows up with `PG::InFailedSqlTransaction` and no trace
+# of the original error.
 ActiveSupport.on_load(:active_record) do
-  ActiveRecord::Migration.prepend(Module.new do
-    def exec_migration(conn, direction)
+  ActiveRecord::Migrator.prepend(Module.new do
+    def execute_migration_in_transaction(migration)
       super
     ensure
+      conn = ActiveRecord::Base.connection
       conn.clear_cache! if conn.respond_to?(:clear_cache!)
     end
   end)

@@ -40,6 +40,7 @@ import DyteBubble from './bubbles/Dyte.vue';
 import LocationBubble from './bubbles/Location.vue';
 import CSATBubble from './bubbles/CSAT.vue';
 import FormBubble from './bubbles/Form.vue';
+import CardsBubble from './bubbles/Cards.vue';
 import VoiceCallBubble from './bubbles/VoiceCall.vue';
 import WhatsappFlowResponseBubble from './bubbles/WhatsappFlowResponse.vue';
 
@@ -309,6 +310,10 @@ const componentToRender = computed(() => {
     [CONTENT_TYPES.INPUT_SELECT, CONTENT_TYPES.FORM].includes(props.contentType)
   ) {
     return FormBubble;
+  }
+
+  if (props.contentType === CONTENT_TYPES.CARDS) {
+    return CardsBubble;
   }
 
   if (props.contentType === CONTENT_TYPES.VOICE_CALL) {

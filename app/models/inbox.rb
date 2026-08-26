@@ -15,6 +15,7 @@
 #  enable_auto_assignment        :boolean          default(TRUE)
 #  enable_email_collect          :boolean          default(TRUE)
 #  greeting_enabled              :boolean          default(FALSE)
+#  greeting_items                :jsonb
 #  greeting_message              :string
 #  lock_to_single_conversation   :boolean          default(FALSE), not null
 #  name                          :string           not null
@@ -55,6 +56,7 @@ class Inbox < ApplicationRecord
   validates :out_of_office_message, length: { maximum: Limits::OUT_OF_OFFICE_MESSAGE_MAX_LENGTH }
   validates :greeting_message, length: { maximum: Limits::GREETING_MESSAGE_MAX_LENGTH }
   validate :ensure_valid_max_assignment_limit
+  validates_with GreetingItemsValidator
 
   belongs_to :account
   belongs_to :portal, optional: true

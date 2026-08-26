@@ -2,7 +2,11 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
   def send_message(phone_number, message)
     @message = message
 
-    if message.attachments.present?
+    location = message.attachments.find { |attachment| attachment.file_type.to_s == 'location' }
+
+    if location.present?
+      send_location_message(phone_number, message, location)
+    elsif message.attachments.present?
       send_attachment_message(phone_number, message)
     elsif message.content_type == 'input_select'
       send_interactive_text_message(phone_number, message)
@@ -167,6 +171,31 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
           preview_url: true
         },
         type: 'text'
+      }.to_json
+    )
+
+    process_response(response, message)
+  end
+
+  # A location carries coordinates instead of a file, so routing it through the attachment path
+  # would look up a download_url and a filename that do not exist.
+  def send_location_message(phone_number, message, attachment)
+    location = {
+      longitude: attachment.coordinates_long,
+      latitude: attachment.coordinates_lat
+    }
+    location[:name] = attachment.fallback_title if attachment.fallback_title.present?
+    location[:address] = message.outgoing_content if message.outgoing_content.present?
+
+    response = HTTParty.post(
+      "#{phone_id_path}/messages",
+      headers: api_headers,
+      body: {
+        :messaging_product => 'whatsapp',
+        :context => whatsapp_reply_context(message),
+        **recipient_params(phone_number),
+        'type' => 'location',
+        'location' => location
       }.to_json
     )
 

@@ -331,6 +331,8 @@ Rails.application.routes.draw do
             get :evolution_go_status, on: :member
             post :evolution_go_create_instance, on: :member
             post :evolution_go_disconnect, on: :member
+            get :evolution_go_settings, on: :member
+            get :evolution_go_diagnostics, on: :member
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member

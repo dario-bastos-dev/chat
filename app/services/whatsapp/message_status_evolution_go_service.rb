@@ -47,17 +47,10 @@ class Whatsapp::MessageStatusEvolutionGoService
     when 'PlayedSelf'
       # Audio played by agent on phone, treat as read
       handle_read_by_agent
-    when nil, ''
-      # EvoGO may send delivery receipts without state field (whatsmeow empty Type)
-      # If Type is blank/empty and not from_me, treat as delivery receipt
-      if data_params['Type'].blank? && !from_me?
-        Rails.logger.info "[EVOLUTION_GO STATUS] Inferred delivery from empty state/type"
-        handle_delivered
-      else
-        Rails.logger.warn "[EVOLUTION_GO STATUS] Empty state with type=#{data_params['Type']} from_me=#{from_me?}"
-      end
     else
-      Rails.logger.warn "[EVOLUTION_GO STATUS] Unhandled state: #{state} | full_params: #{params.except('evolution_go').to_json}"
+      # Every documented receipt carries a state, so a missing one is not a delivery to infer.
+      Rails.logger.warn "[EVOLUTION_GO STATUS] Unhandled state: #{state.inspect} | type=#{data_params['Type'].inspect} | " \
+                        "from_me=#{from_me?} | msg_ids=#{message_ids}"
     end
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO STATUS] Error: #{e.message}"

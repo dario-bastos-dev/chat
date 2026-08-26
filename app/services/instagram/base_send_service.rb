@@ -29,12 +29,54 @@ class Instagram::BaseSendService < Base::SendOnChannelService
   def message_params
     params = {
       recipient: { id: contact.get_source_id(inbox.id) },
-      message: {
-        text: message.outgoing_content
-      }
+      message: message_payload
     }
 
     merge_human_agent_tag(params)
+  end
+
+  # Items with a `uri` need a button template, plain choices are cheaper to render as quick replies.
+  def message_payload
+    return { text: message.outgoing_content } if select_items.blank?
+    return button_template_payload if select_items.any? { |item| item['uri'].present? }
+
+    quick_replies_payload
+  end
+
+  def select_items
+    return [] unless message.content_type == 'input_select'
+
+    message.content_attributes['items'] || []
+  end
+
+  # https://developers.facebook.com/documentation/business-messaging/instagram-messaging/features/quick-replies
+  def quick_replies_payload
+    {
+      text: message.outgoing_content,
+      quick_replies: select_items.map do |item|
+        {
+          content_type: 'text',
+          payload: item['title'],
+          title: item['title']
+        }
+      end
+    }
+  end
+
+  # Only web_url buttons are used here: postback taps arrive on the `messaging_postbacks` webhook,
+  # which we do not consume, so their replies would be silently dropped.
+  # https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/messaging-api/button-template/
+  def button_template_payload
+    {
+      attachment: {
+        type: 'template',
+        payload: {
+          template_type: 'button',
+          text: message.outgoing_content,
+          buttons: select_items.map { |item| { type: 'web_url', title: item['title'], url: item['uri'] } }
+        }
+      }
+    }
   end
 
   def attachment_message_params(attachment)

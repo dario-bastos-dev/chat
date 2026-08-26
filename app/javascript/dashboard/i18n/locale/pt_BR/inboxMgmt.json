@@ -333,11 +333,13 @@
         "PROVIDERS": {
           "LABEL": "Provedor de API",
           "EVOLUTION": "Evolution",
-          "EVOLUTION_DESC": "Conectar via Evolution API"
+          "EVOLUTION_DESC": "Conectar via Evolution API",
+          "EVOLUTION_GO": "Evolution GO",
+          "EVOLUTION_GO_DESC": "Conectar via Evolution GO API"
         },
         "SELECT_PROVIDER": {
           "TITLE": "Selecione seu provedor de API",
-          "DESCRIPTION": "Escolha seu provedor do WhatsApp Lite. Atualmente, a Evolution API está disponível para conexão."
+          "DESCRIPTION": "Escolha seu provedor do WhatsApp Lite. Evolution API e Evolution GO estão disponíveis para conexão."
         },
         "INBOX_NAME": {
           "LABEL": "Nome da Caixa de Entrada",
@@ -372,14 +374,6 @@
           "READ_MESSAGES": {
             "TITLE": "Visualizar Mensagens",
             "DESC": "Marcar todas as mensagens como lidas"
-          },
-          "READ_STATUS": {
-            "TITLE": "Visualizar Status",
-            "DESC": "Marcar todos os status como visualizados"
-          },
-          "SYNC_HISTORY": {
-            "TITLE": "Sincronizar Histórico Completo",
-            "DESC": "Sincronizar o histórico completo ao ler o QR Code"
           },
           "DELAY": {
             "TITLE": "Delay de Mensagens",
@@ -553,10 +547,6 @@
               "READ_MESSAGES": {
                 "TITLE": "Visualizar Mensagens",
                 "DESC": "Marcar todas as mensagens como lidas"
-              },
-              "READ_STATUS": {
-                "TITLE": "Visualizar Status",
-                "DESC": "Marcar todos os status como visualizados"
               },
               "SYNC_HISTORY": {
                 "TITLE": "Sincronizar Histórico Completo",
@@ -849,10 +839,38 @@
       "DISCONNECT_BUTTON": "Desconectar",
       "DISCONNECT_SUCCESS": "WhatsApp desconectado com sucesso",
       "CLOSE_BUTTON": "Fechar",
+      "SELECT_CONNECTION_METHOD": "Selecione um método de conexão",
       "QR_ERROR": "Erro ao gerar QR Code",
       "CONNECT_WITH_QR": "QR Code",
       "CONNECT_WITH_PAIRING": "Código",
       "PAIRING_CODE": "Código de Pareamento:"
+    },
+    "EVOLUTION_GO_INSTANCE": {
+      "TITLE": "Configuração da Instância Evolution GO",
+      "SUB_TITLE": "Gerencie a conexão e o comportamento da sua instância Evolution GO.",
+      "STATUS": {
+        "TITLE": "Status da Conexão",
+        "CONNECTED": "Conectado",
+        "CONNECTING": "Conectando...",
+        "DISCONNECTED": "Desconectado"
+      },
+      "CONNECT_BUTTON": "Conectar WhatsApp",
+      "DISCONNECT_BUTTON": "Desconectar",
+      "DISCONNECT_SUCCESS": "WhatsApp desconectado com sucesso",
+      "DISCONNECT_ERROR": "Erro ao desconectar",
+      "CLOSE_BUTTON": "Fechar",
+      "LOADING": "Carregando...",
+      "SELECT_CONNECTION_METHOD": "Selecione um método de conexão",
+      "QR_ERROR": "Erro ao gerar QR Code",
+      "QR_EMPTY": "A Evolution GO não retornou um QR Code",
+      "QR_HINT": "Escaneie este código no WhatsApp em Aparelhos conectados",
+      "PAIRING_ERROR": "Erro ao gerar o código de pareamento",
+      "PAIRING_EMPTY": "A Evolution GO não retornou código nem QR Code",
+      "CONNECT_ERROR": "Erro ao conectar",
+      "CONNECT_WITH_QR": "QR Code",
+      "CONNECT_WITH_PAIRING": "Código",
+      "PAIRING_CODE": "Código de Pareamento:",
+      "PAIRING_CODE_HINT": "Digite este código no seu WhatsApp"
     },
     "CHANNEL_PREFERENCES": "Preferências do Canal",
     "WIDGET_FEATURES": "Recursos do widget",
@@ -930,6 +948,15 @@
       "USE_INBOX_AVATAR_FOR_BOT": "Use o nome da caixa de entrada e avatar do bot"
     },
     "SETTINGS_POPUP": {
+      "GREETING_QUICK_REPLIES": {
+        "LABEL": "Botões da saudação",
+        "HELP_TEXT": "Exibe botões clicáveis abaixo da saudação. Até {maxItems} botões, com {maxTitleLength} caracteres cada. Deixe o link em branco para uma resposta rápida, que só aparece no aplicativo do Instagram e some assim que o contato toca nela.",
+        "LINK_HELP_TEXT": "Botões com link ficam na conversa e abrem a URL. Quando um deles tem link, todos precisam ter, porque o Instagram não mistura os dois tipos na mesma mensagem.",
+        "PLACEHOLDER": "Texto do botão",
+        "LINK_PLACEHOLDER": "Link (opcional), ex.: https://exemplo.com",
+        "ADD": "Adicionar botão",
+        "REMOVE": "Remover botão"
+      },
       "MESSENGER_HEADING": "Código Menssageiro <scripit>",
       "MESSENGER_SUB_HEAD": "Favor, insira essse código <script> dentro da tag Body de sua página html",
       "ALLOWED_DOMAINS": {

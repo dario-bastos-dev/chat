@@ -31,6 +31,7 @@ import {
 } from '@chatwoot/utils';
 import WhatsappTemplates from './WhatsappTemplates/Modal.vue';
 import ContentTemplates from './ContentTemplates/ContentTemplatesModal.vue';
+import RichMessage from './RichMessage/Modal.vue';
 import { MESSAGE_MAX_LENGTH } from 'shared/helpers/MessageTypeHelper';
 import inboxMixin, { INBOX_FEATURES } from 'shared/mixins/inboxMixin';
 import { trimContent, debounce, getRecipients } from '@chatwoot/utils';
@@ -79,6 +80,7 @@ export default {
     ReplyTopPanel,
     ContentTemplates,
     WhatsappTemplates,
+    RichMessage,
     WootMessageEditor,
     QuotedEmailPreview,
     CopilotEditorSection,
@@ -135,6 +137,7 @@ export default {
       doAutoSaveDraft: () => {},
       showWhatsAppTemplatesModal: false,
       showContentTemplatesModal: false,
+      showRichMessageModal: false,
       updateEditorSelectionWith: '',
       undefinedVariableMessage: '',
       showMentions: false,
@@ -183,6 +186,26 @@ export default {
     },
     showContentTemplates() {
       return this.isATwilioWhatsAppChannel && !this.isPrivate;
+    },
+    // Only providers whose send path maps these onto a native WhatsApp message. Evolution
+    // (classic) is excluded on purpose: it would deliver the body and drop everything else.
+    richMessageTypes() {
+      if (!this.isAWhatsAppChannel || this.isPrivate) return [];
+
+      if (this.whatsAppAPIProvider === 'evolution_go') {
+        return ['options', 'buttons', 'location', 'link', 'carousel'];
+      }
+
+      // `default` resolves to the 360dialog service; both it and the Cloud API map input_select
+      // onto a native interactive message and accept a native location message.
+      if (['whatsapp_cloud', 'default'].includes(this.whatsAppAPIProvider)) {
+        return ['options', 'location'];
+      }
+
+      return [];
+    },
+    showRichMessage() {
+      return this.richMessageTypes.length > 0;
     },
     isWithinMessagingWindow() {
       return !!(
@@ -846,6 +869,19 @@ export default {
     },
     openContentTemplateModal() {
       this.showContentTemplatesModal = true;
+    },
+    openRichMessageModal() {
+      this.showRichMessageModal = true;
+    },
+    hideRichMessageModal() {
+      this.showRichMessageModal = false;
+    },
+    onSendRichMessage(messagePayload) {
+      this.sendMessage({
+        conversationId: this.currentChat.id,
+        ...messagePayload,
+      });
+      this.hideRichMessageModal();
     },
     hideContentTemplatesModal() {
       this.showContentTemplatesModal = false;
@@ -1530,8 +1566,10 @@ export default {
         :message="message"
         :portal-slug="connectedPortalSlug"
         :new-conversation-modal-active="newConversationModalActive"
+        :enable-rich-message="showRichMessage"
         @select-whatsapp-template="openWhatsappTemplateModal"
         @select-content-template="openContentTemplateModal"
+        @select-rich-message="openRichMessageModal"
         @replace-text="replaceText"
         @toggle-insert-article="toggleInsertArticle"
         @toggle-quoted-reply="toggleQuotedReply"
@@ -1545,6 +1583,13 @@ export default {
       @close="hideWhatsappTemplatesModal"
       @on-send="onSendWhatsAppReply"
       @cancel="hideWhatsappTemplatesModal"
+    />
+
+    <RichMessage
+      v-model:show="showRichMessageModal"
+      :available-types="richMessageTypes"
+      @on-send="onSendRichMessage"
+      @cancel="hideRichMessageModal"
     />
 
     <ContentTemplates
