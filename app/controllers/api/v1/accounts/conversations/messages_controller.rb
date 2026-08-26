@@ -29,8 +29,10 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     return if message.blank?
 
     service = Messages::StatusUpdateService.new(message, 'sent')
+    # external_error is a content_attributes accessor, so the status update above already clears
+    # it. Wiping the whole hash on top of that dropped everything the resend needs: the items of
+    # an interactive message, the quoted context and the translations.
     service.perform
-    message.update!(content_attributes: {})
     ::SendReplyJob.perform_later(message.id)
   rescue StandardError => e
     render_could_not_create_error(e.message)

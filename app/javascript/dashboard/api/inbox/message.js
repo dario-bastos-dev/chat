@@ -5,6 +5,7 @@ import ApiClient from '../ApiClient';
 export const buildCreatePayload = ({
   message,
   isPrivate,
+  contentType,
   contentAttributes,
   echoId,
   files,
@@ -33,11 +34,15 @@ export const buildCreatePayload = ({
     if (contentAttributes) {
       payload.append('content_attributes', JSON.stringify(contentAttributes));
     }
+    if (contentType) {
+      payload.append('content_type', contentType);
+    }
   } else {
     payload = {
       content: message,
       private: isPrivate,
       echo_id: echoId,
+      content_type: contentType,
       content_attributes: contentAttributes,
       cc_emails: ccEmails,
       bcc_emails: bccEmails,
@@ -57,6 +62,7 @@ class MessageApi extends ApiClient {
     conversationId,
     message,
     private: isPrivate,
+    contentType,
     contentAttributes,
     echo_id: echoId,
     files,
@@ -71,6 +77,7 @@ class MessageApi extends ApiClient {
       data: buildCreatePayload({
         message,
         isPrivate,
+        contentType,
         contentAttributes,
         echoId,
         files,

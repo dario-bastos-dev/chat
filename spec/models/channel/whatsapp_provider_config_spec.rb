@@ -22,7 +22,7 @@ describe Channel::Whatsapp do
     end
 
     it 'removes the requested keys' do
-      channel.merge_provider_config!({ 'connected' => false }, remove: ['instance_id'])
+      channel.merge_provider_config!({ 'connected' => false }, ['instance_id'])
 
       expect(channel.reload.provider_config).not_to have_key('instance_id')
       expect(channel.provider_config['instance_token']).to eq('live-token')

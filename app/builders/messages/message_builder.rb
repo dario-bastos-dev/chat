@@ -23,6 +23,7 @@ class Messages::MessageBuilder
   def perform
     @message = @conversation.messages.build(message_params)
     process_attachments
+    process_location
     process_emails
     # When the message has no quoted content, it will just be rendered as a regular message
     # The frontend is equipped to handle this case
@@ -64,6 +65,24 @@ class Messages::MessageBuilder
                                file_type(uploaded_attachment&.content_type)
                              end
     end
+  end
+
+  # A location has no file to upload, so it cannot come through `attachments`. It is sent as
+  # `content_attributes[:location]` and stored as a location attachment, the shape the message
+  # bubbles and the channel services already read.
+  def process_location
+    attributes = content_attributes
+    location = attributes[:location] || attributes['location']
+    return if location.blank?
+
+    location = location.with_indifferent_access
+    @message.attachments.build(
+      account_id: @message.account_id,
+      file_type: :location,
+      coordinates_lat: location[:latitude],
+      coordinates_long: location[:longitude],
+      fallback_title: location[:name]
+    )
   end
 
   def process_emails

@@ -246,7 +246,6 @@ class Whatsapp::IncomingMessageEvolutionGoService
       message_params.dig('documentMessage', 'caption') ||
       interactive_reply_content ||
       poll_content ||
-      location_content ||
       ''
   end
 
@@ -266,15 +265,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
     [poll['name'], *options.map { |option| "- #{option}" }].compact.join("\n").presence
   end
 
-  def location_content
-    location = message_params['locationMessage']
-    return if location.blank?
-
-    [
-      location['name'].presence,
-      location['address'].presence,
-      "https://maps.google.com/?q=#{location['degreesLatitude']},#{location['degreesLongitude']}"
-    ].compact.join("\n")
+  def location_params
+    message_params['locationMessage'] || message_params['liveLocationMessage']
   end
 
   # Reactions and protocol frames (revoke, ephemeral settings, key distribution) carry no
@@ -283,7 +275,7 @@ class Whatsapp::IncomingMessageEvolutionGoService
     return false if message_params.key?('reactionMessage')
     return false if message_params.key?('protocolMessage')
 
-    text_content.present? || detect_media.present?
+    text_content.present? || detect_media.present? || location_params.present?
   end
 
   # --- Edited message handling ---
@@ -613,6 +605,7 @@ class Whatsapp::IncomingMessageEvolutionGoService
 
     @message = @conversation.messages.create!(attrs)
 
+    attach_location
     enqueue_attachment_fetch
   end
 
@@ -657,6 +650,23 @@ class Whatsapp::IncomingMessageEvolutionGoService
   # - mediaUrl is at Message level (not data level)
   # - Media data is in imageMessage, audioMessage, videoMessage, documentMessage
   # - mediaUrl points to MinIO bucket
+
+  # A location is a set of coordinates, not a file, so it is stored inline instead of going
+  # through the media job. LocationBubble only renders when the message carries no text, so the
+  # place name goes on fallback_title rather than into content.
+  def attach_location
+    location = location_params
+    return if location.blank?
+
+    @message.attachments.create!(
+      account_id: @message.account_id,
+      file_type: :location,
+      coordinates_lat: location['degreesLatitude'],
+      coordinates_long: location['degreesLongitude'],
+      # A pinned location names the place and the address; a live one only carries a caption.
+      fallback_title: [location['name'], location['address'], location['caption']].compact_blank.join(' - ').presence
+    )
+  end
 
   # Downloading here would hold a high-queue worker for the length of the transfer, so the
   # message lands first and the media is fetched out of band, as the Evolution channel does.

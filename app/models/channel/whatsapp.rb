@@ -196,7 +196,10 @@ class Channel::Whatsapp < ApplicationRecord
   # snapshot clobber the credentials another worker just wrote — losing instance_token orphans
   # the inbox — so only the given keys are touched. Going through SQL also skips
   # validate_provider_config, which would re-check the channel on every status flip.
-  def merge_provider_config!(attributes = {}, remove: [])
+  # `remove` is positional on purpose: with a keyword parameter in the signature, Ruby 3 reads a
+  # braceless trailing hash at the call site as keyword arguments, so every
+  # merge_provider_config!('connected' => false) raised "unknown keywords".
+  def merge_provider_config!(attributes = {}, remove = [])
     payload = attributes.stringify_keys
     removed = Array(remove).map(&:to_s)
 
@@ -284,12 +287,15 @@ class Channel::Whatsapp < ApplicationRecord
     Whatsapp::WebhookTeardownService.new(self).perform
   end
 
+  # Rails only honours `throw :abort` in before_* callbacks. Thrown from after_create it escapes
+  # as UncaughtThrowError and the request 500s instead of reporting why the instance failed, so
+  # the failure is raised as a validation error, which rolls the transaction back just the same.
   def create_evolution_instance
     result = provider_service.create_instance
-    unless result[:success]
-      errors.add(:base, result[:error])
-      throw :abort
-    end
+    return if result[:success]
+
+    errors.add(:base, result[:error])
+    raise ActiveRecord::RecordInvalid, self
   end
 
   def delete_evolution_instance
@@ -316,10 +322,10 @@ class Channel::Whatsapp < ApplicationRecord
 
   def create_evolution_go_instance
     result = provider_service.create_instance
-    unless result[:success]
-      errors.add(:base, result[:error])
-      throw :abort
-    end
+    return if result[:success]
+
+    errors.add(:base, result[:error])
+    raise ActiveRecord::RecordInvalid, self
   end
 
   def delete_evolution_go_instance

@@ -46,6 +46,16 @@ const formValues = computed(() => {
 
   return [];
 });
+
+// On WhatsApp the options are rendered by the contact's app, so without this the agent sees
+// only the body of the message they just sent. The widget already has its own copy for an
+// unanswered prompt, so it keeps it.
+const offeredOptions = computed(() => {
+  if (contentType.value !== CONTENT_TYPES.INPUT_SELECT) return [];
+  if (isAWebWidgetInbox.value || formValues.value.length) return [];
+
+  return (contentAttributes.value?.items ?? []).map(item => item.title);
+});
 </script>
 
 <template>
@@ -59,6 +69,15 @@ const formValues = computed(() => {
         <dd>{{ item.title }}</dd>
       </template>
     </dl>
+    <div v-else-if="offeredOptions.length" class="flex flex-col gap-1 mt-3">
+      <span
+        v-for="option in offeredOptions"
+        :key="option"
+        class="px-3 py-1 text-sm text-center rounded-md bg-n-alpha-2 text-n-slate-12"
+      >
+        {{ option }}
+      </span>
+    </div>
     <div v-else-if="isAWebWidgetInbox" class="my-2 font-medium">
       {{ t('CONVERSATION.NO_RESPONSE') }}
     </div>

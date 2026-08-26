@@ -88,6 +88,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    enableRichMessage: {
+      type: Boolean,
+      default: false,
+    },
     enableContentTemplates: {
       type: Boolean,
       default: false,
@@ -130,6 +134,7 @@ export default {
     'toggleInsertArticle',
     'selectWhatsappTemplate',
     'selectContentTemplate',
+    'selectRichMessage',
     'toggleQuotedReply',
   ],
   setup(props) {
@@ -357,6 +362,15 @@ export default {
         faded
         sm
         @click="$emit('selectWhatsappTemplate')"
+      />
+      <NextButton
+        v-if="enableRichMessage"
+        v-tooltip.top-end="$t('CONVERSATION.FOOTER.RICH_MESSAGE')"
+        icon="i-lucide-list-checks"
+        slate
+        faded
+        sm
+        @click="$emit('selectRichMessage')"
       />
       <NextButton
         v-if="enableContentTemplates"

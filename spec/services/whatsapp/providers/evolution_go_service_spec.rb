@@ -134,13 +134,25 @@ describe Whatsapp::Providers::EvolutionGoService do
         }
     end
 
-    it 'omits title and footer when the caller did not set them' do
+    it 'sends a null footer when the caller did not set one' do
       stub_send('send/button')
 
       service.send_message('5511988887777', interactive_message(2))
 
       expect(WebMock).to have_requested(:post, 'https://evogo.test/send/button')
-        .with { |req| !JSON.parse(req.body).key?('title') && !JSON.parse(req.body).key?('footer') }
+        .with { |req| JSON.parse(req.body)['footer'].nil? }
+    end
+
+    # The list endpoint names the field footerText; sending `footer` leaves it out of the message.
+    it 'sends the footer of a list under footerText' do
+      stub_send('send/list')
+      message = interactive_message(4)
+      message.update!(content_attributes: message.content_attributes.merge('footer' => 'Loja'))
+
+      service.send_message('5511988887777', message)
+
+      expect(WebMock).to have_requested(:post, 'https://evogo.test/send/list')
+        .with { |req| JSON.parse(req.body)['footerText'] == 'Loja' }
     end
 
     it 'forwards title and footer when they are present' do

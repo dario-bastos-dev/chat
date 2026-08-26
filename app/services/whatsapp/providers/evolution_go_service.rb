@@ -43,7 +43,11 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     # disables all of them.
     generated_token = SecureRandom.uuid
     generated_instance_id = SecureRandom.uuid
-    instance_name = "chat_#{whatsapp_channel.phone_number&.gsub(/^\+/, '')}"
+    # EvoGO rejects a duplicate name, so a failed attempt would leave an instance that blocks
+    # every retry for the same number. The id suffix keeps the name unique and lets the console
+    # be matched against provider_config['instance_id'].
+    phone = whatsapp_channel.phone_number&.gsub(/^\+/, '')
+    instance_name = "chat_#{phone}_#{generated_instance_id[0, 8]}"
 
     create_body = {
       name: instance_name,
@@ -62,7 +66,9 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
     unless response.success?
       Rails.logger.error "[EVOLUTION_GO] Create instance failed: #{response.body}"
-      return { success: false, error: response.parsed_response&.dig('message') || 'Failed to create instance' }
+      # EvolutionResponse#message reads `message` or `error`; the raw dig only looked at the
+      # first, so the actual reason never reached the user.
+      return { success: false, error: response.message }
     end
 
     parsed = response.parsed_response
@@ -540,8 +546,11 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     Rails.logger.info "[EVOLUTION_GO] Sending to #{formatted_number} (source: #{phone_number_or_jid}) | " \
                       "JID: #{format_recipient_jid(formatted_number)} | attachments: #{message.attachments.count}"
 
-    # /send/button and /send/list take no `id`, so there is nothing to claim up front for them.
-    return send_interactive_message(formatted_number, message) if message.content_type == 'input_select'
+    # Rich types own the whole message, so they are matched before the generic text/media split.
+    # /send/location and /send/link claim the source_id themselves; /send/button, /send/list and
+    # /send/carousel take no `id`, so their echo is only deduped once the send returns.
+    rich_id = send_rich_message(formatted_number, message)
+    return rich_id unless rich_id == :not_rich
 
     reserved_id = reserve_source_id(message)
 
@@ -654,7 +663,7 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   def clear_connection_state(status: 'close')
     whatsapp_channel.merge_provider_config!(
       { 'connected' => false, 'connection_status' => status },
-      remove: SESSION_KEYS
+      SESSION_KEYS
     )
   end
 
@@ -743,6 +752,137 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     message.update_column(:content_attributes, (message.content_attributes || {}).merge('external_ids' => extras))
   end
 
+  # Returns :not_rich when the message is a plain text/media send, so the caller can fall through.
+  def send_rich_message(phone_number, message)
+    return send_interactive_message(phone_number, message) if message.content_type == 'input_select'
+    return send_carousel_message(phone_number, message) if message.content_type == 'cards'
+    return send_cta_button_message(phone_number, message) if whatsapp_buttons(message).present?
+    return send_link_message(phone_number, message) if link_preview(message).present?
+
+    location = location_attachment(message)
+    return send_location_message(phone_number, message, location) if location.present?
+
+    :not_rich
+  end
+
+  def link_preview(message)
+    message.content_attributes&.dig('link_preview').presence
+  end
+
+  # Reply buttons ride on input_select, which every other channel understands. Call-to-action and
+  # Pix buttons have no equivalent outside Evolution GO and carry fields that
+  # ContentAttributeValidator would reject inside `items`, so they travel on their own key of a
+  # plain text message, the same way link_preview does.
+  def whatsapp_buttons(message)
+    message.content_attributes&.dig('whatsapp_buttons').presence
+  end
+
+  def location_attachment(message)
+    message.attachments.find { |attachment| attachment.file_type.to_s == 'location' }
+  end
+
+  # Chatwoot stores a location as an attachment with coordinates rather than a file, which is the
+  # same shape Telegram and the other channels use.
+  def send_location_message(phone_number, message, attachment)
+    recipient_jid = format_recipient_jid(phone_number)
+    reserved_id = reserve_source_id(message)
+
+    body = {
+      number: recipient_jid,
+      id: reserved_id,
+      latitude: attachment.coordinates_lat,
+      longitude: attachment.coordinates_long,
+      delay: message_delay
+    }
+    body[:name] = attachment.fallback_title if attachment.fallback_title.present?
+    body[:address] = message.content if message.content.present?
+
+    quoted = quoted_context(message, recipient_jid)
+    body[:quoted] = quoted if quoted.present?
+
+    sent_id = post_send('send/location', body, 'Location')
+    release_source_id(message, reserved_id) if sent_id.blank?
+    sent_id
+  end
+
+  # A link preview rides on a normal text message: content is the text, and content_attributes
+  # carries what WhatsApp should render in the preview card.
+  def send_link_message(phone_number, message)
+    recipient_jid = format_recipient_jid(phone_number)
+    preview = link_preview(message)
+    reserved_id = reserve_source_id(message)
+
+    body = {
+      number: recipient_jid,
+      id: reserved_id,
+      url: preview['url'],
+      text: message.outgoing_content.presence || preview['url'],
+      delay: message_delay
+    }
+    body[:title] = preview['title'] if preview['title'].present?
+    body[:description] = preview['description'] if preview['description'].present?
+    body[:imgUrl] = preview['image_url'] if preview['image_url'].present?
+
+    quoted = quoted_context(message, recipient_jid)
+    body[:quoted] = quoted if quoted.present?
+
+    sent_id = post_send('send/link', body, 'Link')
+    release_source_id(message, reserved_id) if sent_id.blank?
+    sent_id
+  end
+
+  # Chatwoot's `cards` content type maps onto the carousel: each item becomes a card whose header
+  # holds the title and image, the body the description, and the actions the buttons.
+  def send_carousel_message(phone_number, message)
+    recipient_jid = format_recipient_jid(phone_number)
+    attributes = message.content_attributes || {}
+
+    body = {
+      number: recipient_jid,
+      body: message.outgoing_content,
+      cards: Array(attributes['items']).map { |item| carousel_card(item) },
+      delay: message_delay
+    }
+    body[:footer] = attributes['footer'] if attributes['footer'].present?
+
+    quoted = quoted_context(message, recipient_jid)
+    body[:quoted] = quoted if quoted.present?
+
+    post_send('send/carousel', body, 'Carousel')
+  end
+
+  # ContentAttributeValidator only accepts title/description/media_url/actions on a card, so the
+  # header carries no subtitle and the description becomes the card body.
+  def carousel_card(item)
+    header = { title: item['title'] }
+    header[:imageUrl] = item['media_url'] if item['media_url'].present?
+
+    {
+      header: header,
+      # The card body is required by the endpoint and the description is optional in Chatwoot.
+      body: { text: item['description'].presence || item['title'].to_s },
+      buttons: Array(item['actions']).map { |action| carousel_button(action) }
+    }
+  end
+
+  # Chatwoot action types are lowercase; the carousel endpoint expects REPLY, URL, CALL or COPY,
+  # and puts the destination in `id` for all of them.
+  CAROUSEL_BUTTON_TYPES = { 'link' => 'URL', 'call' => 'CALL', 'copy' => 'COPY' }.freeze
+
+  def carousel_button(action)
+    type = CAROUSEL_BUTTON_TYPES.fetch(action['type'].to_s, 'REPLY')
+
+    button = {
+      type: type,
+      displayText: action['text'],
+      id: action['uri'].presence || action['payload'].presence || action['text']
+    }
+    # COPY is the one kind that keeps the code in its own field instead of in `id`.
+    button[:copyCode] = action['payload'] if type == 'COPY'
+
+    button
+  end
+
   # Chatwoot models an interactive message as content_type input_select, with the options in
   # content_attributes.items ([{title:, value:}]). Same split the Cloud and 360dialog providers
   # use: buttons while they fit, a list past that.
@@ -759,17 +899,54 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   end
 
   def send_button_message(phone_number, message, items)
-    body = interactive_body(phone_number, message).merge(
+    attributes = message.content_attributes || {}
+
+    body = interactive_body(phone_number, message, attributes).merge(
+      footer: attributes['footer'].presence,
       buttons: items.map { |item| { type: 'reply', displayText: item['title'], id: item['value'] } }
     )
 
     post_send('send/button', body, 'Buttons')
   end
 
+  # Call-to-action and Pix buttons. The endpoint is the same one the reply buttons use, but the
+  # server rejects mixing the two kinds, so they never share a message.
+  def send_cta_button_message(phone_number, message)
+    attributes = whatsapp_buttons(message)
+
+    body = interactive_body(phone_number, message, attributes).merge(
+      footer: attributes['footer'].presence,
+      buttons: Array(attributes['buttons']).map { |button| cta_button(button) }
+    )
+    body[:imageUrl] = attributes['image_url'] if attributes['image_url'].present?
+
+    post_send('send/button', body, 'CTA buttons')
+  end
+
+  # Every kind carries displayText except pix, which renders a payment sheet built from the key.
+  def cta_button(button)
+    payload = { type: button['type'] }
+
+    case button['type'].to_s
+    when 'url'
+      payload.merge(displayText: button['text'], url: button['url'])
+    when 'call'
+      payload.merge(displayText: button['text'], phoneNumber: button['phone_number'])
+    when 'copy'
+      payload.merge(displayText: button['text'], copyCode: button['copy_code'], id: button['copy_code'])
+    when 'pix'
+      payload.merge(key: button['key'], keyType: button['key_type'], name: button['name'], currency: button['currency'])
+    else
+      payload.merge(displayText: button['text'], id: button['text'])
+    end
+  end
+
   def send_list_message(phone_number, message, items)
+    attributes = message.content_attributes || {}
     rows = items.map { |item| { rowId: item['value'], title: item['title'] } }
 
-    body = interactive_body(phone_number, message).merge(
+    body = interactive_body(phone_number, message, attributes).merge(
+      footerText: attributes['footer'].presence,
       buttonText: I18n.t('conversations.messages.whatsapp.list_button_label'),
       sections: [{ rows: rows }]
     )
@@ -777,19 +954,19 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     post_send('send/list', body, 'List')
   end
 
-  # description carries the message body. title and footer are optional headers EvoGO renders
-  # around it, and only a caller that sets them in content_attributes has anything to put there.
-  def interactive_body(phone_number, message)
+  # description carries the message body and title the header above it. EvoGO rejects the send
+  # without a title ("title is required"), but the footer is optional and each endpoint names it
+  # differently (`footer` on /send/button, `footerText` on /send/list), so the callers add it.
+  def interactive_body(phone_number, message, attributes = nil)
     recipient_jid = format_recipient_jid(phone_number)
-    attributes = message.content_attributes || {}
+    attributes ||= message.content_attributes || {}
 
     body = {
       number: recipient_jid,
+      title: attributes['title'],
       description: message.outgoing_content,
       delay: message_delay
     }
-    body[:title] = attributes['title'] if attributes['title'].present?
-    body[:footer] = attributes['footer'] if attributes['footer'].present?
 
     quoted = quoted_context(message, recipient_jid)
     body[:quoted] = quoted if quoted.present?

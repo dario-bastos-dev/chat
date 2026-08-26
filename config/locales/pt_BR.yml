@@ -138,6 +138,7 @@ pt_BR:
       invalid_token_permissions: 'O token de acesso não tem as permissões necessárias para o WhatsApp.'
       phone_info_fetch_failed: 'Falha ao obter a informação do número de telefone. Por favor, tente novamente.'
       phone_number_already_exists: 'Já existe um canal para este número de telefone: %{phone_number}. Entre em contato com o suporte se o erro persistir'
+      message_not_sent: 'Não foi possível entregar a mensagem ao WhatsApp. Verifique a conexão da caixa de entrada e tente novamente.'
       evolution_go:
         logout_success: 'Desconectado com sucesso'
         logout_local_only: 'Desconectado localmente'
