@@ -21,7 +21,7 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
   def board
     scope = Deals::Finder.new(scope: policy_scope(Deal), params: board_filters).perform
 
-    @stages = @pipeline.stages.ordered
+    @stages = filtered_stages
     @total_counts = scope.group(:stage_id).count
     @total_values = scope.group(:stage_id).sum(:value)
     @weighted_forecast = weighted_forecast_for(scope)
@@ -90,12 +90,22 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
          .sum('deals.value * stages.win_probability / 100.0')
   end
 
+  # Filtrar por etapa reduz o board aquela coluna. Manter as demais visiveis e
+  # vazias faria o contador e o valor do topo, que somam apenas as etapas
+  # retornadas, discordarem das colunas exibidas.
+  def filtered_stages
+    stages = @pipeline.stages.ordered
+    return stages if params[:stage_id].blank?
+
+    stages.where(id: params[:stage_id])
+  end
+
   def deals_per_stage
     [(params[:per_stage].presence || DEFAULT_DEALS_PER_STAGE).to_i, MAX_DEALS_PER_STAGE].min
   end
 
   def board_filters
-    params.permit(:status, :assignee_id, :q, :label, :custom_field_key, :custom_field_value,
+    params.permit(:stage_id, :status, :assignee_id, :q, :label, :custom_field_key, :custom_field_value,
                   :min_value, :max_value)
           .to_h.symbolize_keys
           .merge(pipeline_id: @pipeline.id)

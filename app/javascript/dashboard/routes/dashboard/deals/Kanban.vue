@@ -147,8 +147,12 @@
                       @change="filterCustomFieldValue = ''"
                     >
                       <option :value="null">{{ $t('CRM.FILTERS.NO_FIELD') }}</option>
-                      <option v-for="field in availableCustomFields" :key="field" :value="field">
-                        {{ field }}
+                      <option
+                        v-for="field in availableCustomFields"
+                        :key="field.key"
+                        :value="field.key"
+                      >
+                        {{ field.name }}
                       </option>
                     </select>
                     <input
@@ -678,6 +682,7 @@ export default {
       isStageLoading: 'deals/isStageLoading',
       dealsUIFlags: 'deals/getUIFlags',
       allLabels: 'labels/getLabels',
+      dealAttributes: 'attributes/getDealAttributes',
     }),
     pipelineId() {
       return Number(this.$route.params.pipelineId);
@@ -699,16 +704,16 @@ export default {
     loadedDeals() {
       return this.boardStages.flatMap(stage => stage.deals);
     },
-    // Os filtros rodam no backend; as chaves vem dos negocios ja carregados
-    // apenas para popular o seletor.
+    // As opcoes vem das definicoes de atributo da conta. Deriva-las dos cards ja
+    // carregados fazia o seletor sumir justamente quando o filtro nao retornava
+    // nada, deixando o filtro aplicado sem como ajusta-lo.
     availableCustomFields() {
-      const fields = new Set();
-      this.loadedDeals.forEach(deal => {
-        Object.keys(deal.custom_attributes || {}).forEach(key =>
-          fields.add(key)
-        );
-      });
-      return Array.from(fields);
+      return (this.dealAttributes || []).map(attribute => ({
+        key: attribute.attributeKey,
+        name: attribute.attributeDisplayName,
+        type: attribute.attributeDisplayType,
+        values: attribute.attributeValues || [],
+      }));
     },
     activeFilterCount() {
       let count = 0;
@@ -776,6 +781,7 @@ export default {
       loadMoreForStage: 'deals/loadMoreForStage',
       moveDeal: 'deals/move',
       fetchLabels: 'labels/get',
+      fetchAttributes: 'attributes/get',
       deleteDeal: 'deals/delete',
       updateDeal: 'deals/update',
       createDeal: 'deals/create',
@@ -786,6 +792,7 @@ export default {
         this.fetchPipeline(this.pipelineId),
         this.fetchPipelines(),
         this.fetchLabels(),
+        this.fetchAttributes(),
       ]);
       await this.fetchBoardData();
     },
@@ -814,6 +821,8 @@ export default {
             label: this.filterTag || undefined,
             customFieldKey: this.filterCustomFieldKey || undefined,
             customFieldValue: this.filterCustomFieldValue || undefined,
+            minValue: this.filterMinValue || undefined,
+            maxValue: this.filterMaxValue || undefined,
           },
         });
       } catch (error) {

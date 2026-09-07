@@ -19,6 +19,8 @@ class DealsAPI extends ApiClient {
       label: 'label',
       customFieldKey: 'custom_field_key',
       customFieldValue: 'custom_field_value',
+      minValue: 'min_value',
+      maxValue: 'max_value',
     };
 
     const queryParams = new URLSearchParams();
