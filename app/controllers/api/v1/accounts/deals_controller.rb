@@ -64,6 +64,27 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
     head :ok
   end
 
+  # Agendamento em massa pelo Kanban. A escolha da conversa de destino e a
+  # deduplicacao por contato rodam no servidor: o front nao conhece as conversas
+  # vinculadas de cada negocio nem os contatos por tras delas.
+  def schedule_messages
+    authorize Deal, :schedule_messages?
+
+    # `conversation_deals: :conversation` e o preload que o servico realmente usa;
+    # a caixa de entrada e o canal vem junto porque a validacao da mensagem os le.
+    deals = policy_scope(Deal)
+            .where(id: Array(params[:deal_ids]))
+            .includes(conversation_deals: { conversation: { inbox: :channel } })
+            .ordered_by_position
+
+    render json: Deals::MessageScheduler.new(
+      account: Current.account,
+      user_context: pundit_user,
+      deals: deals,
+      params: schedule_message_params
+    ).perform
+  end
+
   def move
     authorize @deal
 
@@ -128,6 +149,10 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
       custom_attributes: {},
       labels: []
     )
+  end
+
+  def schedule_message_params
+    params.permit(:title, :content, :scheduled_at)
   end
 
   def link_conversation

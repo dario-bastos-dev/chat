@@ -13,6 +13,13 @@ class DealPolicy < ApplicationPolicy
     true
   end
 
+  # Escrever na conversa vinculada segue a mesma regra do agendamento avulso
+  # (ScheduledMessagePolicy#create?); quais negocios entram na acao ja e
+  # decidido pelo policy_scope.
+  def schedule_messages?
+    true
+  end
+
   def update?
     manageable?
   end

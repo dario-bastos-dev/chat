@@ -6,6 +6,7 @@ json.payload do
     json.scheduled_at message.scheduled_at.to_i
     json.status message.status
     json.created_by_id message.created_by_id
+    json.deal_id message.deal_id
     json.template_params message.template_params
     json.created_at message.created_at.to_i
   end

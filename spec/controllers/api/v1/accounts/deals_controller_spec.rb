@@ -75,4 +75,80 @@ RSpec.describe 'Deals API', type: :request do
       end
     end
   end
+
+  describe 'POST /api/v1/accounts/{account.id}/deals/schedule_messages' do
+    let(:inbox) { create(:inbox, account: account) }
+    let(:conversation) { create(:conversation, account: account, inbox: inbox, contact: contact) }
+    let(:deal) { create(:deal, account: account, contact: contact, pipeline: pipeline, stage: stage) }
+    let(:schedule_params) do
+      { title: 'Follow-up', content: 'Podemos avancar?', scheduled_at: 2.days.from_now.iso8601 }
+    end
+
+    def schedule(deal_ids, user)
+      post "/api/v1/accounts/#{account.id}/deals/schedule_messages",
+           params: schedule_params.merge(deal_ids: deal_ids),
+           headers: user.create_new_auth_token,
+           as: :json
+    end
+
+    it 'schedules one message on the primary open conversation' do
+      create(:conversation_deal, conversation: conversation, deal: deal, is_primary: true)
+
+      schedule([deal.id], admin)
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['scheduled_count']).to eq(1)
+      expect(conversation.scheduled_messages.pending.count).to eq(1)
+      expect(conversation.scheduled_messages.last.deal_id).to eq(deal.id)
+    end
+
+    # Duas oportunidades do mesmo cliente nao podem virar duas mensagens iguais.
+    it 'sends a single message per contact' do
+      other_deal = create(:deal, account: account, contact: contact, pipeline: pipeline, stage: stage)
+      create(:conversation_deal, conversation: conversation, deal: deal, is_primary: true)
+      create(:conversation_deal, conversation: conversation, deal: other_deal, is_primary: true)
+
+      schedule([deal.id, other_deal.id], admin)
+
+      expect(response.parsed_body['scheduled_count']).to eq(1)
+      expect(response.parsed_body['skipped_duplicate_contact'].size).to eq(1)
+    end
+
+    # O DispatchJob cancela a mensagem se a conversa nao estiver aberta, entao
+    # agendar nela seria jogar a mensagem fora sem avisar ninguem.
+    it 'skips a deal whose only conversation is resolved' do
+      resolved = create(:conversation, account: account, inbox: inbox, contact: contact, status: :resolved)
+      create(:conversation_deal, conversation: resolved, deal: deal, is_primary: true)
+
+      schedule([deal.id], admin)
+
+      expect(response.parsed_body['scheduled_count']).to eq(0)
+      expect(response.parsed_body['skipped_without_conversation']).to eq([deal.id])
+      expect(ScheduledMessage.count).to eq(0)
+    end
+
+    # O policy_scope de negocio alcanca todo negocio sem responsavel, incluindo
+    # os de caixas de entrada que o agente nao acessa.
+    it 'skips a conversation the agent cannot access' do
+      agent = create(:user, account: account, role: :agent)
+      create(:conversation_deal, conversation: conversation, deal: deal, is_primary: true)
+
+      schedule([deal.id], agent)
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['scheduled_count']).to eq(0)
+      expect(response.parsed_body['skipped_unauthorized']).to eq([deal.id])
+      expect(ScheduledMessage.count).to eq(0)
+    end
+
+    it 'does not schedule the same message twice' do
+      create(:conversation_deal, conversation: conversation, deal: deal, is_primary: true)
+
+      schedule([deal.id], admin)
+      schedule([deal.id], admin)
+
+      expect(response.parsed_body['skipped_already_scheduled']).to eq([deal.id])
+      expect(conversation.scheduled_messages.count).to eq(1)
+    end
+  end
 end

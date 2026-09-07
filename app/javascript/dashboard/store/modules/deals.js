@@ -149,6 +149,11 @@ export const actions = {
     await DealsAPI.importFile(file);
   },
 
+  scheduleMessages: async function scheduleDealMessages(_ctx, payload) {
+    const response = await DealsAPI.scheduleMessages(payload);
+    return response.data;
+  },
+
   show: async function showDeal({ commit }, dealId) {
     commit(types.SET_DEALS_UI_FLAG, { isFetching: true });
     try {

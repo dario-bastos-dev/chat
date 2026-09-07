@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_12_081819) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_04_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1559,9 +1559,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_12_081819) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.jsonb "template_params"
+    t.bigint "deal_id"
     t.index ["account_id", "status", "scheduled_at"], name: "idx_sched_msgs_dispatch"
     t.index ["account_id"], name: "index_scheduled_messages_on_account_id"
     t.index ["conversation_id"], name: "index_scheduled_messages_on_conversation_id"
+    t.index ["deal_id"], name: "index_scheduled_messages_on_deal_id"
     t.index ["created_by_id"], name: "index_scheduled_messages_on_created_by_id"
   end
 
@@ -1780,6 +1782,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_12_081819) do
   add_foreign_key "pipelines", "accounts"
   add_foreign_key "scheduled_messages", "accounts"
   add_foreign_key "scheduled_messages", "conversations"
+  add_foreign_key "scheduled_messages", "deals", on_delete: :nullify
   add_foreign_key "scheduled_messages", "users", column: "created_by_id"
   add_foreign_key "stages", "pipelines"
   add_foreign_key "user_sessions", "users"

@@ -60,6 +60,17 @@ class DealsAPI extends ApiClient {
     return axios.delete(`${this.url}/${dealId}`);
   }
 
+  // Agendamento em massa: o backend escolhe a conversa de destino de cada
+  // negocio e deduplica por contato, entao a acao e uma requisicao so.
+  scheduleMessages({ dealIds, title, content, scheduledAt }) {
+    return axios.post(`${this.url}/schedule_messages`, {
+      deal_ids: dealIds,
+      title,
+      content,
+      scheduled_at: scheduledAt,
+    });
+  }
+
   move(dealId, stageId, position = null) {
     const payload = { stage_id: stageId };
     if (position !== null) payload.position = position;

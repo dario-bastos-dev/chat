@@ -23,6 +23,8 @@ class ScheduledMessage < ApplicationRecord
   belongs_to :account
   belongs_to :conversation
   belongs_to :created_by, class_name: 'User'
+  # Origem do agendamento quando ele parte do Kanban; a mensagem continua sendo da conversa.
+  belongs_to :deal, optional: true
 
   enum status: { pending: 0, sent: 1, cancelled: 2 }
 

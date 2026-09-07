@@ -231,6 +231,7 @@ Rails.application.routes.draw do
           resources :deals do
             collection do
               post :import
+              post :schedule_messages
             end
             member do
               patch :move

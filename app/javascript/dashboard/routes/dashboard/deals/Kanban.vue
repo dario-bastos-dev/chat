@@ -270,6 +270,39 @@
               <span>{{ $t('CRM.BULK.MOVE_STAGE') }}</span>
             </button>
 
+            <!-- Opção Adicionar Etiquetas -->
+            <button
+              class="flex items-center gap-2 w-full px-2.5 py-2 text-xs font-medium text-n-slate-12 hover:bg-n-alpha-1 rounded-lg transition-colors cursor-pointer border-0 bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="selectedDealIds.length === 0"
+              @click="openBulkLabelModal"
+            >
+              <fluent-icon icon="tag" size="12" class="text-n-slate-11" />
+              <span>{{ $t('CRM.BULK.ADD_LABELS') }}</span>
+            </button>
+
+            <!-- Opção Preencher Atributos -->
+            <button
+              class="flex items-center gap-2 w-full px-2.5 py-2 text-xs font-medium text-n-slate-12 hover:bg-n-alpha-1 rounded-lg transition-colors cursor-pointer border-0 bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="selectedDealIds.length === 0 || availableCustomFields.length === 0"
+              @click="openBulkAttributesModal"
+            >
+              <fluent-icon icon="edit" size="12" class="text-n-slate-11" />
+              <span>{{ $t('CRM.BULK.FILL_ATTRIBUTES') }}</span>
+            </button>
+
+            <!-- Opção Programar Mensagem -->
+            <button
+              class="flex items-center gap-2 w-full px-2.5 py-2 text-xs font-medium text-n-slate-12 hover:bg-n-alpha-1 rounded-lg transition-colors cursor-pointer border-0 bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="selectedDealIds.length === 0"
+              @click="openBulkScheduleModal"
+            >
+              <fluent-icon icon="send-clock" size="12" class="text-n-slate-11" />
+              <span>{{ $t('CRM.BULK.SCHEDULE_MESSAGE') }}</span>
+            </button>
+
+            <!-- Divisor -->
+            <div class="h-[1px] bg-n-weak/30 my-1" />
+
             <!-- Opção Exportar -->
             <button
               class="flex items-center gap-2 w-full px-2.5 py-2 text-xs font-medium text-n-slate-12 hover:bg-n-alpha-1 rounded-lg transition-colors cursor-pointer border-0 bg-transparent disabled:opacity-50 disabled:cursor-not-allowed"
@@ -551,6 +584,27 @@
       :on-close="closeDeleteModal"
     />
 
+    <BulkLabelsModal
+      v-model:show="showBulkLabelModal"
+      :count="selectedDealIds.length"
+      :labels="allLabels"
+      @apply="applyBulkLabels"
+    />
+
+    <BulkAttributesModal
+      v-model:show="showBulkAttributesModal"
+      :count="selectedDealIds.length"
+      :attributes="availableCustomFields"
+      @apply="applyBulkAttributes"
+    />
+
+    <BulkScheduleModal
+      v-model:show="showBulkScheduleModal"
+      :count="selectedDealIds.length"
+      :is-submitting="isBulkScheduling"
+      @apply="applyBulkSchedule"
+    />
+
     <!-- Bulk Move Stage Modal -->
     <woot-modal
       v-model:show="showBulkMoveModal"
@@ -624,6 +678,9 @@ import { mapGetters, mapActions } from 'vuex';
 import draggable from 'vuedraggable';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import DealForm from './components/DealForm.vue';
+import BulkLabelsModal from './components/BulkLabelsModal.vue';
+import BulkAttributesModal from './components/BulkAttributesModal.vue';
+import BulkScheduleModal from './components/BulkScheduleModal.vue';
 import DealDrawer from './components/DealDrawer.vue';
 import KanbanSkeleton from './components/KanbanSkeleton.vue';
 import { formatDistanceToNow } from 'date-fns';
@@ -640,6 +697,9 @@ export default {
   components: {
     draggable,
     DealForm,
+    BulkLabelsModal,
+    BulkAttributesModal,
+    BulkScheduleModal,
     DealDrawer,
     KanbanSkeleton,
     Avatar,
@@ -663,6 +723,10 @@ export default {
       showBulkActionsDropdown: false,
       showBulkMoveModal: false,
       bulkMoveExpandedPipelineId: null,
+      showBulkLabelModal: false,
+      showBulkAttributesModal: false,
+      showBulkScheduleModal: false,
+      isBulkScheduling: false,
       showDeleteModal: false,
       isBulkDelete: false,
       filterDebounce: null,
@@ -715,6 +779,13 @@ export default {
         values: attribute.attributeValues || [],
       }));
     },
+    // Os selecionados que ainda estao carregados. A selecao sobrevive a um
+    // refetch, entao um id pode nao ter mais card correspondente.
+    selectedDeals() {
+      return this.loadedDeals.filter(deal =>
+        this.selectedDealIds.includes(deal.id)
+      );
+    },
     activeFilterCount() {
       let count = 0;
       if (this.filterStageId) count++;
@@ -736,9 +807,7 @@ export default {
     },
     isAllFilteredDealsSelected() {
       if (this.loadedDeals.length === 0) return false;
-      return this.loadedDeals.every(deal =>
-        this.selectedDealIds.includes(deal.id)
-      );
+      return this.selectedDeals.length === this.loadedDeals.length;
     },
   },
   watch: {
@@ -786,6 +855,7 @@ export default {
       updateDeal: 'deals/update',
       createDeal: 'deals/create',
       importDealsFile: 'deals/importFile',
+      scheduleDealMessages: 'deals/scheduleMessages',
     }),
     async loadData() {
       await Promise.all([
@@ -970,6 +1040,98 @@ export default {
     compactValue(value) {
       return formatDealValueCompact(value, this.boardCurrency);
     },
+    openBulkLabelModal() {
+      this.showBulkActionsDropdown = false;
+      this.showBulkLabelModal = true;
+    },
+    openBulkAttributesModal() {
+      this.showBulkActionsDropdown = false;
+      this.showBulkAttributesModal = true;
+    },
+    openBulkScheduleModal() {
+      this.showBulkActionsDropdown = false;
+      this.showBulkScheduleModal = true;
+    },
+    // Etiquetas e atributos personalizados sao gravados inteiros pelo update do
+    // negocio, entao cada payload parte do que o card ja tem. Um selecionado que
+    // saiu da pagina fica de fora: sem o objeto em maos, o payload iria vazio e
+    // apagaria o que esta no servidor.
+    async runBulkUpdate(payloadFor, successKey, errorKey) {
+      const deals = this.selectedDeals;
+      if (deals.length === 0) {
+        this.$toast.info(this.$t('CRM.BULK.NOTHING_TO_APPLY'));
+        return;
+      }
+
+      const results = await Promise.allSettled(
+        deals.map(deal => this.updateDeal({ id: deal.id, ...payloadFor(deal) }))
+      );
+      const failed = results.filter(result => result.status === 'rejected').length;
+
+      this.selectedDealIds = [];
+      this.fetchBoardData();
+
+      if (failed > 0) {
+        this.$toast.error(this.$t(errorKey, { count: failed }));
+      } else {
+        this.$toast.success(this.$t(successKey, { count: deals.length }));
+      }
+    },
+    applyBulkLabels(labels) {
+      this.showBulkLabelModal = false;
+      return this.runBulkUpdate(
+        deal => ({ labels: [...new Set([...(deal.labels || []), ...labels])] }),
+        'CRM.BULK.LABELS_SUCCESS',
+        'CRM.BULK.LABELS_ERROR'
+      );
+    },
+    applyBulkAttributes(changes) {
+      this.showBulkAttributesModal = false;
+      return this.runBulkUpdate(
+        deal => ({
+          custom_attributes: { ...(deal.custom_attributes || {}), ...changes },
+        }),
+        'CRM.BULK.ATTRIBUTES_SUCCESS',
+        'CRM.BULK.ATTRIBUTES_ERROR'
+      );
+    },
+    async applyBulkSchedule({ title, content, scheduledAt }) {
+      this.isBulkScheduling = true;
+      try {
+        const result = await this.scheduleDealMessages({
+          dealIds: this.selectedDealIds,
+          title,
+          content,
+          scheduledAt: new Date(scheduledAt).toISOString(),
+        });
+        this.showBulkScheduleModal = false;
+        this.notifyScheduleResult(result);
+        this.selectedDealIds = [];
+      } catch (error) {
+        this.$toast.error(this.$t('CRM.BULK.SCHEDULE_ERROR'));
+      } finally {
+        this.isBulkScheduling = false;
+      }
+    },
+    // Numa acao sobre dezenas de cards, so o numero de agendadas esconde os
+    // negocios que ficaram de fora e o motivo de cada um.
+    notifyScheduleResult(result) {
+      this.$toast.success(
+        this.$t('CRM.BULK.SCHEDULE_SUCCESS', { count: result.scheduled_count })
+      );
+
+      const skipped = {
+        noConversation: result.skipped_without_conversation.length,
+        unauthorized: result.skipped_unauthorized.length,
+        duplicateContact: result.skipped_duplicate_contact.length,
+        alreadyScheduled: result.skipped_already_scheduled.length,
+        failed: result.failed.length,
+      };
+      const total = Object.values(skipped).reduce((sum, count) => sum + count, 0);
+      if (total === 0) return;
+
+      this.$toast.info(this.$t('CRM.BULK.SCHEDULE_SKIPPED', skipped));
+    },
     toggleBulkActionsDropdown() {
       this.showBulkActionsDropdown = !this.showBulkActionsDropdown;
     },
@@ -1010,7 +1172,7 @@ export default {
     },
     exportDeals() {
       this.showBulkActionsDropdown = false;
-      const selectedDeals = this.loadedDeals.filter(d => this.selectedDealIds.includes(d.id));
+      const selectedDeals = this.selectedDeals;
       if (selectedDeals.length === 0) return;
 
       const headers = ['ID', 'Negocio', 'Valor', 'Contato', 'E-mail', 'Telefone', 'Pipeline', 'Etapa', 'Responsavel', 'Status', 'Criado Em'];
