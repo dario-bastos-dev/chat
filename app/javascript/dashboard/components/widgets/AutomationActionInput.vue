@@ -10,6 +10,9 @@ import MultiSelect from 'dashboard/components-next/filter/inputs/MultiSelect.vue
 import NextInput from 'dashboard/components-next/input/Input.vue';
 import { useAccount } from 'dashboard/composables/useAccount';
 
+// Espelha AutomationRules::ActionService::CONVERSATION_ASSIGNEE no backend.
+const CONVERSATION_ASSIGNEE = 'conversation_assignee';
+
 export default {
   components: {
     AutomationActionTeamMessageInput,
@@ -163,23 +166,35 @@ export default {
         name: s.name,
       }));
     },
-    currentPipelineId() {
+    // O parametro do negocio e "<pipeline>:<etapa>", com um terceiro segmento
+    // opcional que pede o responsavel da conversa como responsavel do negocio.
+    dealParamSegments() {
       const rawParams = this.action_params;
-      if (!rawParams) return null;
-      const rawStr = Array.isArray(rawParams)
-        ? (typeof rawParams[0] === 'object' ? rawParams[0]?.id : rawParams[0])
-        : (typeof rawParams === 'object' ? rawParams?.id : rawParams);
-      if (typeof rawStr !== 'string' || !rawStr.includes(':')) return null;
-      return Number(rawStr.split(':')[0]);
+      if (!rawParams) return [];
+      const raw = Array.isArray(rawParams) ? rawParams[0] : rawParams;
+      const rawStr = typeof raw === 'object' ? raw?.id : raw;
+      return typeof rawStr === 'string' ? rawStr.split(':') : [];
+    },
+    currentPipelineId() {
+      return Number(this.dealParamSegments[0]) || null;
     },
     currentStageId() {
-      const rawParams = this.action_params;
-      if (!rawParams) return null;
-      const rawStr = Array.isArray(rawParams)
-        ? (typeof rawParams[0] === 'object' ? rawParams[0]?.id : rawParams[0])
-        : (typeof rawParams === 'object' ? rawParams?.id : rawParams);
-      if (typeof rawStr !== 'string' || !rawStr.includes(':')) return null;
-      return Number(rawStr.split(':')[1]);
+      return Number(this.dealParamSegments[1]) || null;
+    },
+    currentDealAssignee() {
+      return this.dealParamSegments[2] || null;
+    },
+    dealAssigneeOptions() {
+      return [
+        {
+          id: 'auto',
+          name: this.$t('AUTOMATION.ACTION.DEAL_ASSIGNEE_AUTO'),
+        },
+        {
+          id: CONVERSATION_ASSIGNEE,
+          name: this.$t('AUTOMATION.ACTION.DEAL_ASSIGNEE_FROM_CONVERSATION'),
+        },
+      ];
     },
     selectedPipeline: {
       get() {
@@ -197,7 +212,7 @@ export default {
         const pipeline = (this.pipelines || []).find(p => p.id === pId);
         const firstStage = pipeline?.stages?.[0];
         if (firstStage) {
-          this.action_params = [`${pId}:${firstStage.id}`];
+          this.action_params = [this.dealActionParam(pId, firstStage.id)];
         } else {
           this.action_params = [];
         }
@@ -216,8 +231,21 @@ export default {
         const sId = value?.id || value;
         const pId = this.currentPipelineId;
         if (pId && sId) {
-          this.action_params = [`${pId}:${sId}`];
+          this.action_params = [this.dealActionParam(pId, sId)];
         }
+      },
+    },
+    selectedDealAssignee: {
+      get() {
+        const id = this.currentDealAssignee || 'auto';
+        return this.dealAssigneeOptions.find(option => option.id === id);
+      },
+      set(value) {
+        const id = value?.id || value;
+        const pId = this.currentPipelineId;
+        const sId = this.currentStageId;
+        if (!pId || !sId) return;
+        this.action_params = [this.dealActionParam(pId, sId, id)];
       },
     },
   },
@@ -230,6 +258,11 @@ export default {
     this.$store.dispatch('attributes/get');
   },
   methods: {
+    dealActionParam(pipelineId, stageId, assignee = this.currentDealAssignee) {
+      const segments = [pipelineId, stageId];
+      if (assignee === CONVERSATION_ASSIGNEE) segments.push(assignee);
+      return segments.join(':');
+    },
     removeAction() {
       this.$emit('removeAction');
     },
@@ -308,6 +341,14 @@ export default {
               v-model="selectedStage"
               :options="stageOptions"
               placeholder="Selecionar etapa"
+              :dropdown-max-height="dropdownMaxHeight"
+              class="flex-shrink-0"
+            />
+            <SingleSelect
+              v-if="action_name === 'create_deal' && selectedStage"
+              v-model="selectedDealAssignee"
+              :options="dealAssigneeOptions"
+              disable-deselect
               :dropdown-max-height="dropdownMaxHeight"
               class="flex-shrink-0"
             />

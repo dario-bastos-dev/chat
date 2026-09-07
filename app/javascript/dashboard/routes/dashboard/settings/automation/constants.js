@@ -929,9 +929,12 @@ export const AUTOMATION_ACTION_TYPES = [
     inputType: 'search_select',
   },
   {
+    // Tipo proprio, e nao `search_select`: o parametro e uma string composta
+    // ("<pipeline>:<etapa>[:responsavel]") que nao existe na lista de opcoes, e
+    // o `search_select` a descartaria ao abrir a regra para edicao.
     key: 'create_deal',
     label: 'CREATE_DEAL',
-    inputType: 'search_select',
+    inputType: 'deal_create',
   },
   {
     key: 'update_deal_info',

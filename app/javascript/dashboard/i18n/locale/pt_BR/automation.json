@@ -103,6 +103,8 @@
       "ADD_DEAL_ATTRIBUTE_BTN": "Adicionar Atributo",
       "SYNC_ASSIGNEE_CONV_TO_DEAL": "Sincronizar responsável da conversa para o negócio",
       "SYNC_ASSIGNEE_DEAL_TO_CONV": "Sincronizar responsável do negócio para a conversa",
+      "DEAL_ASSIGNEE_AUTO": "Atribuição automática",
+      "DEAL_ASSIGNEE_FROM_CONVERSATION": "Responsável da conversa",
       "STATUS_WON": "Ganho",
       "STATUS_LOST": "Perdido",
       "MESSAGE_MODE": {

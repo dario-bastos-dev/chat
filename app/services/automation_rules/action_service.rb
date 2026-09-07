@@ -1,4 +1,8 @@
 class AutomationRules::ActionService < ActionService
+  # Terceiro segmento do parametro de `create_deal`, quando a regra pede que o
+  # negocio nasca com o mesmo responsavel da conversa.
+  CONVERSATION_ASSIGNEE = 'conversation_assignee'.freeze
+
   def initialize(rule, account, conversation)
     super(conversation)
     @rule = rule
@@ -91,13 +95,7 @@ class AutomationRules::ActionService < ActionService
   end
 
   def create_deal(params)
-    action_param = params[0]
-    if action_param.to_s.include?(':')
-      pipeline_id, stage_id = action_param.split(':')
-    else
-      pipeline_id = action_param
-      stage_id = nil
-    end
+    pipeline_id, stage_id, assignee_option = params[0].to_s.split(':')
 
     pipeline = @account.pipelines.find_by(id: pipeline_id)
     return unless pipeline
@@ -133,7 +131,8 @@ class AutomationRules::ActionService < ActionService
           pipeline_id: pipeline.id,
           stage_id: stage.id,
           contact_id: contact.id,
-          conversation_id: @conversation.id
+          conversation_id: @conversation.id,
+          assignee_id: (@conversation.assignee_id if assignee_option == CONVERSATION_ASSIGNEE)
         }
       ).perform
     end

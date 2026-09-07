@@ -150,6 +150,8 @@
       "ADD_DEAL_ATTRIBUTE_BTN": "Add Attribute",
       "SYNC_ASSIGNEE_CONV_TO_DEAL": "Sync Conversation assignee to Deal",
       "SYNC_ASSIGNEE_DEAL_TO_CONV": "Sync Deal assignee to Conversation",
+      "DEAL_ASSIGNEE_AUTO": "Automatic assignment",
+      "DEAL_ASSIGNEE_FROM_CONVERSATION": "Conversation assignee",
       "STATUS_WON": "Won",
       "STATUS_LOST": "Lost",
       "MESSAGE_MODE": {
