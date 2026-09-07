@@ -44,7 +44,10 @@ class DealsAPI extends ApiClient {
   }
 
   create(data) {
-    return axios.post(this.url, { deal: data });
+    // `conversation_id` nao e atributo do negocio: o backend usa o parametro de
+    // topo para vincular a conversa ao negocio recem-criado.
+    const { conversation_id: conversationId, ...deal } = data;
+    return axios.post(this.url, { deal, conversation_id: conversationId });
   }
 
   update(dealId, data) {

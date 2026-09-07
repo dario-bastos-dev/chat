@@ -25,8 +25,8 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
       if params[:deal].key?(:labels)
         @deal.update_labels(params[:deal][:labels])
       end
+      link_conversation if params[:conversation_id].present?
     end
-    link_conversation if params[:conversation_id].present?
   end
 
   def update
@@ -131,7 +131,7 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
   end
 
   def link_conversation
-    conversation = Current.account.conversations.find(params[:conversation_id])
+    conversation = Current.account.conversations.find_by!(display_id: params[:conversation_id])
     ConversationDeal.create!(conversation: conversation, deal: @deal, is_primary: true)
   end
 end

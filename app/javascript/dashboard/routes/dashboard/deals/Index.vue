@@ -315,7 +315,7 @@
         v-if="showCreateDealModal && defaultPipeline"
         :pipeline="defaultPipeline"
         @close="closeCreateDealModal"
-        @success="onDealCreated"
+        @created="onDealCreated"
       />
     </woot-modal>
 

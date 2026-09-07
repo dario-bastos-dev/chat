@@ -51,7 +51,7 @@ class Deal < ApplicationRecord
   has_many :conversations, through: :conversation_deals
 
   validates :title, presence: true, length: { maximum: 500 }
-  validates :value, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :value, numericality: { greater_than_or_equal_to: 0 }
   validates :account_id, presence: true
   validates :pipeline_id, presence: true
   validates :stage_id, presence: true
@@ -61,6 +61,7 @@ class Deal < ApplicationRecord
 
   validate :stage_belongs_to_pipeline
 
+  before_validation :normalize_value
   before_validation :set_pipeline_from_stage
   before_validation :sync_status_with_stage_type
   before_save :set_won_or_lost_timestamp
@@ -172,6 +173,13 @@ class Deal < ApplicationRecord
     return if stage.pipeline_id == pipeline_id
 
     errors.add(:stage, 'must belong to the selected pipeline')
+  end
+
+  # A coluna e NOT NULL com default 0 e o campo de valor e opcional no formulario:
+  # quando ele vem vazio (ou nem e enviado), o cast decimal entrega nil e o insert
+  # estourava com NotNullViolation.
+  def normalize_value
+    self.value = 0 if value.nil?
   end
 
   def set_pipeline_from_stage
