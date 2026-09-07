@@ -48,7 +48,7 @@ class AutomationRule < ApplicationRecord
 
   def conditions_attributes
     %w[content email country_code status message_type browser_language assignee_id team_id referer city company inbox_id
-       mail_subject phone_number priority conversation_language labels has_active_deal deal_stage_id deal_labels deal_custom_attribute]
+       mail_subject phone_number priority conversation_language labels is_first_message has_active_deal deal_stage_id deal_labels deal_custom_attribute]
   end
 
   def actions_attributes

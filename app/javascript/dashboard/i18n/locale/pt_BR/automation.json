@@ -1,7 +1,7 @@
 {
   "AUTOMATION": {
     "HEADER": "Automação",
-    "DESCRIPTION": "A automação pode substituir e simplificar processos existentes que requerem esforço manual, como a adição de etiquetas e a atribuição de conversas ao agente mais adequado. Isso permite que o time se concentre em seus pontos fortes e reduza o tempo gasto em tarefas rotineiras.",
+    "DESCRIPTION": "A automação pode substituir e simplificar processos existentes que requerem esforço manual, como a adição de etiquetas e a atribuição de conversas ao usuário mais adequado. Isso permite que o time se concentre em seus pontos fortes e reduza o tempo gasto em tarefas rotineiras.",
     "LEARN_MORE": "Aprenda mais sobre automação",
     "HEADER_BTN_TXT": "Adicionar regra de automação",
     "LOADING": "Buscando regras de automação",
@@ -113,7 +113,24 @@
       },
       "TEMPLATE_INBOX_PLACEHOLDER": "Selecione a caixa de entrada do template",
       "TEMPLATE_PLACEHOLDER": "Selecione um template",
-      "NO_TEMPLATE_INBOX": "Nenhuma caixa de entrada do WhatsApp tem templates aprovados ainda."
+      "NO_TEMPLATE_INBOX": "Nenhuma caixa de entrada do WhatsApp tem templates aprovados ainda.",
+      "BUTTONS": {
+        "LABEL": "Botões",
+        "ADD": "Adicionar botão",
+        "HINT": "Adicione até 3 botões para WhatsApp e Instagram. Deixe todas as URLs em branco para botões de resposta rápida, ou preencha todas as URLs para botões de link.",
+        "HEADER_PLACEHOLDER": "Cabeçalho (exibido acima da mensagem)",
+        "HEADER_HINT": "O cabeçalho é opcional. Para conexões via WhatsApp Lite, ele deve ser preenchido.",
+        "TITLE_PLACEHOLDER": "Texto do botão",
+        "URL_PLACEHOLDER": "https://exemplo.com (opcional)",
+        "ERRORS": {
+          "MISSING_BODY": "Escreva uma mensagem antes dos botões.",
+          "BLANK_LABEL": "Todo botão precisa de um texto.",
+          "LABEL_TOO_LONG": "O texto do botão deve ter no máximo 20 caracteres.",
+          "DUPLICATE_LABEL": "O texto dos botões deve ser único.",
+          "MIXED": "Ou todos os botões têm link, ou nenhum tem.",
+          "INVALID_URL": "Os links dos botões devem começar com http:// ou https://."
+        }
+      }
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Ativar regra de automação",
@@ -156,7 +173,7 @@
       "DEAL_LOST": "Negócio Perdido"
     },
     "ACTIONS": {
-      "ASSIGN_AGENT": "Atribuir ao Agente",
+      "ASSIGN_AGENT": "Atribuir ao Usuário",
       "ASSIGN_TEAM": "Atribuir um Time",
       "ADD_LABEL": "Adicionar uma Etiqueta",
       "REMOVE_LABEL": "Remover uma Etiqueta",
@@ -203,10 +220,11 @@
       "MAIL_SUBJECT": "Assunto do e-mail",
       "COUNTRY_NAME": "País/região",
       "REFERER_LINK": "Link de origem",
-      "ASSIGNEE_NAME": "Agente atribuído",
+      "ASSIGNEE_NAME": "Usuário atribuído",
       "TEAM_NAME": "Time",
       "PRIORITY": "Prioridade",
       "LABELS": "Etiquetas",
+      "IS_FIRST_MESSAGE": "É a Primeira Mensagem",
       "HAS_ACTIVE_DEAL": "Possui Negócio Ativo",
       "DEAL_STAGE_ID": "Etapa do Negócio",
       "DEAL_LABELS": "Etiqueta do Negócio"

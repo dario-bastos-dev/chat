@@ -9,7 +9,6 @@
       "TYPES": {
         "OPTIONS": "Options",
         "LOCATION": "Location",
-        "LINK": "Link",
         "CAROUSEL": "Carousel",
         "BUTTONS": "Action buttons"
       },
@@ -24,30 +23,23 @@
         "OPTION_PLACEHOLDER": "Option {index}",
         "ADD_OPTION": "Add option",
         "DUPLICATE_ERROR": "Options must be different from each other.",
-        "TOO_LONG_ERROR": "Options must be at most {max} characters for this format."
+        "TOO_LONG_ERROR": "Options must be at most {max} characters for this format.",
+        "FOOTER_LIST_LABEL": "Footer",
+        "FOOTER_LIST_ERROR": "More than three options are delivered as a list, and Evolution GO requires a footer on a list."
       },
       "LOCATION": {
-        "HINT": "The contact receives a pin they can open in their maps app.",
+        "HINT": "Paste the link from the Google Maps address bar: the coordinates come from it, and so do the name and the address when the link carries them. Coordinates copied by right-clicking a point on the map work too.",
+        "SOURCE_LABEL": "Google Maps link or coordinates",
+        "SOURCE_PLACEHOLDER": "Paste the Maps link or -23.5505, -46.6333",
+        "SOURCE_ERROR": "No coordinates found in that text. Paste the link from the Google Maps address bar or the coordinates themselves.",
+        "SHORT_LINK_ERROR": "A shortened link does not carry the coordinates. Open it in the browser and copy the address bar instead.",
+        "PREVIEW": "See on the map",
         "NAME_LABEL": "Place name (optional)",
         "NAME_PLACEHOLDER": "Our store",
-        "ADDRESS_LABEL": "Address (optional)",
+        "ADDRESS_LABEL": "Address",
         "ADDRESS_PLACEHOLDER": "Street, number, city",
-        "LATITUDE_LABEL": "Latitude",
-        "LONGITUDE_LABEL": "Longitude",
-        "COORDINATES_ERROR": "Enter a valid latitude (-90 to 90) and longitude (-180 to 180)."
-      },
-      "LINK": {
-        "HINT": "The link is delivered with a preview card instead of plain text.",
-        "URL_LABEL": "Link",
-        "TEXT_LABEL": "Message (optional)",
-        "TEXT_PLACEHOLDER": "Text shown above the preview",
-        "TITLE_LABEL": "Preview title (optional)",
-        "TITLE_PLACEHOLDER": "Headline of the card",
-        "DESCRIPTION_LABEL": "Preview description (optional)",
-        "DESCRIPTION_PLACEHOLDER": "Short text below the title",
-        "IMAGE_LABEL": "Preview image (optional)",
-        "URL_ERROR": "Enter a valid link starting with http or https.",
-        "IMAGE_ERROR": "The preview image must be a valid http or https link."
+        "OPEN_MAPS": "Open in Google Maps",
+        "ADDRESS_REQUIRED": "Evolution GO does not send a location without an address."
       },
       "CAROUSEL": {
         "HINT": "Each card needs a title and at least one button.",
@@ -56,7 +48,6 @@
         "CARD_LABEL": "Card {index}",
         "CARD_TITLE": "Card title",
         "CARD_DESCRIPTION": "Card description (optional)",
-        "CARD_MEDIA": "Image URL (optional)",
         "BUTTON_TEXT": "Button label",
         "BUTTON_TYPE_REPLY": "Quick reply",
         "BUTTON_TYPE_LINK": "Open link",
@@ -77,7 +68,6 @@
         "BODY_LABEL": "Message",
         "BODY_PLACEHOLDER": "What do you want to say?",
         "IMAGE_LABEL": "Header image (optional)",
-        "IMAGE_ERROR": "The header image must be a valid http or https link.",
         "BUTTONS_LABEL": "Buttons",
         "BUTTON_TEXT": "Button label",
         "TYPE_URL": "Open link",
@@ -94,6 +84,12 @@
         "PIX_KEY_TYPE_CPF": "CPF",
         "PIX_KEY_TYPE_CNPJ": "CNPJ",
         "PIX_KEY_TYPE_RANDOM": "Random key"
+      },
+      "IMAGE": {
+        "CHOOSE": "Choose image",
+        "REPLACE": "Replace image",
+        "SIZE_ERROR": "The image must be at most {size} MB.",
+        "UPLOAD_ERROR": "The image could not be uploaded. Try again."
       }
     },
     "SELECT_A_CONVERSATION": "Please select a conversation from left pane",

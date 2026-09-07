@@ -25,6 +25,8 @@ class MessageTemplates::HookExecutionService
     return false if conversation.tweet?
     # should not send for outbound messages
     return false unless message.incoming?
+    # a tapped CSAT flow button answers a question we asked, replying "we are closed" to it is noise
+    return false if message.csat_flow_reply?
     # prevents sending out-of-office message if an agent has sent a message in last 5 minutes
     # ensures better UX by not interrupting active conversations at the end of business hours
     return false if conversation.messages.outgoing.where(private: false).exists?(['created_at > ?', 5.minutes.ago])

@@ -1045,11 +1045,11 @@
       "FORWARD_EMAIL_NOT_CONFIGURED": "Forwarding emails to your inbox is currently disabled on this installation. To use this feature, it must be enabled by your administrator. Please get in touch with them to proceed.",
       "ALLOW_MESSAGES_AFTER_RESOLVED": "Allow messages after conversation resolved",
       "ALLOW_MESSAGES_AFTER_RESOLVED_SUB_TEXT": "Allow the end-users to send messages even after the conversation is resolved.",
-      "UNREAD_RESET_MODE": "Notification view mode",
-      "UNREAD_RESET_MODE_SUB_TEXT": "Choose when the unread message count is reset: when the conversation is opened or when an agent replies.",
+      "UNREAD_RESET_MODE": "Mark conversations as read",
+      "UNREAD_RESET_MODE_SUB_TEXT": "Choose when the unread message count is reset for this inbox: when the conversation is opened or when an agent replies.",
       "UNREAD_RESET_MODE_OPTIONS": {
-        "ON_OPEN": "When conversation is opened",
-        "ON_REPLY": "When agent replies"
+        "ON_OPEN": "Read on open",
+        "ON_REPLY": "Read on reply"
       },
       "WHATSAPP_SECTION_SUBHEADER": "This API Key is used for the integration with the WhatsApp APIs.",
       "WHATSAPP_SECTION_UPDATE_SUBHEADER": "Enter the new API key to be used for the integration with the WhatsApp APIs.",
@@ -1256,6 +1256,76 @@
       }
     },
     "CSAT": {
+      "FLOW": {
+        "MODE": {
+          "LABEL": "How the question is sent",
+          "COMPOSE": "Compose here",
+          "TEMPLATE": "Use an approved template",
+          "HELP": "Composing here only reaches the contact inside the 24h window. An approved template also reaches them outside of it."
+        },
+        "HEADER": {
+          "LABEL": "Header",
+          "PLACEHOLDER": "How was it?",
+          "HELP": "Required on WhatsApp: the message is refused without it."
+        },
+        "TITLE": "Ask before sending the survey",
+        "DESCRIPTION": "Send a question with buttons when the conversation is resolved and only send the survey to the answer you choose. Every answer is recorded on the conversation.",
+        "NOTE": "Answering the question does not reopen the conversation, unless you mark the button to reopen it.",
+        "MESSAGE": {
+          "LABEL": "Question",
+          "PLACEHOLDER": "Did you like the support you received?"
+        },
+        "FOOTER": {
+          "LABEL": "Footer (optional)",
+          "PLACEHOLDER": "Your answer helps us a lot"
+        },
+        "TEMPLATE": {
+          "PLACEHOLDER": "Select an approved template",
+          "EMPTY": "This inbox has no approved template yet. Create one on WhatsApp Manager and sync the templates."
+        },
+        "SENTIMENT": {
+          "POSITIVE": "Positive",
+          "NEGATIVE": "Negative",
+          "NEUTRAL": "Neutral"
+        },
+        "BUTTONS": {
+          "ADD": "Add button",
+          "REMOVE": "Remove button",
+          "EMPTY": "Add at least one button so the question can be answered.",
+          "REOPEN_NAMED": "Reopen the conversation when \"{title}\" is tapped",
+          "TITLE_LABEL": "Button",
+          "TITLE_PLACEHOLDER": "Yes, I liked it",
+          "TITLE_FROM_TEMPLATE": "Must match the button label declared by the approved template",
+          "SENTIMENT_LABEL": "Answer",
+          "LABEL_LABEL": "Label",
+          "NO_LABEL": "No label",
+          "REOPEN": "Reopen the conversation when this button is tapped",
+          "MAX_TITLE_HELP": "Up to 3 buttons, each with at most {maxTitleLength} characters."
+        },
+        "REPLY": {
+          "LABEL": "Reply",
+          "TYPE": {
+            "NONE": "Do nothing",
+            "CSAT_SURVEY": "Send the CSAT survey",
+            "MESSAGE": "Send a message"
+          },
+          "MESSAGE_LABEL": "Reply message",
+          "MESSAGE_PLACEHOLDER": "Thanks for letting us know!",
+          "BUTTON_TYPE_LABEL": "Buttons of the reply",
+          "BUTTON_TYPE": {
+            "NONE": "No buttons",
+            "QUICK_REPLY": "Quick reply",
+            "ACTION": "Action"
+          },
+          "ACTION": {
+            "URL": "Link",
+            "CALL": "Call",
+            "TEXT_PLACEHOLDER": "Button text",
+            "URL_PLACEHOLDER": "https://",
+            "PHONE_PLACEHOLDER": "+5511999999999"
+          }
+        }
+      },
       "TITLE": "Enable CSAT",
       "SUBTITLE": "Automatically trigger CSAT surveys at the end of conversations to understand how customers feel about their support experience. Track satisfaction trends and identify areas for improvement over time.",
       "DISPLAY_TYPE": {

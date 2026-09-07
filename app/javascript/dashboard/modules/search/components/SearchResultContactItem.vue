@@ -1,7 +1,10 @@
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { frontendURL } from 'dashboard/helper/URLHelper';
-import countries from 'shared/constants/countries';
+import countries, {
+  getLocalizedCountryName,
+} from 'shared/constants/countries';
 import { dynamicTime } from 'shared/helpers/timeHelper';
 
 import CardLayout from 'dashboard/components-next/CardLayout.vue';
@@ -43,6 +46,8 @@ const props = defineProps({
   },
 });
 
+const { locale } = useI18n();
+
 const navigateTo = computed(() => {
   return frontendURL(`accounts/${props.accountId}/contacts/${props.id}`);
 });
@@ -72,7 +77,7 @@ const countryDetails = computed(() => {
   return {
     countryCode: activeCountry.id,
     city: city ? `${city},` : null,
-    name: activeCountry.name,
+    name: getLocalizedCountryName(activeCountry.id, locale.value),
   };
 });
 

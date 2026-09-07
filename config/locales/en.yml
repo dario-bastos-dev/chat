@@ -389,6 +389,12 @@ en:
         permission_granted: '%{contact_name} accepted the call permission request.'
       csat:
         not_sent_due_to_messaging_window: 'CSAT survey not sent due to outgoing message restrictions'
+        flow_answer: 'The contact answered the satisfaction question with "%{answer}" (%{sentiment})'
+        flow_reply: 'The contact answered "%{answer}"'
+        sentiment:
+          positive: positive
+          negative: negative
+          neutral: neutral
       auto_resolve:
         not_sent_due_to_messaging_window: 'Auto-resolve message not sent due to outgoing message restrictions'
       muted: '%{user_name} has muted the conversation'

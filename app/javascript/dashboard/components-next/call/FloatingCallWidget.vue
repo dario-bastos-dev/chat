@@ -9,14 +9,18 @@ import { frontendURL, conversationUrl } from 'dashboard/helper/URLHelper';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
 import WindowVisibilityHelper from 'dashboard/helper/AudioAlerts/WindowVisibilityHelper';
+import { useI18n } from 'vue-i18n';
 import CallCard from 'dashboard/components-next/call/CallCard.vue';
-import countriesList from 'shared/constants/countries.js';
+import countriesList, {
+  getLocalizedCountryName,
+} from 'shared/constants/countries.js';
 
 const RINGTONE_URL = '/audio/dashboard/ringtone.mp3';
 
 const route = useRoute();
 const router = useRouter();
 const store = useStore();
+const { locale } = useI18n();
 
 const {
   activeCall,
@@ -106,8 +110,9 @@ const getCallInfo = call => {
   const city = additional.city || '';
   const countryCode = additional.country_code || '';
   const country =
+    (countriesList.find(c => c.id === countryCode.toUpperCase()) &&
+      getLocalizedCountryName(countryCode.toUpperCase(), locale.value)) ||
     additional.country ||
-    countriesList.find(c => c.id === countryCode.toUpperCase())?.name ||
     '';
   // Prefer the richest available location string ("City, Country"); fall back to
   // whichever single field is present; finally fall back to the inbox name so

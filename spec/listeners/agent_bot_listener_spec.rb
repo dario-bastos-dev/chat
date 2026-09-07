@@ -164,6 +164,87 @@ describe AgentBotListener do
     end
   end
 
+  describe '#conversation_updated with custom_attribute_updated category' do
+    let(:event_name) { 'conversation.updated' }
+    let(:changed_attributes) { { 'custom_attributes' => [{}, { 'priority_level' => 'vip' }] } }
+    let!(:event) { Events::Base.new(event_name, Time.zone.now, conversation: conversation, changed_attributes: changed_attributes) }
+
+    it 'sends the webhook when the general category is off but the custom attribute key matches the allow-list' do
+      create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot, event_names: ['custom_attribute_updated'],
+                               conversation_custom_attribute_keys: ['priority_level'])
+
+      expect(AgentBots::WebhookJob).to receive(:perform_later).with(
+        agent_bot.outgoing_url, hash_including(event: 'conversation_updated'), :agent_bot_webhook,
+        hash_including(secret: agent_bot.secret)
+      ).once
+      listener.conversation_updated(event)
+    end
+
+    it 'does not send the webhook when the changed key is outside the configured allow-list' do
+      create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot, event_names: ['custom_attribute_updated'],
+                               conversation_custom_attribute_keys: ['other_field'])
+
+      expect(AgentBots::WebhookJob).not_to receive(:perform_later)
+      listener.conversation_updated(event)
+    end
+
+    it 'does not send the webhook when custom_attribute_updated is not enabled and the general category is off' do
+      create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot, event_names: ['message_created'])
+
+      expect(AgentBots::WebhookJob).not_to receive(:perform_later)
+      listener.conversation_updated(event)
+    end
+  end
+
+  describe '#contact_updated' do
+    let(:event_name) { 'contact.updated' }
+    let(:contact) { conversation.contact }
+
+    context 'when custom_attributes changed' do
+      let(:changed_attributes) { { 'custom_attributes' => [{}, { 'plan' => 'pro' }] } }
+      let!(:event) { Events::Base.new(event_name, Time.zone.now, contact: contact, changed_attributes: changed_attributes) }
+
+      it 'sends the webhook when custom_attribute_updated is enabled and the key is allowed' do
+        create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot, event_names: ['custom_attribute_updated'],
+                                 contact_custom_attribute_keys: ['all'])
+
+        expect(AgentBots::WebhookJob).to receive(:perform_later).with(
+          agent_bot.outgoing_url, hash_including(event: 'contact_updated'), :agent_bot_webhook,
+          hash_including(secret: agent_bot.secret)
+        ).once
+        listener.contact_updated(event)
+      end
+
+      it 'does not send the webhook when the changed key is outside the configured allow-list' do
+        create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot, event_names: ['custom_attribute_updated'],
+                                 contact_custom_attribute_keys: ['other_field'])
+
+        expect(AgentBots::WebhookJob).not_to receive(:perform_later)
+        listener.contact_updated(event)
+      end
+
+      it 'does not send the webhook when custom_attribute_updated category is disabled' do
+        create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot, event_names: ['message_created'])
+
+        expect(AgentBots::WebhookJob).not_to receive(:perform_later)
+        listener.contact_updated(event)
+      end
+    end
+
+    context 'when an unrelated attribute changed' do
+      let(:changed_attributes) { { 'name' => %w[Old New] } }
+      let!(:event) { Events::Base.new(event_name, Time.zone.now, contact: contact, changed_attributes: changed_attributes) }
+
+      it 'does not send the webhook even when custom_attribute_updated is enabled' do
+        create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot, event_names: ['custom_attribute_updated'],
+                                 contact_custom_attribute_keys: ['all'])
+
+        expect(AgentBots::WebhookJob).not_to receive(:perform_later)
+        listener.contact_updated(event)
+      end
+    end
+  end
+
   describe '#conversation_resolved' do
     let(:event_name) { 'conversation.resolved' }
     let!(:event) { Events::Base.new(event_name, Time.zone.now, conversation: conversation) }

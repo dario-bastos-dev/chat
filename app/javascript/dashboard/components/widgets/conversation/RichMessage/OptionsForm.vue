@@ -49,6 +49,12 @@ const hasDuplicates = computed(
   () => new Set(filledOptions.value).size !== filledOptions.value.length
 );
 
+// Evolution GO answers /send/list with "footer is required", and the switch from buttons to a
+// list happens on its own past the third option, so the footer stops being optional there.
+const isMissingFooter = computed(
+  () => isList.value && footer.value.trim().length === 0
+);
+
 const isValid = computed(
   () =>
     // Evolution GO rejects the message without a header; the Cloud API ignores it.
@@ -57,7 +63,8 @@ const isValid = computed(
     body.value.length <= MAX_BODY_LENGTH &&
     filledOptions.value.length >= 1 &&
     !hasDuplicates.value &&
-    !hasTooLongOption.value
+    !hasTooLongOption.value &&
+    !isMissingFooter.value
 );
 
 const payload = computed(() => ({
@@ -123,7 +130,11 @@ watchEffect(() => emit('update', { valid: isValid.value, payload: payload.value 
 
     <label class="flex flex-col gap-1">
       <span class="text-sm font-medium text-n-slate-12">
-        {{ $t('CONVERSATION.RICH_MESSAGE.FOOTER_LABEL') }}
+        {{
+          isList
+            ? $t('CONVERSATION.RICH_MESSAGE.OPTIONS.FOOTER_LIST_LABEL')
+            : $t('CONVERSATION.RICH_MESSAGE.FOOTER_LABEL')
+        }}
       </span>
       <input
         v-model="footer"
@@ -132,6 +143,9 @@ watchEffect(() => emit('update', { valid: isValid.value, payload: payload.value 
         :maxlength="MAX_HEADER_LENGTH"
         :placeholder="$t('CONVERSATION.RICH_MESSAGE.FOOTER_PLACEHOLDER')"
       />
+      <span v-if="isMissingFooter" class="text-sm text-n-ruby-11">
+        {{ $t('CONVERSATION.RICH_MESSAGE.OPTIONS.FOOTER_LIST_ERROR') }}
+      </span>
     </label>
 
     <div class="flex flex-col gap-2">

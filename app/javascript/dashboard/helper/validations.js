@@ -114,6 +114,41 @@ export const validateConditions = conditions => {
   return errors;
 };
 
+// WhatsApp caps a reply-button label at 20 characters.
+export const BUTTON_LABEL_MAX = 20;
+
+const isHttpUrl = value => /^https?:\/\/\S+$/i.test((value || '').trim());
+
+/**
+ * A send_message object carrying `buttons` builds an interactive (input_select) message. It only
+ * sends cleanly when the body is set and every button is well formed: non-empty, unique labels
+ * within WhatsApp's 20-character limit, and either every button carries a link or none does (a
+ * mixed set breaks the Instagram button template). The header is optional (WhatsApp Lite aside, a
+ * runtime constraint the editor only hints at), so it is not checked here. Shared with the
+ * automation action editor so the inline hint and the save-time check stay in step.
+ *
+ * @param {Object} params - Resolved send_message params: { content, buttons: [{title, url?}] }.
+ * @returns {string|null} A short error code (e.g. 'BLANK_LABEL'), or null when the set is valid.
+ */
+export const getSendMessageButtonError = params => {
+  const isObject = params && typeof params === 'object';
+  const buttons = isObject ? params.buttons : null;
+  if (!Array.isArray(buttons) || buttons.length === 0) return null;
+
+  if (!params.content || !params.content.trim()) return 'MISSING_BODY';
+
+  const labels = buttons.map(button => (button.title || '').trim());
+  if (labels.some(label => !label)) return 'BLANK_LABEL';
+  if (labels.some(label => label.length > BUTTON_LABEL_MAX)) return 'LABEL_TOO_LONG';
+  if (new Set(labels).size !== labels.length) return 'DUPLICATE_LABEL';
+
+  const withUrl = buttons.filter(button => (button.url || '').trim());
+  if (withUrl.length && withUrl.length !== buttons.length) return 'MIXED';
+  if (withUrl.some(button => !isHttpUrl(button.url))) return 'INVALID_URL';
+
+  return null;
+};
+
 /**
  * Validates a single action of an automation object.
  *
@@ -148,6 +183,9 @@ const validateSingleAction = action => {
     const templateParams =
       params && typeof params === 'object' ? params.template_params : null;
     if (templateParams && !templateParams.name) {
+      return ACTION_PARAMETERS_REQUIRED;
+    }
+    if (getSendMessageButtonError(params)) {
       return ACTION_PARAMETERS_REQUIRED;
     }
   }

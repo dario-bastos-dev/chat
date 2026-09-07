@@ -1,8 +1,9 @@
 class CsatSurveyService
-  pattr_initialize [:conversation!]
+  pattr_initialize [:conversation!, :skip_flow]
 
   def perform
     return unless should_send_csat_survey?
+    return if csat_flow_takes_over?
 
     if whatsapp_channel? && template_available_and_approved?
       send_whatsapp_template_survey
@@ -21,6 +22,23 @@ class CsatSurveyService
 
   def should_send_csat_survey?
     conversation_allows_csat? && csat_enabled? && !csat_already_sent? && csat_allowed_by_survey_rules?
+  end
+
+  # The flow asks the contact whether the survey is welcome before sending it. It takes over unless
+  # the survey is being sent from the flow itself, or the question already went out on a previous
+  # resolution and simply was not answered.
+  def csat_flow_takes_over?
+    return false if skip_flow
+
+    flow = CsatFlowService.new(conversation: conversation)
+    return false unless flow.enabled?
+    return true if csat_flow_started?
+
+    flow.start
+  end
+
+  def csat_flow_started?
+    conversation.messages.where("content_attributes->>'csat_flow' = 'question'").exists?
   end
 
   def conversation_allows_csat?

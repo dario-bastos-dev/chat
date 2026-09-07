@@ -8,6 +8,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   CAPTIONABLE_TYPES = %w[image video file].freeze
   # WhatsApp renders up to three options as buttons; past that it has to be a list.
   MAX_REPLY_BUTTONS = 3
+  URL_REGEX = %r{https?://[^\s<>"']+}
+  TRAILING_PUNCTUATION = /[.,;:!?)\]]+\z/
 
   def api_base_url
     @api_base_url ||= begin
@@ -762,7 +764,26 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     location = location_attachment(message)
     return send_location_message(phone_number, message, location) if location.present?
 
+    # A message the agent wrote carrying a link goes out through /send/link, which reads the
+    # title, the description and the thumbnail off the page itself; /send/text would deliver the
+    # bare URL with no card. Restricted to plain text on purpose: input_csat appends the survey
+    # link to its own body, and that one is meant to arrive as text, not as a preview card.
+    return send_link_message(phone_number, message) if plain_text_with_link?(message)
+
     :not_rich
+  end
+
+  def plain_text_with_link?(message)
+    message.content_type == 'text' && message.attachments.empty? && detected_url(message).present?
+  end
+
+  # The WhatsApp renderer flattens `[text](url)` to the bare url before this point, so matching
+  # the scheme covers markdown links too. The first match wins: an appended agent signature sits
+  # at the end, so a link the agent actually wrote takes precedence over one in the signature.
+  def detected_url(message)
+    # A sentence usually closes right after the link, and that punctuation would travel into the
+    # URL and break the lookup on Evolution GO's side.
+    message.outgoing_content.to_s[URL_REGEX].to_s.sub(TRAILING_PUNCTUATION, '').presence
   end
 
   def link_preview(message)
@@ -794,8 +815,11 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       longitude: attachment.coordinates_long,
       delay: message_delay
     }
-    body[:name] = attachment.fallback_title if attachment.fallback_title.present?
-    body[:address] = message.content if message.content.present?
+    # Evolution GO answers /send/location with "name is required" as well as "address is required",
+    # and the form only asks for the address: a Maps link for a plain address carries no place name.
+    # The address then stands in for both, which is what WhatsApp shows anyway when a pin has no name.
+    body[:name] = attachment.fallback_title.presence || message.content
+    body[:address] = message.content
 
     quoted = quoted_context(message, recipient_jid)
     body[:quoted] = quoted if quoted.present?
@@ -805,17 +829,17 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     sent_id
   end
 
-  # A link preview rides on a normal text message: content is the text, and content_attributes
-  # carries what WhatsApp should render in the preview card.
+  # Two ways in: a link detected in the message text, or content_attributes['link_preview'] set
+  # through the API by a caller that wants to override the card the page would produce.
   def send_link_message(phone_number, message)
     recipient_jid = format_recipient_jid(phone_number)
-    preview = link_preview(message)
+    preview = link_preview(message) || {}
     reserved_id = reserve_source_id(message)
 
     body = {
       number: recipient_jid,
       id: reserved_id,
-      url: preview['url'],
+      url: preview['url'].presence || detected_url(message),
       text: message.outgoing_content.presence || preview['url'],
       delay: message_delay
     }
@@ -903,10 +927,18 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
     body = interactive_body(phone_number, message, attributes).merge(
       footer: attributes['footer'].presence,
-      buttons: items.map { |item| { type: 'reply', displayText: item['title'], id: item['value'] } }
+      buttons: items.map { |item| interactive_item_button(item) }
     )
 
     post_send('send/button', body, 'Buttons')
+  end
+
+  # An item with a `uri` (set by the automation rule builder for a link button) becomes a real
+  # URL button on Evolution GO's own /send/button schema; everything else stays a quick reply.
+  def interactive_item_button(item)
+    return { type: 'url', displayText: item['title'], url: item['uri'] } if item['uri'].present?
+
+    { type: 'reply', displayText: item['title'], id: item['value'] }
   end
 
   # Call-to-action and Pix buttons. The endpoint is the same one the reply buttons use, but the
@@ -947,11 +979,18 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
     body = interactive_body(phone_number, message, attributes).merge(
       footerText: attributes['footer'].presence,
-      buttonText: I18n.t('conversations.messages.whatsapp.list_button_label'),
+      buttonText: list_button_label,
       sections: [{ rows: rows }]
     )
 
     post_send('send/list', body, 'List')
+  end
+
+  # The label the contact taps to open the list. The send runs in a background job, where
+  # I18n.locale is still the default, so the account's language has to be named explicitly or
+  # every list goes out in English.
+  def list_button_label
+    I18n.t('conversations.messages.whatsapp.list_button_label', locale: whatsapp_channel.account.locale)
   end
 
   # description carries the message body and title the header above it. EvoGO rejects the send

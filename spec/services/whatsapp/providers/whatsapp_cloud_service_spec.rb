@@ -193,6 +193,45 @@ describe Whatsapp::Providers::WhatsappCloudService do
           ).to_return(status: 200, body: whatsapp_response.to_json, headers: response_headers)
         expect(service.send_message('+123456789', message)).to eq 'message_id'
       end
+
+      it 'sends a cta_url payload when the single item carries a link' do
+        message = create(:message, message_type: :outgoing, content: 'Rate us', inbox: whatsapp_channel.inbox,
+                                   content_type: 'input_select',
+                                   content_attributes: { items: [{ title: 'Open Google', value: 'Open Google', uri: 'https://g.co/x' }] })
+        stub_request(:post, 'https://graph.facebook.com/v13.0/123456789/messages')
+          .with(
+            body: {
+              messaging_product: 'whatsapp', to: '+123456789',
+              interactive: {
+                type: 'cta_url',
+                body: { text: 'Rate us' },
+                action: '{"name":"cta_url","parameters":{"display_text":"Open Google","url":"https://g.co/x"}}'
+              }, type: 'interactive'
+            }.to_json
+          ).to_return(status: 200, body: whatsapp_response.to_json, headers: response_headers)
+        expect(service.send_message('+123456789', message)).to eq 'message_id'
+      end
+
+      it 'keeps the first link as the cta_url button and folds the rest into the body' do
+        message = create(:message, message_type: :outgoing, content: 'Rate us', inbox: whatsapp_channel.inbox,
+                                   content_type: 'input_select',
+                                   content_attributes: { items: [
+                                     { title: 'Google', value: 'Google', uri: 'https://g.co/x' },
+                                     { title: 'Site', value: 'Site', uri: 'https://example.com' }
+                                   ] })
+        stub_request(:post, 'https://graph.facebook.com/v13.0/123456789/messages')
+          .with(
+            body: {
+              messaging_product: 'whatsapp', to: '+123456789',
+              interactive: {
+                type: 'cta_url',
+                body: { text: "Rate us\n\nSite: https://example.com" },
+                action: '{"name":"cta_url","parameters":{"display_text":"Google","url":"https://g.co/x"}}'
+              }, type: 'interactive'
+            }.to_json
+          ).to_return(status: 200, body: whatsapp_response.to_json, headers: response_headers)
+        expect(service.send_message('+123456789', message)).to eq 'message_id'
+      end
     end
   end
 

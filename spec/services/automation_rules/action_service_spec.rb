@@ -75,6 +75,73 @@ RSpec.describe AutomationRules::ActionService do
       end
     end
 
+    describe '#perform with send_message action carrying buttons' do
+      let(:last_message) { conversation.reload.messages.where(message_type: :outgoing).last }
+
+      it 'creates an input_select message with quick reply items and the header' do
+        rule = create(:automation_rule, account: account,
+                                        actions: [{ action_name: 'send_message',
+                                                    action_params: [{ content: 'Pick one', title: 'Header',
+                                                                      buttons: [{ title: 'Yes' }, { title: 'No' }] }] }])
+        described_class.new(rule, account, conversation).perform
+
+        expect(last_message.content_type).to eq('input_select')
+        expect(last_message.content).to eq('Pick one')
+        expect(last_message.content_attributes['title']).to eq('Header')
+        expect(last_message.content_attributes['items']).to eq(
+          [{ 'title' => 'Yes', 'value' => 'Yes' }, { 'title' => 'No', 'value' => 'No' }]
+        )
+      end
+
+      it 'keeps the uri on every item when all buttons carry a link' do
+        rule = create(:automation_rule, account: account,
+                                        actions: [{ action_name: 'send_message',
+                                                    action_params: [{ content: 'Links', title: 'Header',
+                                                                      buttons: [{ title: 'A', url: 'https://a.test/x' },
+                                                                                { title: 'B', url: 'https://b.test/y' }] }] }])
+        described_class.new(rule, account, conversation).perform
+
+        expect(last_message.content_attributes['items']).to eq(
+          [{ 'title' => 'A', 'value' => 'A', 'uri' => 'https://a.test/x' },
+           { 'title' => 'B', 'value' => 'B', 'uri' => 'https://b.test/y' }]
+        )
+      end
+
+      it 'drops the uri from every item when only some buttons carry a link' do
+        rule = create(:automation_rule, account: account,
+                                        actions: [{ action_name: 'send_message',
+                                                    action_params: [{ content: 'Mixed', title: 'Header',
+                                                                      buttons: [{ title: 'A', url: 'https://a.test/x' },
+                                                                                { title: 'B' }] }] }])
+        described_class.new(rule, account, conversation).perform
+
+        expect(last_message.content_attributes['items']).to eq(
+          [{ 'title' => 'A', 'value' => 'A' }, { 'title' => 'B', 'value' => 'B' }]
+        )
+      end
+
+      it 'ignores a url that is not http(s)' do
+        rule = create(:automation_rule, account: account,
+                                        actions: [{ action_name: 'send_message',
+                                                    action_params: [{ content: 'Body', title: 'Header',
+                                                                      buttons: [{ title: 'A', url: 'javascript:alert(1)' }] }] }])
+        described_class.new(rule, account, conversation).perform
+
+        expect(last_message.content_attributes['items']).to eq([{ 'title' => 'A', 'value' => 'A' }])
+      end
+
+      it 'falls back to a plain text message when every label is blank' do
+        rule = create(:automation_rule, account: account,
+                                        actions: [{ action_name: 'send_message',
+                                                    action_params: [{ content: 'Just text', title: 'Header',
+                                                                      buttons: [{ title: '  ', url: '' }] }] }])
+        described_class.new(rule, account, conversation).perform
+
+        expect(last_message.content_type).to eq('text')
+        expect(last_message.content).to eq('Just text')
+      end
+    end
+
     describe '#perform with send_email_to_team action' do
       let!(:team) { create(:team, account: account) }
 

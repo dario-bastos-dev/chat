@@ -152,7 +152,9 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
   end
 
   describe 'attachments' do
-    let(:info) { super().merge('Type' => 'media', 'MediaType' => 'image') }
+    # Unique id per example: the dedup lock lives in a pooled MockRedis that is not reset between
+    # examples, so a shared source_id can make a later perform a no-op.
+    let(:info) { super().merge('Type' => 'media', 'MediaType' => 'image', 'ID' => "wamid-media-#{SecureRandom.hex(4)}") }
     let(:message_body) do
       {
         'imageMessage' => { 'mimetype' => 'image/jpeg', 'caption' => 'look' },
@@ -161,12 +163,114 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
       }
     end
 
-    it 'creates the message immediately and fetches the media out of band' do
-      expect { service.perform }
-        .to change(Message, :count).by(1)
-        .and have_enqueued_job(Webhooks::EvolutionGoMediaJob)
+    let(:downloaded_tempfile) do
+      file = Tempfile.new(['evolution-go-media', '.jpg'])
+      file.binmode
+      file.write('FAKE_IMAGE_BYTES')
+      file.rewind
+      file
+    end
 
-      expect(inbox.messages.last.content).to eq('look')
+    # SafeFetch closes and unlinks its tempfile as soon as the block returns, so the stub does the
+    # same. An implementation that only reads the io later (at save! time) has to fail here exactly
+    # as it does in production.
+    before do
+      allow(SafeFetch).to receive(:fetch)
+        .with('https://example.com/media/file.jpg', validate_content_type: false, allow_private_network: true) do |_url, **_opts, &block|
+          block.call(SafeFetch::Result.new(tempfile: downloaded_tempfile, filename: 'file.jpg', content_type: 'image/jpeg'))
+        ensure
+          downloaded_tempfile.close!
+        end
+    end
+
+    it 'downloads the media and creates the message with the attachment' do
+      expect { service.perform }.to change(Message, :count).by(1)
+
+      message = inbox.messages.last
+      expect(message.content).to eq('look')
+      expect(message.attachments.count).to eq(1)
+      expect(message.attachments.first.file_type).to eq('image')
+      expect(message.attachments.first.file.download).to eq('FAKE_IMAGE_BYTES')
+    end
+
+    it 'sends the attachment in the message_created payload to the bot' do
+      create(:agent_bot_inbox, inbox: inbox, agent_bot: create(:agent_bot, outgoing_url: 'http://bot.test/hook'))
+
+      payloads = []
+      allow(AgentBots::WebhookJob).to receive(:perform_later) { |_url, payload, *_rest, **_opts| payloads << payload }
+
+      service.perform
+
+      created = payloads.find { |payload| payload[:event] == 'message_created' }
+      expect(created).to be_present
+      expect(created[:attachments]).to be_present
+      expect(created[:attachments].first[:file_type]).to eq('image')
+    end
+
+    it 'still creates the message when the download fails but a caption is present' do
+      allow(SafeFetch).to receive(:fetch).and_raise(SafeFetch::FetchError, 'boom')
+
+      expect { service.perform }.to change(Message, :count).by(1)
+
+      message = inbox.messages.last
+      expect(message.content).to eq('look')
+      expect(message.attachments).to be_empty
+    end
+
+    context 'when the download fails and there is no caption' do
+      let(:message_body) do
+        { 'imageMessage' => { 'mimetype' => 'image/jpeg' }, 'mediaUrl' => 'https://example.com/media/file.jpg' }
+      end
+
+      it 'raises so the dedup lock is dropped and the fetch is retried' do
+        allow(SafeFetch).to receive(:fetch).and_raise(SafeFetch::FetchError, 'boom')
+
+        expect { service.perform }.to raise_error(SafeFetch::FetchError)
+        expect(Message.count).to eq(0)
+      end
+    end
+
+    context 'when the payload carries inline base64' do
+      let(:message_body) do
+        {
+          'imageMessage' => { 'mimetype' => 'image/jpeg', 'caption' => 'look' },
+          'base64' => Base64.encode64('FAKE_IMAGE_BYTES'),
+          'mimetype' => 'image/jpeg'
+        }
+      end
+
+      it 'attaches the decoded file without hitting the network' do
+        expect(SafeFetch).not_to receive(:fetch)
+
+        expect { service.perform }.to change(Message, :count).by(1)
+        expect(inbox.messages.last.attachments.count).to eq(1)
+      end
+    end
+
+    context 'when EVOLUTIONGO_MEDIA_HOSTS does not include the media host' do
+      around do |example|
+        with_modified_env(EVOLUTIONGO_MEDIA_HOSTS: 'minio.internal,cdn.evogo.test') { example.run }
+      end
+
+      it 'skips the download and keeps the caption-only message' do
+        expect(SafeFetch).not_to receive(:fetch)
+
+        expect { service.perform }.to change(Message, :count).by(1)
+
+        message = inbox.messages.last
+        expect(message.content).to eq('look')
+        expect(message.attachments).to be_empty
+      end
+
+      context 'and the message has no caption' do
+        let(:message_body) do
+          { 'imageMessage' => { 'mimetype' => 'image/jpeg' }, 'mediaUrl' => 'https://example.com/media/file.jpg' }
+        end
+
+        it 'does not persist a blank bubble' do
+          expect { service.perform }.not_to change(Message, :count)
+        end
+      end
     end
   end
 

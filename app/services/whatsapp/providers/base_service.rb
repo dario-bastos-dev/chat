@@ -97,11 +97,27 @@ class Whatsapp::Providers::BaseService
   end
 
   def create_payload_based_on_items(message)
-    if message.content_attributes['items'].length <= 3
+    items = message.content_attributes['items']
+    link_items = items.select { |item| item['uri'].present? }
+
+    return create_cta_url_payload(message, link_items) if link_items.any?
+
+    if items.length <= 3
       create_button_payload(message)
     else
       create_list_payload(message)
     end
+  end
+
+  # WhatsApp's interactive `cta_url` type renders a single link button. The automation action forces
+  # an all-link set whenever any button carries a URL, so any extra links (which `cta_url` cannot
+  # show) are appended to the body as tappable text rather than dropped. A mixed set is only
+  # reachable through the API; its reply-only items have no place in a cta_url message and are left out.
+  def create_cta_url_payload(message, link_items)
+    primary, *extra = link_items
+    body = [message.outgoing_content.presence, *extra.map { |item| "#{item['title']}: #{item['uri']}" }].compact.join("\n\n")
+    action = { name: 'cta_url', parameters: { display_text: primary['title'], url: primary['uri'] } }
+    create_payload('cta_url', body, JSON.generate(action))
   end
 
   def create_button_payload(message)

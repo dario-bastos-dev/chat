@@ -9,6 +9,7 @@ import { ALLOWED_FILE_TYPES } from 'shared/constants/messages';
 import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
 import FileUpload from 'vue-upload-component';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import WhatsAppOptions from './WhatsAppOptions.vue';
 import ContentTemplateSelector from './ContentTemplateSelector.vue';
 
@@ -41,6 +42,11 @@ const emit = defineEmits([
   'removeSignature',
   'attachFile',
 ]);
+
+const assignToMe = defineModel('assignToMe', {
+  type: Boolean,
+  default: true,
+});
 
 const { t } = useI18n();
 
@@ -253,6 +259,13 @@ useEventListener(document, 'paste', onPaste);
         class="!w-10"
         @click="toggleMessageSignature"
       />
+      <label
+        v-if="hasSelectedInbox"
+        class="flex gap-1.5 items-center text-xs font-medium cursor-pointer select-none text-n-slate-11"
+      >
+        <Checkbox v-model="assignToMe" />
+        {{ t('COMPOSE_NEW_CONVERSATION.FORM.ACTION_BUTTONS.ASSIGN_TO_ME') }}
+      </label>
     </div>
 
     <div class="flex gap-2 items-center">

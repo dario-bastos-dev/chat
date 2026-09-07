@@ -444,6 +444,20 @@ export default {
       },
       immediate: true,
     },
+    // The health request is only fired from the `inbox` watcher, which runs
+    // before the inbox record is in the store on a full page load and never
+    // again when the tab is opened via in-app navigation. Fetch on demand the
+    // first time the Account Health tab becomes active.
+    selectedTabKey(key) {
+      if (
+        key === 'whatsapp-health' &&
+        !this.healthData &&
+        !this.healthError &&
+        !this.isLoadingHealth
+      ) {
+        this.fetchHealthData();
+      }
+    },
   },
   mounted() {
     this.fetchSharedData();
@@ -1315,6 +1329,31 @@ export default {
                   />
                 </template>
               </SettingsToggleSection>
+
+              <SettingsFieldSection
+                :label="$t('INBOX_MGMT.SETTINGS_POPUP.UNREAD_RESET_MODE')"
+                :help-text="
+                  $t('INBOX_MGMT.SETTINGS_POPUP.UNREAD_RESET_MODE_SUB_TEXT')
+                "
+              >
+                <SelectInput
+                  v-model="unreadResetMode"
+                  :options="[
+                    {
+                      value: 'on_open',
+                      label: $t(
+                        'INBOX_MGMT.SETTINGS_POPUP.UNREAD_RESET_MODE_OPTIONS.ON_OPEN'
+                      ),
+                    },
+                    {
+                      value: 'on_reply',
+                      label: $t(
+                        'INBOX_MGMT.SETTINGS_POPUP.UNREAD_RESET_MODE_OPTIONS.ON_REPLY'
+                      ),
+                    },
+                  ]"
+                />
+              </SettingsFieldSection>
 
               <SettingsToggleSection
                 v-if="isAWebWidgetInbox"

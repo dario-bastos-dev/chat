@@ -160,7 +160,24 @@
       },
       "TEMPLATE_INBOX_PLACEHOLDER": "Select the inbox with the template",
       "TEMPLATE_PLACEHOLDER": "Select a template",
-      "NO_TEMPLATE_INBOX": "No WhatsApp inbox has approved templates yet."
+      "NO_TEMPLATE_INBOX": "No WhatsApp inbox has approved templates yet.",
+      "BUTTONS": {
+        "LABEL": "Buttons",
+        "ADD": "Add button",
+        "HINT": "Add up to 3 buttons for WhatsApp and Instagram. Leave every URL empty for quick reply buttons, or fill in every URL for link buttons.",
+        "HEADER_PLACEHOLDER": "Header (shown above the message)",
+        "HEADER_HINT": "The header is optional. For WhatsApp Lite connections it must be filled in.",
+        "TITLE_PLACEHOLDER": "Button label",
+        "URL_PLACEHOLDER": "https://example.com (optional)",
+        "ERRORS": {
+          "MISSING_BODY": "Add a message before the buttons.",
+          "BLANK_LABEL": "Every button needs a label.",
+          "LABEL_TOO_LONG": "Button labels must be 20 characters or fewer.",
+          "DUPLICATE_LABEL": "Button labels must be unique.",
+          "MIXED": "Either every button has a link, or none does.",
+          "INVALID_URL": "Button links must start with http:// or https://."
+        }
+      }
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Activate Automation Rule",
@@ -260,6 +277,7 @@
       "TEAM_NAME": "Team",
       "PRIORITY": "Priority",
       "LABELS": "Labels",
+      "IS_FIRST_MESSAGE": "Is First Message",
       "HAS_ACTIVE_DEAL": "Has Active Deal",
       "DEAL_STAGE_ID": "Deal Stage",
       "DEAL_LABELS": "Deal Label"

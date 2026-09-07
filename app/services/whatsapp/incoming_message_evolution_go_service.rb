@@ -544,7 +544,29 @@ class Whatsapp::IncomingMessageEvolutionGoService
 
   # --- Conversation management ---
 
+  # Arbitrary namespace for the advisory lock below, so a contact_inbox id cannot collide
+  # with a lock taken elsewhere for an unrelated record that happens to share the id.
+  CONVERSATION_LOCK_NAMESPACE = 8_251
+
+  # A message from the contact and the echo of a reply sent from the phone itself arrive as two
+  # concurrent webhooks. Both looked for an open conversation, neither found one because the
+  # other had not committed yet, and each created its own.
+  #
+  # The lock is taken on the resolved contact_inbox, never on anything read straight from the
+  # payload: EvoGO addresses the same chat by phone JID in one webhook and by LID in the other,
+  # so only the record this service has already resolved is a stable key. pg_advisory_xact_lock
+  # waits instead of failing and is released when the transaction ends, so the second worker
+  # simply finds the conversation the first one created.
   def set_conversation
+    Conversation.transaction do
+      Conversation.connection.execute(
+        "SELECT pg_advisory_xact_lock(#{CONVERSATION_LOCK_NAMESPACE}, #{@contact_inbox.id.to_i})"
+      )
+      assign_conversation
+    end
+  end
+
+  def assign_conversation
     # 1. Tenta buscar conversa ativa no ContactInbox específico
     @conversation = if inbox.lock_to_single_conversation
                       @contact_inbox.conversations.last
@@ -586,27 +608,36 @@ class Whatsapp::IncomingMessageEvolutionGoService
       return
     end
 
-    attrs = {
+    @message = @conversation.messages.new(message_attributes)
+
+    # Attachments are built on the unsaved message so the single save! below commits them in the
+    # same transaction. message_created is dispatched from that commit, so the bot and every other
+    # webhook consumer receive the payload with attachments already populated.
+    attach_location
+    attach_media
+
+    # renderable_message? vouched for the inbound payload; this guards the result. A media message
+    # whose file never materialised (blocked host, missing URL) and that carries no text would
+    # otherwise persist as a blank bubble.
+    if @message.content.blank? && @message.attachments.empty?
+      Rails.logger.info "[EVOLUTION_GO MSG] Skipping message #{message_id}: no text and media unavailable"
+      return
+    end
+
+    @message.save!
+  end
+
+  def message_attributes
+    {
       account_id: inbox.account_id,
       inbox_id: inbox.id,
       content: text_content,
       source_id: message_id,
       created_at: message_timestamp,
-      content_attributes: message_content_attributes
+      content_attributes: message_content_attributes,
+      message_type: from_me? ? :outgoing : :incoming,
+      sender: from_me? ? @conversation.assignee : @contact
     }
-
-    if from_me?
-      attrs[:message_type] = :outgoing
-      attrs[:sender] = @conversation.assignee
-    else
-      attrs[:message_type] = :incoming
-      attrs[:sender] = @contact
-    end
-
-    @message = @conversation.messages.create!(attrs)
-
-    attach_location
-    enqueue_attachment_fetch
   end
 
   # Build content_attributes hash, including in_reply_to if present.
@@ -651,14 +682,13 @@ class Whatsapp::IncomingMessageEvolutionGoService
   # - Media data is in imageMessage, audioMessage, videoMessage, documentMessage
   # - mediaUrl points to MinIO bucket
 
-  # A location is a set of coordinates, not a file, so it is stored inline instead of going
-  # through the media job. LocationBubble only renders when the message carries no text, so the
-  # place name goes on fallback_title rather than into content.
+  # A location is a set of coordinates, not a file. LocationBubble only renders when the message
+  # carries no text, so the place name goes on fallback_title rather than into content.
   def attach_location
     location = location_params
     return if location.blank?
 
-    @message.attachments.create!(
+    @message.attachments.new(
       account_id: @message.account_id,
       file_type: :location,
       coordinates_lat: location['degreesLatitude'],
@@ -668,23 +698,70 @@ class Whatsapp::IncomingMessageEvolutionGoService
     )
   end
 
-  # Downloading here would hold a high-queue worker for the length of the transfer, so the
-  # message lands first and the media is fetched out of band, as the Evolution channel does.
-  def enqueue_attachment_fetch
+  # EvoGO returns media inline as base64 and only fills mediaUrl when it has storage of its own.
+  # The URL inside imageMessage/audioMessage is WhatsApp's CDN, which serves the file still
+  # AES-encrypted, so it is never a usable source here. The attachment is built on the unsaved
+  # message so message_created is dispatched with the file already in place.
+  def attach_media
     media_payload = detect_media
     return unless media_payload
 
     type, data = media_payload
-
+    file_type = map_file_type(type)
     mimetype = message_params['mimetype'] || data['mimetype']
     filename = data['fileName'] || generate_filename(type, mimetype)
 
-    # Prefer MinIO URL (mediaUrl) over WhatsApp CDN (data URL)
-    url = message_params['mediaUrl'].presence || data['URL'] || data['url']
-    return if url.blank?
+    if message_params['base64'].present?
+      build_attachment(file_type, StringIO.new(Base64.decode64(message_params['base64'])), filename, mimetype)
+    else
+      download_media(file_type, filename, mimetype)
+    end
+  end
 
-    Webhooks::EvolutionGoMediaJob.perform_later(
-      @message.id, url, map_file_type(type).to_s, filename, mimetype
+  # mediaUrl points at EvoGO's own MinIO on the internal network, so allow_private_network is
+  # needed to get past the SSRF IP filter for that hop.
+  def download_media(file_type, filename, mimetype)
+    url = message_params['mediaUrl'].presence
+    return if url.blank? || media_host_blocked?(url)
+
+    SafeFetch.fetch(url, validate_content_type: false, allow_private_network: true) do |result|
+      # SafeFetch unlinks its tempfile the moment this block returns, but ActiveStorage only
+      # uploads the blob in the after_commit fired by the save! below. Reading the bytes here
+      # keeps the payload alive until then; without it the row commits and the upload dies with
+      # Errno::ENOENT, leaving an attachment whose file was never stored.
+      io = StringIO.new(result.tempfile.read)
+      build_attachment(file_type, io, filename, mimetype.presence || result.content_type)
+    end
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO MSG] Media fetch failed for #{message_id}: #{e.class}"
+    # A caption keeps the bubble renderable, so the message is still worth saving. With nothing
+    # else to show, re-raise: the dedup lock is dropped and Sidekiq retries the fetch rather
+    # than persisting an empty bubble.
+    raise if text_content.blank?
+  end
+
+  # allow_private_network turns off the SSRF IP filter for the MinIO hop, so when
+  # EVOLUTIONGO_MEDIA_HOSTS is set it is the only thing stopping a misbehaving relay from
+  # pointing mediaUrl at an internal address. Unset means no restriction (current behaviour).
+  def media_host_blocked?(url)
+    allowed = ENV.fetch('EVOLUTIONGO_MEDIA_HOSTS', '').split(',').map(&:strip).compact_blank
+    return false if allowed.empty?
+
+    host = URI.parse(url).host
+    return false if allowed.include?(host)
+
+    Rails.logger.warn "[EVOLUTION_GO MSG] Media host not in EVOLUTIONGO_MEDIA_HOSTS: #{host.inspect}"
+    true
+  rescue URI::InvalidURIError
+    true
+  end
+
+  def build_attachment(file_type, io, filename, content_type)
+    attachment = @message.attachments.new(account_id: @message.account_id, file_type: file_type)
+    attachment.file.attach(
+      io: io,
+      filename: filename,
+      content_type: content_type.presence || 'application/octet-stream'
     )
   end
 

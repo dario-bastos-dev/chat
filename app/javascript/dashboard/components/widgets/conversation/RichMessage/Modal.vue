@@ -6,14 +6,14 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 
 import OptionsForm from './OptionsForm.vue';
 import LocationForm from './LocationForm.vue';
-import LinkForm from './LinkForm.vue';
 import CarouselForm from './CarouselForm.vue';
 import ButtonsForm from './ButtonsForm.vue';
 
 const props = defineProps({
   show: { type: Boolean, default: false },
-  // Only Evolution GO exposes the location, link and carousel endpoints; the Cloud API and the
-  // unofficial default provider are limited to reply buttons and lists.
+  // Only Evolution GO exposes the carousel endpoint; the Cloud API and the unofficial default
+  // provider are limited to reply buttons, lists and a native location message. A link needs no
+  // form of its own: the service spots one in the message text and routes it to /send/link.
   availableTypes: { type: Array, default: () => ['options'] },
 });
 
@@ -23,7 +23,6 @@ const FORMS = {
   options: OptionsForm,
   buttons: ButtonsForm,
   location: LocationForm,
-  link: LinkForm,
   carousel: CarouselForm,
 };
 
@@ -31,7 +30,6 @@ const TYPE_ICONS = {
   options: 'i-lucide-list-checks',
   buttons: 'i-lucide-mouse-pointer-click',
   location: 'i-lucide-map-pin',
-  link: 'i-lucide-link',
   carousel: 'i-lucide-gallery-horizontal-end',
 };
 

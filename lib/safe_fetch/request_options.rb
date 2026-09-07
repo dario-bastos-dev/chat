@@ -31,6 +31,9 @@ class SafeFetch::RequestOptions
     @allowed_content_type_prefixes = Array(config[:allowed_content_type_prefixes])
     @allowed_content_types = Array(config[:allowed_content_types])
     @validate_content_type = config[:validate_content_type]
+    # Defaults to the global switch; a caller that already knows the host is an internal service
+    # of this deployment can opt in without lowering the guard for every other caller.
+    @allow_private_network = options.fetch(:allow_private_network) { SafeFetch.allow_private_network? }
   end
 
   def effective_max_bytes
@@ -53,6 +56,10 @@ class SafeFetch::RequestOptions
 
   def validate_content_type?
     @validate_content_type
+  end
+
+  def allow_private_network?
+    @allow_private_network
   end
 
   def resolver

@@ -32,11 +32,15 @@ class AgentBotListener < BaseListener
 
   def conversation_updated(event)
     conversation = extract_conversation_and_account(event)[0]
-    changed_attributes = extract_changed_attributes(event)
     inbox = conversation.inbox
     event_name = __method__.to_s
-    return unless event_enabled_for_inbox?(inbox, event_name)
+    agent_bot_inbox = inbox.agent_bot_inbox
 
+    general_update_enabled = event_enabled_for_inbox?(inbox, event_name)
+    custom_attribute_match = custom_attribute_category_matches?(agent_bot_inbox, :conversation, event)
+    return unless general_update_enabled || custom_attribute_match
+
+    changed_attributes = extract_changed_attributes(event)
     payload = conversation.webhook_data.merge(event: event_name, changed_attributes: changed_attributes)
     agent_bots_for(inbox, conversation).each { |agent_bot| process_webhook_bot_event(agent_bot, payload) }
   end
@@ -63,6 +67,23 @@ class AgentBotListener < BaseListener
     agent_bots_for(inbox, message.conversation).each { |agent_bot| process_message_event(method_name, agent_bot, message, event) }
   end
 
+  def contact_updated(event)
+    # contact_updated fires on every contact save (name, avatar, last_seen, etc.), most of
+    # which never touch custom_attributes. Bail out before querying inboxes for the common case.
+    changed_keys = changed_custom_attribute_keys(event)
+    return if changed_keys.empty?
+
+    contact = extract_contact_and_account(event)[0]
+    changed_attributes = extract_changed_attributes(event)
+
+    contact.inboxes.distinct.each do |inbox|
+      next unless custom_attribute_notifiable?(inbox.agent_bot_inbox, :contact, changed_keys)
+
+      payload = contact.webhook_data.merge(event: __method__.to_s, changed_attributes: changed_attributes)
+      agent_bots_for(inbox).each { |agent_bot| process_webhook_bot_event(agent_bot, payload) }
+    end
+  end
+
   def webwidget_triggered(event)
     contact_inbox = event.data[:contact_inbox]
     inbox = contact_inbox.inbox
@@ -81,6 +102,29 @@ class AgentBotListener < BaseListener
     return true unless agent_bot_inbox&.active?
 
     agent_bot_inbox.event_enabled?(event_name)
+  end
+
+  # Gates conversation_updated/contact_updated on the `custom_attribute_updated` category:
+  # only true when that category is enabled AND at least one of the custom attribute keys
+  # that actually changed is covered by the bot's configured key list (or "all").
+  def custom_attribute_category_matches?(agent_bot_inbox, model, event)
+    custom_attribute_notifiable?(agent_bot_inbox, model, changed_custom_attribute_keys(event))
+  end
+
+  def custom_attribute_notifiable?(agent_bot_inbox, model, changed_keys)
+    return false unless agent_bot_inbox&.active?
+    return false unless agent_bot_inbox.custom_attribute_event_enabled?
+
+    agent_bot_inbox.notify_for_custom_attribute?(model, changed_keys)
+  end
+
+  def changed_custom_attribute_keys(event)
+    previous_value, current_value = event.data[:changed_attributes]&.dig('custom_attributes')
+    return [] if previous_value.blank? && current_value.blank?
+
+    previous_value = previous_value.presence || {}
+    current_value = current_value.presence || {}
+    (previous_value.keys | current_value.keys).reject { |key| previous_value[key] == current_value[key] }
   end
 
   def agent_bots_for(inbox, conversation = nil)

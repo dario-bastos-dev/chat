@@ -4,8 +4,6 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   before_action :fetch_agent_bot, only: [:set_agent_bot]
   # we are already handling the authorization in fetch inbox
   before_action :check_authorization, except: [:show]
-  before_action :validate_whatsapp_cloud_channel, only: [:health]
-
 
   include Api::V1::Accounts::Concerns::WhatsappHealthManagement
   include Api::V1::Accounts::Concerns::WhatsappProfileManagement
@@ -72,9 +70,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     if @agent_bot
       agent_bot_inbox = @inbox.agent_bot_inbox || AgentBotInbox.new(inbox: @inbox)
       agent_bot_inbox.agent_bot = @agent_bot
-      agent_bot_inbox.initial_conversation_status = params[:initial_conversation_status] if params[:initial_conversation_status].present?
-      # `.key?` (not `.present?`): an explicit empty array means "disable all bot events" and must be persisted, not dropped.
-      agent_bot_inbox.event_names = params[:event_names] if params.key?(:event_names)
+      assign_agent_bot_inbox_config(agent_bot_inbox)
       agent_bot_inbox.save!
     elsif @inbox.agent_bot_inbox.present?
       @inbox.agent_bot_inbox.destroy!
@@ -93,22 +89,8 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     render status: :ok, json: { message: I18n.t('messages.inbox_deletetion_response') }
   end
 
-  def sync_templates
-    return render status: :unprocessable_entity, json: { error: 'Template sync is only available for WhatsApp channels' } unless whatsapp_channel?
-
-    trigger_template_sync
-    render status: :ok, json: { message: 'Template sync initiated successfully' }
-  rescue StandardError => e
-    render status: :internal_server_error, json: { error: e.message }
-  end
-
-  def health
-    health_data = Whatsapp::HealthService.new(@inbox.channel).fetch_health_status
-    render json: health_data
-  rescue StandardError => e
-    Rails.logger.error "[INBOX HEALTH] Error fetching health data: #{e.message}"
-    render json: { error: e.message }, status: :unprocessable_entity
-  end
+  # `sync_templates`, `health` and `message_templates` actions are provided by
+  # Api::V1::Accounts::Concerns::WhatsappHealthManagement.
 
   def evolution_qrcode
     Rails.logger.info "[EVOLUTION CONTROLLER] === QR CODE REQUEST ==="
@@ -321,6 +303,18 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     @agent_bot = AgentBot.accessible_to(Current.account).find(params[:agent_bot]) if params[:agent_bot]
   end
 
+  AGENT_BOT_INBOX_CONFIG_PARAMS = %i[
+    initial_conversation_status event_names conversation_custom_attribute_keys contact_custom_attribute_keys
+  ].freeze
+
+  def assign_agent_bot_inbox_config(agent_bot_inbox)
+    AGENT_BOT_INBOX_CONFIG_PARAMS.each do |key|
+      # `.key?` (not `.present?`): an explicit empty value (e.g. no events, no custom fields)
+      # means "clear this setting" and must be persisted, not silently dropped.
+      agent_bot_inbox.public_send(:"#{key}=", params[key]) if params.key?(key)
+    end
+  end
+
   def create_channel
     return unless allowed_channel_types.include?(permitted_params[:channel][:type])
 
@@ -379,6 +373,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
       'button_text' => config['button_text'] || 'Please rate us',
       'language' => config['language'] || 'en'
     }
+    formatted['flow'] = config['flow'].to_h if config['flow'].present?
     format_template_config(config, formatted)
     formatted
   end
@@ -421,7 +416,8 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
      :lock_to_single_conversation, :portal_id, :sender_name_type, :business_name, :unread_reset_mode,
      { greeting_items: [:title, :value, :uri] },
      { csat_config: [:display_type, :message, :button_text, :language,
-                     { survey_rules: [:operator, { values: [] }],
+                     { flow: {},
+                       survey_rules: [:operator, { values: [] }],
                        template: [:name, :template_id, :friendly_name, :content_sid, :approval_sid, :created_at, :language, :status] }] }]
   end
 
@@ -446,9 +442,6 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   def get_channel_attributes(channel_type)
     channel_type.constantize.const_defined?(:EDITABLE_ATTRS) ? channel_type.constantize::EDITABLE_ATTRS.presence : []
   end
-  def whatsapp_channel?
-    @inbox.whatsapp? || (@inbox.twilio? && @inbox.channel.whatsapp?)
-  end
 
   def evolution_channel?
     @inbox&.channel.is_a?(Channel::Whatsapp) && @inbox.channel&.provider == 'evolution'
@@ -456,14 +449,6 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
 
   def evolution_go_channel?
     @inbox&.channel.is_a?(Channel::Whatsapp) && @inbox.channel&.provider == 'evolution_go'
-  end
-
-  def trigger_template_sync
-    if @inbox.whatsapp?
-      Channels::Whatsapp::TemplatesSyncJob.perform_later(@inbox.channel)
-    elsif @inbox.twilio? && @inbox.channel.whatsapp?
-      Channels::Twilio::TemplatesSyncJob.perform_later(@inbox.channel)
-    end
   end
 end
 

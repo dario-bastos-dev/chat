@@ -70,6 +70,10 @@ class AutomationRules::ConditionsFilterService < FilterService
       result = evaluate_crm_condition(query_hash)
       query_operator = query_hash['query_operator'] || 'AND'
       @query_string += " #{result ? '1=1' : '1=0'} #{query_operator} "
+    elsif query_hash['attribute_key'] == 'is_first_message'
+      result = evaluate_is_first_message_condition(query_hash)
+      query_operator = query_hash['query_operator'] || 'AND'
+      @query_string += " #{result ? '1=1' : '1=0'} #{query_operator} "
     elsif definition&.attribute_model == 'deal_attribute'
       result = evaluate_deal_custom_attribute(query_hash, definition)
       query_operator = query_hash['query_operator'] || 'AND'
@@ -278,6 +282,20 @@ class AutomationRules::ConditionsFilterService < FilterService
     else
       false
     end
+  end
+
+  # The message that creates a conversation is an ordinary incoming message like any reply,
+  # so content-based rules can't tell it apart from a real reply to a greeting/menu sent right
+  # after. This checks the DB directly (lowest message id in the conversation) instead of a
+  # marker set by another rule, so it isn't sensitive to which async job runs first.
+  def evaluate_is_first_message_condition(query_hash)
+    message = @options[:message]
+    return false if message.blank?
+
+    is_first_message = message.id == message.conversation.messages.minimum(:id)
+    expected = (query_hash['values'] || []).first.to_s == 'true'
+
+    query_hash['filter_operator'] == 'not_equal_to' ? is_first_message != expected : is_first_message == expected
   end
 
   def evaluate_deal_custom_attribute(query_hash, definition)

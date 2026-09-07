@@ -3,6 +3,7 @@ import { ref, computed, watchEffect } from 'vue';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+import ImageUploadField from './ImageUploadField.vue';
 
 const emit = defineEmits(['update']);
 
@@ -75,8 +76,7 @@ const filledButtons = card =>
 const isCardValid = card =>
   card.title.trim().length > 0 &&
   filledButtons(card).length > 0 &&
-  filledButtons(card).every(isButtonDestinationValid) &&
-  (!card.mediaUrl.trim() || isHttpUrl(card.mediaUrl));
+  filledButtons(card).every(isButtonDestinationValid);
 
 const hasInvalidCard = computed(() => cards.value.some(card => !isCardValid(card)));
 
@@ -189,12 +189,7 @@ watchEffect(() =>
         :maxlength="MAX_DESCRIPTION_LENGTH"
         :placeholder="$t('CONVERSATION.RICH_MESSAGE.CAROUSEL.CARD_DESCRIPTION')"
       />
-      <input
-        v-model="card.mediaUrl"
-        type="url"
-        class="!mb-0"
-        :placeholder="$t('CONVERSATION.RICH_MESSAGE.CAROUSEL.CARD_MEDIA')"
-      />
+      <ImageUploadField v-model="card.mediaUrl" />
 
       <div
         v-for="(button, buttonIndex) in card.buttons"

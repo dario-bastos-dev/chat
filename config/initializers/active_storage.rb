@@ -2,9 +2,14 @@
 # in-app <audio> player can stream them. Without this, ActiveStorage's blob model
 # forces Content-Disposition: attachment for any MIME outside the default allowlist
 # (images + PDF), which makes the browser download instead of play.
+#
+# audio/opus is listed because ActiveStorage re-identifies every blob with Marcel: a
+# WhatsApp voice note is declared audio/ogg by the provider but carries the OggS+OpusHead
+# magic, which Marcel classifies as audio/opus, so the audio/ogg entry never matches it.
 Rails.application.config.active_storage.content_types_allowed_inline += %w[
   audio/webm
   audio/ogg
+  audio/opus
   audio/mpeg
   audio/mp4
   audio/x-m4a

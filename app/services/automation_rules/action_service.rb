@@ -48,12 +48,75 @@ class AutomationRules::ActionService < ActionService
     return if conversation_a_tweet?
 
     action_param = message[0]
-    # A template is stored as a hash in the same action_params slot the plain text uses, so rules
-    # created before templates were supported keep working untouched.
-    return send_whatsapp_template(action_param) if action_param.is_a?(Hash)
+    # A template or an interactive button set is stored as a hash in the same action_params slot the
+    # plain text uses, so rules created before either was supported keep working untouched.
+    if action_param.is_a?(Hash)
+      return send_interactive_message(action_param) if action_param[:buttons].present?
 
-    params = { content: action_param, private: false, content_attributes: { automation_rule_id: @rule.id } }
+      return send_whatsapp_template(action_param)
+    end
+
+    send_plain_message(action_param)
+  end
+
+  def send_plain_message(content)
+    params = { content: content, private: false, content_attributes: { automation_rule_id: @rule.id } }
     Messages::MessageBuilder.new(nil, @conversation, params).perform
+  end
+
+  # Reply and URL buttons travel as an input_select message: WhatsApp (Cloud, 360dialog, Evolution
+  # GO) and Instagram/Messenger each map `items` onto their native quick replies / link buttons,
+  # and any other channel falls back to delivering the body text.
+  #
+  # Built directly rather than through MessageBuilder because its automation_rule_id merge rebuilds
+  # content_attributes from that one key, which would drop the items and the header. The trade-off
+  # is skipping MessageBuilder's email-body and attachment processing, neither of which applies to
+  # a button message.
+  def send_interactive_message(action_param)
+    content = render_liquid_variables(action_param[:content])
+    items = normalize_button_kind(build_interactive_items(action_param[:buttons]))
+    # A misconfigured rule (every label blank) still has a body worth delivering, so it degrades
+    # to a plain text message instead of sending nothing.
+    return send_plain_message(content) if items.blank?
+
+    content_attributes = { items: items, automation_rule_id: @rule.id }
+    # Evolution GO rejects an interactive send without a header ("title is required"); the Cloud
+    # API and Instagram ignore it when absent.
+    header = render_liquid_variables(action_param[:title]).presence
+    content_attributes[:title] = header if header
+
+    @conversation.messages.create!(
+      account_id: @conversation.account_id,
+      inbox_id: @conversation.inbox_id,
+      message_type: :outgoing,
+      content: content,
+      content_type: :input_select,
+      content_attributes: content_attributes
+    )
+  end
+
+  # Every item carries `value` (the payload WhatsApp echoes on tap). An http(s) `uri` on top turns
+  # it into a link button, which Instagram renders natively and Evolution GO renders from the same
+  # `/send/button` schema. The scheme check mirrors the form's isHttpUrl (helper/validations.js).
+  def build_interactive_items(buttons)
+    Array.wrap(buttons).filter_map do |button|
+      button = button.with_indifferent_access
+      title = render_liquid_variables(button[:title].to_s).strip
+      next if title.blank?
+
+      item = { 'title' => title, 'value' => title }
+      uri = render_liquid_variables(button[:url].to_s).strip
+      item['uri'] = uri if uri.match?(%r{\Ahttps?://\S+\z}i)
+      item
+    end.first(3)
+  end
+
+  # WhatsApp cannot mix reply and link buttons in one message. A partial set is only reachable
+  # through the API (the form enforces all-or-none); it degrades to plain quick replies.
+  def normalize_button_kind(items)
+    return items if items.empty? || items.all? { |item| item['uri'].present? }
+
+    items.map { |item| item.except('uri') }
   end
 
   # Rules are account wide, so a template rule can match a conversation on any channel. Only WhatsApp

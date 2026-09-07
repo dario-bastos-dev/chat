@@ -23,8 +23,8 @@
         "BODY": "Autenticar sua conta e criar uma caixa de entrada."
       },
       "AGENT": {
-        "TITLE": "Adicionar Agentes",
-        "BODY": "Adicionar agentes à caixa de entrada criada."
+        "TITLE": "Adicionar Usuários",
+        "BODY": "Adicionar usuários à caixa de entrada criada."
       },
       "FINISH": {
         "TITLE": "Então!",
@@ -593,10 +593,10 @@
         }
       },
       "AGENTS": {
-        "TITLE": "Agentes",
-        "DESC": "Aqui você pode adicionar agentes para gerenciar sua caixa de entrada recém-criada. Somente esses agentes selecionados terão acesso à sua caixa de entrada. Os agentes que não fazem parte desta caixa de entrada não poderão ver ou responder a mensagens nessa caixa de entrada quando fizerem login. <br> <b> PS: </b> Como administrador, se você precisar acessar todas as caixas de entrada, adicione-se como agente a todas as caixas de entrada criadas.",
-        "VALIDATION_ERROR": "Adicione pelo menos um agente à sua nova caixa de entrada",
-        "PICK_AGENTS": "Escolha agentes para a caixa de entrada"
+        "TITLE": "Usuários",
+        "DESC": "Aqui você pode adicionar usuários para gerenciar sua caixa de entrada recém-criada. Somente esses usuários selecionados terão acesso à sua caixa de entrada. Os usuários que não fazem parte desta caixa de entrada não poderão ver ou responder a mensagens nessa caixa de entrada quando fizerem login. <br> <b> PS: </b> Como administrador, se você precisar acessar todas as caixas de entrada, adicione-se como usuário a todas as caixas de entrada criadas.",
+        "VALIDATION_ERROR": "Adicione pelo menos um usuário à sua nova caixa de entrada",
+        "PICK_AGENTS": "Escolha usuários para a caixa de entrada"
       },
       "DETAILS": {
         "TITLE": "Detalhes da Caixa de Entrada",
@@ -636,8 +636,8 @@
       "DESC": ""
     },
     "AGENTS": {
-      "BUTTON_TEXT": "Adicionar agentes",
-      "ADD_AGENTS": "Adicionando agentes à sua caixa de entrada..."
+      "BUTTON_TEXT": "Adicionar usuários",
+      "ADD_AGENTS": "Adicionando usuários à sua caixa de entrada..."
     },
     "FINISH": {
       "TITLE": "Sua caixa de entrada está pronta!",
@@ -668,7 +668,7 @@
     "EDIT": {
       "API": {
         "SUCCESS_MESSAGE": "Configurações de caixa de entrada atualizadas com sucesso",
-        "AUTO_ASSIGNMENT_SUCCESS_MESSAGE": "Agente atualizado com sucesso",
+        "AUTO_ASSIGNMENT_SUCCESS_MESSAGE": "Usuário atualizado com sucesso",
         "ERROR_MESSAGE": "Não foi possível atualizar as configurações da caixa de entrada. Por favor, tente novamente mais tarde."
       },
       "EMAIL_COLLECT_BOX": {
@@ -681,12 +681,12 @@
       },
       "SENDER_NAME_SECTION": {
         "TITLE": "Nome do remetente",
-        "SUB_TEXT": "Selecione o nome mostrado ao seu cliente quando ele recebe e-mails dos seus agentes.",
+        "SUB_TEXT": "Selecione o nome mostrado ao seu cliente quando ele recebe e-mails dos seus usuários.",
         "FOR_EG": "Por ex:",
         "FRIENDLY": {
           "TITLE": "Amigável",
           "FROM": "de",
-          "SUBTITLE": "Adicione o nome do agente que enviou a resposta ao nome do remetente para torná-la amigável."
+          "SUBTITLE": "Adicione o nome do usuário que enviou a resposta ao nome do remetente para torná-la amigável."
         },
         "PROFESSIONAL": {
           "TITLE": "Profissional",
@@ -727,7 +727,7 @@
         "NO": "Não, Mantenha "
       },
       "API": {
-        "SUCCESS_MESSAGE": "Agente excluído com sucesso",
+        "SUCCESS_MESSAGE": "Usuário excluído com sucesso",
         "ERROR_MESSAGE": "Não foi possível excluir a caixa de entrada. Tente novamente mais tarde.",
         "AVATAR_SUCCESS_MESSAGE": "Perfil da caixa de entrada excluído com sucesso",
         "AVATAR_ERROR_MESSAGE": "Não foi possível excluir o perfil da caixa de entrada. Por favor, tente novamente mais tarde."
@@ -735,7 +735,7 @@
     },
     "TABS": {
       "SETTINGS": "Configurações",
-      "COLLABORATORS": "Agentes",
+      "COLLABORATORS": "Usuários",
       "CONFIGURATION": "Configuração",
       "CAMPAIGN": "Campanhas",
       "PRE_CHAT_FORM": "Formulário Chat Pré",
@@ -976,23 +976,23 @@
         "REQUIRE_LABEL": "Exigir validação de identidade para todas as conversas",
         "REQUIRE_DESCRIPTION": "Quando ativado, os usuários devem fornecer um token de identidade válido para iniciar conversas. Solicitações sem tokens válidos serão rejeitadas."
       },
-      "INBOX_AGENTS": "Agentes",
-      "INBOX_AGENTS_SUB_TEXT": "Adicionar ou remover agentes dessa caixa de entrada",
+      "INBOX_AGENTS": "Usuários",
+      "INBOX_AGENTS_SUB_TEXT": "Adicionar ou remover usuários dessa caixa de entrada",
       "AGENT_ASSIGNMENT": "Atribuição de conversa",
       "AGENT_ASSIGNMENT_SUB_TEXT": "Atualizar configurações de atribuição de conversa",
       "UPDATE": "Atualizar",
       "ENABLE_EMAIL_COLLECT_BOX": "Ativar caixa de coleta de e-mail",
       "ENABLE_EMAIL_COLLECT_BOX_SUB_TEXT": "Ativar ou desativar caixa de coleta de e-mails em novas conversas",
       "AUTO_ASSIGNMENT": "Habilitar atribuição automática",
-      "SENDER_NAME_SECTION": "Habilitar o Nome do Agente no E-mail",
-      "SENDER_NAME_SECTION_TEXT": "Ativar/Desativar exibição do nome do agente no e-mail, se estiver desativado, exibirá o nome da empresa",
+      "SENDER_NAME_SECTION": "Habilitar o Nome do Usuário no E-mail",
+      "SENDER_NAME_SECTION_TEXT": "Ativar/Desativar exibição do nome do usuário no e-mail, se estiver desativado, exibirá o nome da empresa",
       "ENABLE_CONTINUITY_VIA_EMAIL": "Habilitar continuidade das conversas por e-mail",
       "ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT": "As conversas continuarão sobre o e-mail se o endereço de e-mail de contato estiver disponível.",
       "LOCK_TO_SINGLE_CONVERSATION": "Roteamento de Conversa",
       "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "Configurar a criação de conversas para contatos existentes",
       "INBOX_UPDATE_TITLE": "Configurações da Caixa de Entrada",
       "INBOX_UPDATE_SUB_TEXT": "Atualize suas configurações de caixa de entrada",
-      "AUTO_ASSIGNMENT_SUB_TEXT": "Ativar ou desativar a atribuição automática de novas conversas aos agentes adicionados a essa caixa de entrada.",
+      "AUTO_ASSIGNMENT_SUB_TEXT": "Ativar ou desativar a atribuição automática de novas conversas aos usuários adicionados a essa caixa de entrada.",
       "HMAC_VERIFICATION": "Validação de Identidade do Usuário",
       "HMAC_DESCRIPTION": "Para validar a identidade do usuário, você pode passar um `identifier_hash` para cada usuário. Você pode gerar um hash HMAC sha256 usando o `identifier` com a chave mostrada aqui.",
       "HMAC_LINK_TO_DOCS": "Você pode ler mais aqui.",
@@ -1005,11 +1005,11 @@
       "FORWARD_EMAIL_NOT_CONFIGURED": "O encaminhamento de e-mails para sua caixa de entrada está desativado nesta instalação. Para utilizar esse recurso, ele deve ser habilitado pelo administrador. Entre em contato com um para prosseguir.",
       "ALLOW_MESSAGES_AFTER_RESOLVED": "Permitir mensagens após a resolução da conversa",
       "ALLOW_MESSAGES_AFTER_RESOLVED_SUB_TEXT": "Permite que os usuários finais enviem mensagens mesmo depois que a conversa for resolvida.",
-      "UNREAD_RESET_MODE": "Visualização de notificações",
-      "UNREAD_RESET_MODE_SUB_TEXT": "Escolha quando a contagem de mensagens não lidas é redefinida: quando a conversa é aberta ou quando um agente responde.",
+      "UNREAD_RESET_MODE": "Marcar conversas como lidas",
+      "UNREAD_RESET_MODE_SUB_TEXT": "Escolha quando a contagem de mensagens não lidas é redefinida nesta caixa de entrada: ao abrir a conversa ou ao responder.",
       "UNREAD_RESET_MODE_OPTIONS": {
-        "ON_OPEN": "Ao abrir a conversa",
-        "ON_REPLY": "Ao responder"
+        "ON_OPEN": "Ler ao abrir",
+        "ON_REPLY": "Ler ao responder"
       },
       "WHATSAPP_SECTION_SUBHEADER": "Esta chave de API é usada para a integração com as APIs do WhatsApp.",
       "WHATSAPP_SECTION_UPDATE_SUBHEADER": "Insira a nova chave API a ser utilizada para integração com as APIs do WhatsApp.",
@@ -1124,11 +1124,11 @@
     "AUTO_ASSIGNMENT": {
       "MAX_ASSIGNMENT_LIMIT": "Limite de atribuição automática",
       "MAX_ASSIGNMENT_LIMIT_RANGE_ERROR": "Por favor, insira um valor maior que 0",
-      "MAX_ASSIGNMENT_LIMIT_SUB_TEXT": "Limitar o número máximo de conversas desta caixa de entrada que pode ser atribuído automaticamente a um agente"
+      "MAX_ASSIGNMENT_LIMIT_SUB_TEXT": "Limitar o número máximo de conversas desta caixa de entrada que pode ser atribuído automaticamente a um usuário"
     },
     "ASSIGNMENT": {
       "TITLE": "Atribuição de conversa",
-      "DESCRIPTION": "Atribua automaticamente as conversas recebidas aos agentes disponíveis com base nas políticas de atribuição",
+      "DESCRIPTION": "Atribua automaticamente as conversas recebidas aos usuários disponíveis com base nas políticas de atribuição",
       "ENABLE_AUTO_ASSIGNMENT": "Ativar atribuição automática de conversas",
       "DEFAULT_RULES_TITLE": "Regras de atribuição padrão",
       "DEFAULT_RULES_DESCRIPTION": "Utilizando o comportamento de atribuição padrão para todas as conversas",
@@ -1156,7 +1156,7 @@
       "UPGRADE_PROMPT": "Políticas de atribuição personalizadas estão disponíveis no plano Business",
       "UPGRADE_TO_BUSINESS": "Atualizar para o plano Business",
       "DEFAULT_POLICY_LINKED": "Política padrão vinculada",
-      "DEFAULT_POLICY_DESCRIPTION": "Vincule uma política de atribuição personalizada para definir como as conversas são atribuídas aos agentes nesta caixa de entrada.",
+      "DEFAULT_POLICY_DESCRIPTION": "Vincule uma política de atribuição personalizada para definir como as conversas são atribuídas aos usuários nesta caixa de entrada.",
       "LINK_EXISTING_POLICY": "Vincular política existente",
       "CREATE_NEW_POLICY": "Criar nova política",
       "NO_POLICIES": "Nenhuma política de atribuição encontrada",
@@ -1206,6 +1206,76 @@
       }
     },
     "CSAT": {
+      "FLOW": {
+        "MODE": {
+          "LABEL": "Como a pergunta é enviada",
+          "COMPOSE": "Escrever aqui",
+          "TEMPLATE": "Usar um template aprovado",
+          "HELP": "Escrevendo aqui, a pergunta só chega dentro da janela de 24h. Com template aprovado ela chega também fora dela."
+        },
+        "HEADER": {
+          "LABEL": "Cabeçalho",
+          "PLACEHOLDER": "Como foi o atendimento?",
+          "HELP": "Obrigatório no WhatsApp: a mensagem é recusada sem ele."
+        },
+        "TITLE": "Perguntar antes de enviar a pesquisa",
+        "DESCRIPTION": "Envia uma pergunta com botões quando a conversa é resolvida e só envia a pesquisa na resposta que você escolher. Toda resposta fica registrada na conversa.",
+        "NOTE": "Responder à pergunta não reabre a conversa, a menos que você marque o botão para reabrir.",
+        "MESSAGE": {
+          "LABEL": "Pergunta",
+          "PLACEHOLDER": "Você gostou do atendimento que recebeu?"
+        },
+        "FOOTER": {
+          "LABEL": "Rodapé (opcional)",
+          "PLACEHOLDER": "Sua resposta nos ajuda muito"
+        },
+        "TEMPLATE": {
+          "PLACEHOLDER": "Selecione um template aprovado",
+          "EMPTY": "Esta caixa de entrada ainda não tem template aprovado. Crie um no WhatsApp Manager e sincronize os templates."
+        },
+        "SENTIMENT": {
+          "POSITIVE": "Positiva",
+          "NEGATIVE": "Negativa",
+          "NEUTRAL": "Neutra"
+        },
+        "BUTTONS": {
+          "ADD": "Adicionar botão",
+          "REMOVE": "Remover botão",
+          "EMPTY": "Adicione ao menos um botão para a pergunta poder ser respondida.",
+          "REOPEN_NAMED": "Reabrir a conversa quando \"{title}\" for tocado",
+          "TITLE_LABEL": "Botão",
+          "TITLE_PLACEHOLDER": "Sim, gostei",
+          "TITLE_FROM_TEMPLATE": "Precisa ser igual ao rótulo do botão declarado no template aprovado",
+          "SENTIMENT_LABEL": "Resposta",
+          "LABEL_LABEL": "Etiqueta",
+          "NO_LABEL": "Sem etiqueta",
+          "REOPEN": "Reabrir a conversa quando este botão for tocado",
+          "MAX_TITLE_HELP": "Até 3 botões, cada um com no máximo {maxTitleLength} caracteres."
+        },
+        "REPLY": {
+          "LABEL": "Resposta",
+          "TYPE": {
+            "NONE": "Não fazer nada",
+            "CSAT_SURVEY": "Enviar a pesquisa CSAT",
+            "MESSAGE": "Enviar uma mensagem"
+          },
+          "MESSAGE_LABEL": "Mensagem de resposta",
+          "MESSAGE_PLACEHOLDER": "Obrigado por contar pra gente!",
+          "BUTTON_TYPE_LABEL": "Botões da resposta",
+          "BUTTON_TYPE": {
+            "NONE": "Sem botões",
+            "QUICK_REPLY": "Resposta rápida",
+            "ACTION": "Ação"
+          },
+          "ACTION": {
+            "URL": "Link",
+            "CALL": "Ligar",
+            "TEXT_PLACEHOLDER": "Texto do botão",
+            "URL_PLACEHOLDER": "https://",
+            "PHONE_PLACEHOLDER": "+5511999999999"
+          }
+        }
+      },
       "TITLE": "Habilitar CSAT",
       "SUBTITLE": "Iniciar automaticamente pesquisas de CSAT no final das conversas para entender como os clientes se sentem em relação à sua experiência de suporte. Acompanhe as tendências de satisfação e identifique áreas para melhoria ao longo do tempo.",
       "DISPLAY_TYPE": {
@@ -1283,7 +1353,7 @@
       "UPDATE": "Atualizar configurações do horário comercial",
       "TOGGLE_AVAILABILITY": "Permitir a disponibilidade de negócios para essa caixa de entrada",
       "UNAVAILABLE_MESSAGE_LABEL": "Mensagem indisponível para visitantes",
-      "TOGGLE_HELP": "Permitir a disponibilidade de negócios mostrará as horas disponíveis no widget de bate-papo ao vivo, mesmo que todos os agentes estejam offline. Os vistores disponíveis horários externos podem ser avisados com uma mensagem e um formulário de pré-bate-papo.",
+      "TOGGLE_HELP": "Permitir a disponibilidade de negócios mostrará as horas disponíveis no widget de bate-papo ao vivo, mesmo que todos os usuários estejam offline. Os vistores disponíveis horários externos podem ser avisados com uma mensagem e um formulário de pré-bate-papo.",
       "DAY": {
         "DAY": "Dia",
         "AVAILABILITY": "Disponibilidade",
@@ -1480,10 +1550,10 @@
     "VOICE_CONFIGURATION": {
       "ENABLE_VOICE": {
         "LABEL": "Habilitar Chamada de Voz",
-        "DESCRIPTION": "Habilite chamadas de voz nesta caixa de entrada. Agentes poderão fazer e receber chamadas telefônicas."
+        "DESCRIPTION": "Habilite chamadas de voz nesta caixa de entrada. Usuários poderão fazer e receber chamadas telefônicas."
       },
       "CREDENTIALS": {
-        "DESCRIPTION": "Chamada de voz requer credenciais de chave da API Twilio. Elas são usadas para gerar tokens para conexões de voz do agente."
+        "DESCRIPTION": "Chamada de voz requer credenciais de chave da API Twilio. Elas são usadas para gerar tokens para conexões de voz do usuário."
       },
       "INBOUND": {
         "LABEL": "Permitir chamadas de entrada",

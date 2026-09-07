@@ -1,5 +1,9 @@
-class Webhooks::EvolutionGoEventsJob < ApplicationJob
+class Webhooks::EvolutionGoEventsJob < MutexApplicationJob
   queue_as :high
+  # Retry budget (19 x 2s = 38s) must exceed the 30s lock TTL used below, otherwise a webhook
+  # that arrives just after the lock is taken can exhaust its retries before the holder finishes
+  # and silently drop its message. Same budget as Webhooks::WhatsappEventsJob.
+  retry_on LockAcquisitionError, wait: 2.seconds, attempts: 20
 
   # Grace period given to whatsmeow's own reconnection before we confirm a close event
   CONNECTION_RECHECK_DELAY = 30.seconds
@@ -27,6 +31,10 @@ class Webhooks::EvolutionGoEventsJob < ApplicationJob
       Rails.logger.warn "[EVOLUTION_GO JOB] Unhandled event: #{@event.inspect} | " \
                         "data keys: #{(@params[:data] || {}).keys} | channel: #{@channel_id}"
     end
+  # A lock conflict is the normal path when two webhooks for the same chat land together; it is
+  # retried, not a failure, so it must not reach the error log the deploy is grepped for.
+  rescue LockAcquisitionError
+    raise
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO JOB] Error: #{e.message}"
     raise # Re-raise for Sidekiq retry
@@ -34,11 +42,40 @@ class Webhooks::EvolutionGoEventsJob < ApplicationJob
 
   private
 
+  # A message from the contact and the echo of an auto-reply sent by WhatsApp itself arrive as
+  # two concurrent webhooks. Both look for an open conversation, neither finds one because the
+  # other has not committed yet, and each creates its own. Serializing per (inbox, chat) lets
+  # the first one create the conversation and the second append to it.
   def process_message_event(channel)
+    chat_id = chat_lock_id
+    return deliver_message_event(channel) if chat_id.blank?
+
+    # 30s TTL, matching Webhooks::WhatsappEventsJob: the default 1s expires while the media
+    # download and the transaction are still running, which lets the other webhook back in.
+    key = format(::Redis::Alfred::WHATSAPP_MESSAGE_MUTEX, inbox_id: channel.inbox.id, sender_id: chat_id)
+    with_lock(key, 30.seconds) { deliver_message_event(channel) }
+  end
+
+  def deliver_message_event(channel)
     Whatsapp::IncomingMessageEvolutionGoService.new(
       inbox: channel.inbox,
       params: @params.to_h
     ).perform
+  end
+
+  # Both webhooks of the same chat have to land on one key, and EvoGO does not address them the
+  # same way. An observed pair: the incoming message carried Chat=<phone>@s.whatsapp.net while
+  # the echo of the same chat carried Chat=<contact lid>@lid and put the phone in RecipientAlt.
+  # So the phone JID is preferred wherever it shows up — that is the one field both payloads
+  # share — and Chat is the fallback for chats addressed only by LID, where it names the contact
+  # in both directions. Same preference the incoming service applies to resolve contact_jid.
+  # The `:device` suffix is stripped for the same reason the incoming service strips it.
+  def chat_lock_id
+    info = @params[:data].is_a?(Hash) ? (@params[:data][:Info] || {}) : {}
+    candidates = [info[:RecipientAlt], info[:Chat], info[:Sender], info[:SenderAlt]]
+                 .map { |jid| jid.to_s.gsub(/:[^@]+/, '') }.compact_blank
+
+    candidates.find { |jid| jid.end_with?('@s.whatsapp.net') } || candidates.first
   end
 
   def process_pair_success(channel)

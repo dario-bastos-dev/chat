@@ -6,7 +6,9 @@ import {
 } from 'shared/helpers/CustomErrors';
 import { required, email } from '@vuelidate/validators';
 import { useVuelidate } from '@vuelidate/core';
-import countries from 'shared/constants/countries.js';
+import countries, {
+  getLocalizedCountryName,
+} from 'shared/constants/countries.js';
 import { isPhoneNumberValid } from 'shared/helpers/Validators';
 import parsePhoneNumber from 'libphonenumber-js';
 import NextButton from 'dashboard/components-next/button/Button.vue';
@@ -135,7 +137,7 @@ export default {
     countryNameWithCode({ name, id }) {
       if (!id) return name;
       if (!name && !id) return '';
-      return `${name} (${id})`;
+      return `${getLocalizedCountryName(id, this.$i18n.locale)} (${id})`;
     },
     onCountryChange(value) {
       const selected = this.countries.find(c => c.id === value);

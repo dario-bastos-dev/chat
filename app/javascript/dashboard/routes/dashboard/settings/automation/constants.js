@@ -118,6 +118,12 @@ export const AUTOMATIONS = {
         inputType: 'multi_select',
         filterOperators: OPERATOR_TYPES_3,
       },
+      {
+        key: 'is_first_message',
+        name: 'IS_FIRST_MESSAGE',
+        inputType: 'boolean_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
     ],
     actions: [
       {

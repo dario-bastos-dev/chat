@@ -133,13 +133,14 @@ export const prepareNewMessagePayload = ({
   currentUser,
   attachedFiles = [],
   directUploadsEnabled = false,
+  assignToMe = true,
 }) => {
   const payload = {
     inboxId: targetInbox.id,
     sourceId: targetInbox.sourceId,
     contactId: Number(selectedContact.id),
     message: { content: message },
-    assigneeId: currentUser.id,
+    assigneeId: assignToMe ? currentUser.id : null,
   };
 
   if (attachedFiles?.length) {
@@ -170,13 +171,14 @@ export const prepareWhatsAppMessagePayload = ({
   message,
   templateParams,
   currentUser,
+  assignToMe = true,
 }) => {
   return {
     inboxId: targetInbox.id,
     sourceId: targetInbox.sourceId,
     contactId: selectedContact.id,
     message: { content: message, template_params: templateParams },
-    assigneeId: currentUser.id,
+    assigneeId: assignToMe ? currentUser.id : null,
   };
 };
 

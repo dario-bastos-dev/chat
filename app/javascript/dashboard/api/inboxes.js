@@ -28,6 +28,8 @@ class Inboxes extends CacheEnabledApiClient {
       agent_bot: botId,
       initial_conversation_status: config.initialConversationStatus,
       event_names: config.eventNames,
+      conversation_custom_attribute_keys: config.conversationCustomAttributeKeys,
+      contact_custom_attribute_keys: config.contactCustomAttributeKeys,
     });
   }
 

@@ -1,6 +1,9 @@
 <script setup>
 import { ref, computed, watch, useTemplateRef, nextTick, unref } from 'vue';
-import countriesList from 'shared/constants/countries.js';
+import { useI18n } from 'vue-i18n';
+import countriesList, {
+  getLocalizedCountryName,
+} from 'shared/constants/countries.js';
 import FluentIcon from 'shared/components/FluentIcon/Index.vue';
 import {
   getActiveCountryCode,
@@ -13,6 +16,8 @@ const { context } = defineProps({
     default: () => ({}),
   },
 });
+
+const { locale } = useI18n();
 
 const localValue = ref(context.value || '');
 
@@ -38,7 +43,10 @@ const countries = computed(() => [
     emoji: '',
     id: '',
   },
-  ...countriesList,
+  ...countriesList.map(country => ({
+    ...country,
+    name: getLocalizedCountryName(country.id, locale.value),
+  })),
 ]);
 
 const items = computed(() => {

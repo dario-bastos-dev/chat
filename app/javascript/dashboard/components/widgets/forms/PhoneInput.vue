@@ -1,5 +1,7 @@
 <script>
-import countries from 'shared/constants/countries.js';
+import countries, {
+  getLocalizedCountryName,
+} from 'shared/constants/countries.js';
 import parsePhoneNumber from 'libphonenumber-js';
 import {
   getActiveCountryCode,
@@ -49,7 +51,10 @@ export default {
           emoji: '',
           id: '',
         },
-        ...countries,
+        ...countries.map(country => ({
+          ...country,
+          name: getLocalizedCountryName(country.id, this.$i18n.locale),
+        })),
       ];
     },
     dropdownFirstItemName() {

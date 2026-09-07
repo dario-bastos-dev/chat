@@ -76,6 +76,25 @@ describe Whatsapp::Providers::Whatsapp360DialogService do
           ).to_return(status: 200, body: whatsapp_response.to_json, headers: response_headers)
         expect(service.send_message('+123456789', message)).to eq 'message_id'
       end
+
+      it 'sends a cta_url payload when the single item carries a link' do
+        message = create(:message, message_type: :outgoing, content: 'Rate us',
+                                   inbox: whatsapp_channel.inbox, content_type: 'input_select',
+                                   content_attributes: { items: [{ title: 'Open Google', value: 'Open Google', uri: 'https://g.co/x' }] })
+        stub_request(:post, 'https://waba.360dialog.io/v1/messages')
+          .with(
+            body: {
+              to: '+123456789',
+              interactive: {
+                type: 'cta_url',
+                body: { text: 'Rate us' },
+                action: '{"name":"cta_url","parameters":{"display_text":"Open Google","url":"https://g.co/x"}}'
+              },
+              type: 'interactive'
+            }.to_json
+          ).to_return(status: 200, body: whatsapp_response.to_json, headers: response_headers)
+        expect(service.send_message('+123456789', message)).to eq 'message_id'
+      end
     end
   end
 end

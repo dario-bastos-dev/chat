@@ -342,6 +342,12 @@ pt_BR:
         permission_granted: '%{contact_name} aceitou a solicitação de permissão de chamada.'
       csat:
         not_sent_due_to_messaging_window: 'Pesquisa CSAT não foi enviada devido a restrições de envio de mensagens'
+        flow_answer: 'O contato respondeu à pergunta de satisfação com "%{answer}" (%{sentiment})'
+        flow_reply: 'O contato respondeu "%{answer}"'
+        sentiment:
+          positive: positivo
+          negative: negativo
+          neutral: neutro
       auto_resolve:
         not_sent_due_to_messaging_window: 'Auto-resolver mensagem não enviada devido a restrições de envio de mensagens'
       muted: '%{user_name} silenciou a conversa'

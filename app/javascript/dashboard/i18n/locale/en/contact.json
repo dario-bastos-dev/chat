@@ -668,6 +668,7 @@
         }
       },
       "ACTION_BUTTONS": {
+        "ASSIGN_TO_ME": "Assign to me",
         "DISCARD": "Discard",
         "SEND": "Send ({keyCode})"
       }

@@ -67,6 +67,7 @@ class Message < ApplicationRecord
   before_validation :prevent_message_flooding
   before_save :ensure_processed_message_content
   before_save :ensure_in_reply_to
+  before_create :mark_csat_flow_reply
 
   validates :account_id, presence: true
   validates :inbox_id, presence: true
@@ -323,6 +324,17 @@ class Message < ApplicationRecord
     self.content_type ||= Message.content_types[:text]
   end
 
+  # A tapped CSAT flow button is recognised while the question is still parked on the conversation
+  # and the answer is written on the message itself: the flag outlives the listener that consumes
+  # the answer and clears that state, so the notification decision taken later still sees it.
+  def mark_csat_flow_reply
+    return unless incoming?
+    return if private?
+    return unless conversation.csat_flow_silent_reply?(content)
+
+    self.content_attributes = content_attributes.merge('csat_flow_reply' => true)
+  end
+
   def execute_after_create_commit_callbacks
     # WhatsApp coexistence history is backfilled months after the fact. Reacting to it as if it were live
     # traffic would notify agents about old messages, reopen resolved conversations, restart sequences and
@@ -377,7 +389,10 @@ class Message < ApplicationRecord
   end
 
   def set_waiting_since_on_incoming_message
-    # Set waiting_since when customer sends a message (if currently blank)
+    # Set waiting_since when customer sends a message (if currently blank). A CSAT flow button is an
+    # answer to a question we asked, so nobody is waiting on the team because of it.
+    return if csat_flow_reply?
+
     conversation.update(waiting_since: created_at) if incoming? && conversation.waiting_since.blank?
   end
 
@@ -425,6 +440,7 @@ class Message < ApplicationRecord
   def reopen_conversation
     return if conversation.muted?
     return unless incoming?
+    return if csat_flow_reply?
 
     conversation.open! if conversation.snoozed?
 

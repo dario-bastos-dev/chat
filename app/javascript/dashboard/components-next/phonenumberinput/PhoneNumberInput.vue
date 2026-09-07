@@ -2,7 +2,9 @@
 import { ref, computed, watch } from 'vue';
 import parsePhoneNumber from 'libphonenumber-js';
 import { useI18n } from 'vue-i18n';
-import countries from 'shared/constants/countries.js';
+import countries, {
+  getLocalizedCountryName,
+} from 'shared/constants/countries.js';
 import { useVuelidate } from '@vuelidate/core';
 import { required, minLength, numeric } from '@vuelidate/validators';
 import {
@@ -34,7 +36,7 @@ const modelValue = defineModel({
   default: '',
 });
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const showDropdown = ref(false);
 const searchQuery = ref('');
@@ -65,7 +67,7 @@ const hasError = computed(() => v$.value.$invalid);
 const countryList = computed(() => {
   return countries.map(country => ({
     value: country.id,
-    label: country.name,
+    label: getLocalizedCountryName(country.id, locale.value),
     dialCode: country.dial_code,
     emoji: country.emoji,
     isSelected: String(activeCountryCode.value) === String(country.id),

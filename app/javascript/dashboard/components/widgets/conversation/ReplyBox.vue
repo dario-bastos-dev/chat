@@ -193,7 +193,7 @@ export default {
       if (!this.isAWhatsAppChannel || this.isPrivate) return [];
 
       if (this.whatsAppAPIProvider === 'evolution_go') {
-        return ['options', 'buttons', 'location', 'link', 'carousel'];
+        return ['options', 'buttons', 'location', 'carousel'];
       }
 
       // `default` resolves to the 360dialog service; both it and the Cloud API map input_select

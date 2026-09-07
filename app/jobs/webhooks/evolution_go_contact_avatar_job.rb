@@ -14,9 +14,10 @@ class Webhooks::EvolutionGoContactAvatarJob < ApplicationJob
     return if avatar_url.blank?
 
     # The URL is whatever the API returned, so it goes through SafeFetch: scheme is pinned to
-    # http/https and the response has to actually be an image.
+    # http/https and the response has to actually be an image. The private network is allowed
+    # because EvoGO points at its own MinIO on the internal network.
     begin
-      SafeFetch.fetch(avatar_url, allowed_content_type_prefixes: ['image/']) do |result|
+      SafeFetch.fetch(avatar_url, allowed_content_type_prefixes: ['image/'], allow_private_network: true) do |result|
         contact.avatar.attach(
           io: result.tempfile,
           filename: "avatar_#{contact_id}.jpg",

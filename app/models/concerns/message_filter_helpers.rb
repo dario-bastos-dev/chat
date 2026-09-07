@@ -14,7 +14,13 @@ module MessageFilterHelpers
   end
 
   def notifiable?
-    (incoming? || outgoing?) && !private?
+    (incoming? || outgoing?) && !private? && !csat_flow_reply?
+  end
+
+  # A tapped CSAT flow button answers the survey, it is not the contact coming back for help: it
+  # neither reopens the conversation nor notifies the agent. Flagged on create, see Message.
+  def csat_flow_reply?
+    content_attributes['csat_flow_reply'].present?
   end
 
   def conversation_transcriptable?

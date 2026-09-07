@@ -57,6 +57,7 @@ class Inbox < ApplicationRecord
   validates :greeting_message, length: { maximum: Limits::GREETING_MESSAGE_MAX_LENGTH }
   validate :ensure_valid_max_assignment_limit
   validates_with GreetingItemsValidator
+  validates_with CsatFlowValidator
 
   belongs_to :account
   belongs_to :portal, optional: true

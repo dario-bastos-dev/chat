@@ -11,6 +11,7 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 import WithLabel from 'v3/components/Form/WithLabel.vue';
 import SettingsToggleSection from 'dashboard/components-next/Settings/SettingsToggleSection.vue';
 import CSATDisplayTypeSelector from './components/CSATDisplayTypeSelector.vue';
+import CSATFlowEditor from './components/CSATFlowEditor.vue';
 import CSATTemplate from 'dashboard/components-next/template-preview/CSATTemplate.vue';
 import Editor from 'dashboard/components-next/Editor/Editor.vue';
 import FilterSelect from 'dashboard/components-next/filter/inputs/FilterSelect.vue';
@@ -29,14 +30,40 @@ const store = useStore();
 const labels = useMapGetter('labels/getLabels');
 const { captainEnabled } = useCaptain();
 
-const { isAWhatsAppChannel, isATwilioWhatsAppChannel } = useInbox(
-  props.inbox?.id
-);
+const { isAWhatsAppChannel, isATwilioWhatsAppChannel, isAWebWidgetInbox } =
+  useInbox(props.inbox?.id);
 
 // Computed to check if it's any type of WhatsApp channel (Cloud or Twilio)
 const isAnyWhatsAppChannel = computed(
   () => isAWhatsAppChannel.value || isATwilioWhatsAppChannel.value
 );
+
+const isNativeWhatsAppChannel = computed(
+  () => isAWhatsAppChannel.value && !isATwilioWhatsAppChannel.value
+);
+
+// Mirrors CsatFlowService.supported?, .templates_available? and .header_required?
+const isFlowSupported = computed(() => {
+  if (isNativeWhatsAppChannel.value) return props.inbox?.provider !== 'evolution';
+
+  return isAWebWidgetInbox.value;
+});
+
+const areFlowTemplatesAvailable = computed(
+  () => isNativeWhatsAppChannel.value && props.inbox?.provider !== 'evolution_go'
+);
+
+// Evolution GO composes interactive messages itself: it is the only WhatsApp provider here that
+// rejects one without a header, and the only one that can deliver call-to-action buttons.
+const isEvolutionGoInbox = computed(
+  () => isNativeWhatsAppChannel.value && props.inbox?.provider === 'evolution_go'
+);
+
+const areFlowActionButtonsAvailable = computed(
+  () => isAWebWidgetInbox.value || isEvolutionGoInbox.value
+);
+
+const flow = ref({ enabled: false, message: '', footer: '', buttons: [] });
 
 const isUpdating = ref(false);
 const utilityAnalysisLoading = ref(false);
@@ -146,6 +173,14 @@ const initializeState = () => {
   const { csat_survey_enabled, csat_config } = props.inbox;
 
   state.csatSurveyEnabled = csat_survey_enabled || false;
+  // Reset before the early return, so switching inboxes never carries a flow over to another one.
+  flow.value = {
+    enabled: false,
+    message: '',
+    footer: '',
+    buttons: [],
+    ...(csat_config?.flow || {}),
+  };
 
   if (!csat_config) return;
 
@@ -432,6 +467,7 @@ const performSave = async () => {
         operator: state.surveyRuleOperator,
         values: selectedLabelValues.value,
       },
+      flow: flow.value,
     };
 
     // Use new template data if created, otherwise preserve existing template information
@@ -674,6 +710,16 @@ const handleConfirmTemplateUpdate = async () => {
               />
             </WithLabel>
           </template>
+
+          <CSATFlowEditor
+            v-if="isFlowSupported"
+            v-model="flow"
+            :inbox="inbox"
+            :templates-available="areFlowTemplatesAvailable"
+            :header-required="isEvolutionGoInbox"
+            :action-buttons-available="areFlowActionButtonsAvailable"
+            :labels="labels || []"
+          />
 
           <WithLabel
             :label="$t('INBOX_MGMT.CSAT.SURVEY_RULE.LABEL')"

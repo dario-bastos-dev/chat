@@ -64,6 +64,10 @@ class Conversation < ApplicationRecord
   include PushDataHelper
   include ConversationMuteHelpers
 
+  # How long a tapped CSAT flow button keeps silencing repeats of the same answer after the flow has
+  # been answered. WhatsApp keeps the buttons tappable, so a second tap is a repeat, not a new message.
+  CSAT_FLOW_ANSWERED_SILENCE = 10.minutes
+
   CONVERSATION_UPDATED_ADDITIONAL_ATTRIBUTE_KEYS = %w[conversation_language].freeze
   FILTERED_UNREAD_COUNT_ADDITIONAL_ATTRIBUTE_KEYS = %w[browser_language conversation_language mail_subject referer].freeze
   FILTERED_UNREAD_COUNT_UPDATE_KEYS = %w[
@@ -256,6 +260,49 @@ class Conversation < ApplicationRecord
 
   def csat_survey_link
     "#{ENV.fetch('FRONTEND_URL', nil)}/survey/responses/#{uuid}"
+  end
+
+  # The CSAT flow parks what it is waiting for on the conversation so that a tapped button can be
+  # recognised inside Message's create callbacks, before any listener runs.
+  def csat_flow_state
+    state = additional_attributes&.dig('csat_flow')
+    return {} if state.blank? || Time.zone.parse(state['expires_at']) < Time.current
+
+    state
+  end
+
+  def store_csat_flow_state!(stage:, message:, silent:, button_index: nil)
+    state = { 'stage' => stage, 'message_id' => message.id, 'silent' => silent,
+              'button_index' => button_index, 'expires_at' => 24.hours.from_now.iso8601 }
+    update!(additional_attributes: (additional_attributes || {}).merge('csat_flow' => state))
+  end
+
+  # Answering ends the flow but keeps the silence for a while: WhatsApp leaves the buttons tappable
+  # and a second tap arrives as a repeat of the same answer. Past that window the same words are
+  # taken as a new message from the contact, so nothing they write is ever swallowed for long.
+  def close_csat_flow_state!
+    state = additional_attributes&.dig('csat_flow')
+    return if state.blank?
+
+    answered = state.merge('answered_at' => Time.current.iso8601)
+    update!(additional_attributes: additional_attributes.merge('csat_flow' => answered))
+  end
+
+  def clear_csat_flow_state!
+    return if additional_attributes&.dig('csat_flow').blank?
+
+    update!(additional_attributes: additional_attributes.except('csat_flow'))
+  end
+
+  # Answering the flow is not the contact coming back for help, so it must not reopen the
+  # conversation. Only the buttons the admin left as plain answers are silenced: one that reopens
+  # the conversation on purpose is absent from the list and takes the regular path.
+  def csat_flow_silent_reply?(content)
+    state = csat_flow_state
+    answered_at = state['answered_at']
+    return false if answered_at.present? && Time.zone.parse(answered_at) < CSAT_FLOW_ANSWERED_SILENCE.ago
+
+    state['silent'].to_a.include?(CsatFlowService.normalize(content))
   end
 
   def dispatch_conversation_updated_event(previous_changes = nil)

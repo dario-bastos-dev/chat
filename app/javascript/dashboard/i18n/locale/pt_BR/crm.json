@@ -47,8 +47,8 @@
         "LOST_REASON_PLACEHOLDER": "Ex: Preço muito alto",
         "ADD_LOST_REASON": "Adicionar Motivo",
         "VISIBILITY_TITLE": "Visibilidade do Pipeline",
-        "VISIBILITY_HELP": "Controle quais agentes podem ver este pipeline e seus negócios.",
-        "VISIBILITY_PUBLIC": "Público — Todos os agentes",
+        "VISIBILITY_HELP": "Controle quais usuários podem ver este pipeline e seus negócios.",
+        "VISIBILITY_PUBLIC": "Público — Todos os usuários",
         "VISIBILITY_RESTRICTED": "Restrito — Apenas equipes selecionadas",
         "ALLOWED_TEAMS": "Equipes Permitidas"
       }
@@ -185,9 +185,9 @@
       "FUNNEL_TITLE": "Funil de Vendas",
       "DEALS_OVER_TIME": "Evolução de Negócios",
       "WON_VS_LOST": "Ganhos vs Perdidos",
-      "AGENT_PERFORMANCE": "Desempenho por Agente",
+      "AGENT_PERFORMANCE": "Desempenho por Usuário",
       "TOP_DEALS": "Principais Negócios",
-      "AGENT": "Agente",
+      "AGENT": "Usuário",
       "CREATED": "Criados",
       "OPEN": "Aberto",
       "NO_DATA": "Nenhum dado disponível",

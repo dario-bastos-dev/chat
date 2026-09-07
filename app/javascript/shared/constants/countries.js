@@ -1453,4 +1453,25 @@ const countries = [
   },
 ];
 
+const regionDisplayNamesCache = new Map();
+
+const getRegionDisplayNames = locale => {
+  const bcp47Locale = locale.replace('_', '-');
+  if (!regionDisplayNamesCache.has(bcp47Locale)) {
+    regionDisplayNamesCache.set(
+      bcp47Locale,
+      new Intl.DisplayNames([bcp47Locale], { type: 'region' })
+    );
+  }
+  return regionDisplayNamesCache.get(bcp47Locale);
+};
+
+export const getLocalizedCountryName = (id, locale = 'en') => {
+  try {
+    return getRegionDisplayNames(locale).of(id);
+  } catch (error) {
+    return countries.find(country => country.id === id)?.name || id;
+  }
+};
+
 export default countries;

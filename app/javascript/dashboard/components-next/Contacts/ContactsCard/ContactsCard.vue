@@ -9,7 +9,9 @@ import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Flag from 'dashboard/components-next/flag/Flag.vue';
 import ContactDeleteSection from 'dashboard/components-next/Contacts/ContactsCard/ContactDeleteSection.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
-import countries from 'shared/constants/countries';
+import countries, {
+  getLocalizedCountryName,
+} from 'shared/constants/countries';
 
 const props = defineProps({
   id: { type: Number, required: true },
@@ -34,7 +36,7 @@ const emit = defineEmits([
   'avatarHover',
 ]);
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 
 const contactsFormRef = ref(null);
 
@@ -72,7 +74,7 @@ const countryDetails = computed(() => {
   return {
     countryCode: activeCountry.id,
     city: city ? `${city},` : null,
-    name: activeCountry.name,
+    name: getLocalizedCountryName(activeCountry.id, locale.value),
   };
 });
 

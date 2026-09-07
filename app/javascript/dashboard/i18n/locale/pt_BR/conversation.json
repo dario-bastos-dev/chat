@@ -9,7 +9,6 @@
       "TYPES": {
         "OPTIONS": "Opções",
         "LOCATION": "Localização",
-        "LINK": "Link",
         "CAROUSEL": "Carrossel",
         "BUTTONS": "Botões de ação"
       },
@@ -24,30 +23,23 @@
         "OPTION_PLACEHOLDER": "Opção {index}",
         "ADD_OPTION": "Adicionar opção",
         "DUPLICATE_ERROR": "As opções precisam ser diferentes entre si.",
-        "TOO_LONG_ERROR": "As opções podem ter no máximo {max} caracteres neste formato."
+        "TOO_LONG_ERROR": "As opções podem ter no máximo {max} caracteres neste formato.",
+        "FOOTER_LIST_LABEL": "Rodapé",
+        "FOOTER_LIST_ERROR": "Mais de três opções são entregues como lista, e a EvoGO exige rodapé em lista."
       },
       "LOCATION": {
-        "HINT": "O contato recebe um pin que pode abrir no aplicativo de mapas.",
+        "HINT": "Cole o link da barra de endereços do Google Maps: as coordenadas saem dele, e o nome e o endereço também quando o link os traz. Coordenadas copiadas com o botão direito em um ponto do mapa também funcionam.",
+        "SOURCE_LABEL": "Link do Google Maps ou coordenadas",
+        "SOURCE_PLACEHOLDER": "Cole o link do Maps ou -23.5505, -46.6333",
+        "SOURCE_ERROR": "Não encontramos coordenadas nesse texto. Cole o link da barra de endereços do Google Maps ou as próprias coordenadas.",
+        "SHORT_LINK_ERROR": "Link encurtado não carrega as coordenadas. Abra ele no navegador e copie o que aparecer na barra de endereços.",
+        "PREVIEW": "Ver no mapa",
         "NAME_LABEL": "Nome do local (opcional)",
         "NAME_PLACEHOLDER": "Nossa loja",
-        "ADDRESS_LABEL": "Endereço (opcional)",
+        "ADDRESS_LABEL": "Endereço",
         "ADDRESS_PLACEHOLDER": "Rua, número, cidade",
-        "LATITUDE_LABEL": "Latitude",
-        "LONGITUDE_LABEL": "Longitude",
-        "COORDINATES_ERROR": "Informe uma latitude válida (-90 a 90) e uma longitude válida (-180 a 180)."
-      },
-      "LINK": {
-        "HINT": "O link é entregue com um cartão de pré-visualização em vez de texto puro.",
-        "URL_LABEL": "Link",
-        "TEXT_LABEL": "Mensagem (opcional)",
-        "TEXT_PLACEHOLDER": "Texto exibido acima da pré-visualização",
-        "TITLE_LABEL": "Título da pré-visualização (opcional)",
-        "TITLE_PLACEHOLDER": "Chamada do cartão",
-        "DESCRIPTION_LABEL": "Descrição da pré-visualização (opcional)",
-        "DESCRIPTION_PLACEHOLDER": "Texto curto abaixo do título",
-        "IMAGE_LABEL": "Imagem da pré-visualização (opcional)",
-        "URL_ERROR": "Informe um link válido começando com http ou https.",
-        "IMAGE_ERROR": "A imagem da pré-visualização precisa ser um link http ou https válido."
+        "OPEN_MAPS": "Abrir no Google Maps",
+        "ADDRESS_REQUIRED": "A EvoGO não envia localização sem endereço."
       },
       "CAROUSEL": {
         "HINT": "Cada cartão precisa de um título e de pelo menos um botão.",
@@ -56,7 +48,6 @@
         "CARD_LABEL": "Cartão {index}",
         "CARD_TITLE": "Título do cartão",
         "CARD_DESCRIPTION": "Descrição do cartão (opcional)",
-        "CARD_MEDIA": "URL da imagem (opcional)",
         "BUTTON_TEXT": "Texto do botão",
         "BUTTON_TYPE_REPLY": "Resposta rápida",
         "BUTTON_TYPE_LINK": "Abrir link",
@@ -77,7 +68,6 @@
         "BODY_LABEL": "Mensagem",
         "BODY_PLACEHOLDER": "O que você quer dizer?",
         "IMAGE_LABEL": "Imagem de cabeçalho (opcional)",
-        "IMAGE_ERROR": "A imagem de cabeçalho precisa ser um link http ou https válido.",
         "BUTTONS_LABEL": "Botões",
         "BUTTON_TEXT": "Texto do botão",
         "TYPE_URL": "Abrir link",
@@ -94,6 +84,12 @@
         "PIX_KEY_TYPE_CPF": "CPF",
         "PIX_KEY_TYPE_CNPJ": "CNPJ",
         "PIX_KEY_TYPE_RANDOM": "Chave aleatória"
+      },
+      "IMAGE": {
+        "CHOOSE": "Escolher imagem",
+        "REPLACE": "Trocar imagem",
+        "SIZE_ERROR": "A imagem pode ter no máximo {size} MB.",
+        "UPLOAD_ERROR": "Não foi possível enviar a imagem. Tente novamente."
       }
     },
     "SELECT_A_CONVERSATION": "Por favor, selecione uma conversa no painel da esquerda",
@@ -233,7 +229,7 @@
       }
     },
     "MENTION": {
-      "AGENTS": "Agentes",
+      "AGENTS": "Usuários",
       "TEAMS": "Times"
     },
     "CUSTOM_SNOOZE": {
@@ -275,9 +271,9 @@
         "TOMORROW": "Até amanhã",
         "NEXT_WEEK": "Até a próxima semana"
       },
-      "ASSIGN_AGENT": "Atribuir Agente",
+      "ASSIGN_AGENT": "Atribuir Usuário",
       "ASSIGN_LABEL": "Atribuir etiqueta",
-      "AGENTS_LOADING": "Carregando agentes...",
+      "AGENTS_LOADING": "Carregando usuários...",
       "ASSIGN_TEAM": "Atribuir time",
       "DELETE": "Excluir conversa",
       "OPEN_IN_NEW_TAB": "Abrir em nova aba",
@@ -286,7 +282,7 @@
       "API": {
         "AGENT_ASSIGNMENT": {
           "SUCCESFUL": "ID da conversa {conversationId} atribuído para \"{agentName}\"",
-          "FAILED": "Não foi possível atribuir agente. Por favor, tente novamente."
+          "FAILED": "Não foi possível atribuir usuário. Por favor, tente novamente."
         },
         "LABEL_ASSIGNMENT": {
           "SUCCESFUL": "Etiqueta #{labelName} atribuída para a conversa {conversationId}",
@@ -307,7 +303,7 @@
       "ENABLE_SIGN_TOOLTIP": "Ativar assinatura",
       "DISABLE_SIGN_TOOLTIP": "Desativar assinatura",
       "MSG_INPUT": "Shift + enter para nova linha. Digite '/' para selecionar uma Resposta Pronta.",
-      "PRIVATE_MSG_INPUT": "A mensagem será visível apenas para agentes",
+      "PRIVATE_MSG_INPUT": "A mensagem será visível apenas para usuários",
       "MESSAGING_RESTRICTED": "Você não pode responder esta conversa",
       "MESSAGING_RESTRICTED_WHATSAPP": "Você só pode responder usando uma mensagem de modelo devido à restrição da janela de 24 horas",
       "MESSAGING_RESTRICTED_API": "Você só pode responder usando uma mensagem de template devido à restrição da janela de mensagens",
@@ -369,8 +365,8 @@
     "VISIBLE_TO_AGENTS": "Mensagem Privada: Apenas visível para você e seu time",
     "CHANGE_STATUS": "Estado da conversa mudou",
     "CHANGE_STATUS_FAILED": "Mudança de status da conversa falhou",
-    "CHANGE_AGENT": "Novo agente atribuído",
-    "CHANGE_AGENT_FAILED": "Falha ao atribuir outro agente",
+    "CHANGE_AGENT": "Novo usuário atribuído",
+    "CHANGE_AGENT_FAILED": "Falha ao atribuir outro usuário",
     "ASSIGN_LABEL_SUCCESFUL": "Etiqueta atribuída com sucesso",
     "ASSIGN_LABEL_FAILED": "Falha ao atribuir etiqueta",
     "CHANGE_TEAM": "Status da conversa mudou",
@@ -386,7 +382,7 @@
     "SEND_FAILED": "Não foi possível enviar a mensagem! Tente novamente",
     "TRY_AGAIN": "tentar novamente",
     "ASSIGNMENT": {
-      "SELECT_AGENT": "selecionar Agente",
+      "SELECT_AGENT": "selecionar Usuário",
       "REMOVE": "Excluir",
       "ASSIGN": "Atribuir"
     },
@@ -454,7 +450,7 @@
     "SEND_EMAIL_PAYMENT_REQUIRED": "A transcrição de e-mail não está disponível no seu plano atual. Por favor, atualize para usar este recurso.",
     "FORM": {
       "SEND_TO_CONTACT": "Envie a transcrição para o cliente",
-      "SEND_TO_AGENT": "Envie a transcrição para o agente designado",
+      "SEND_TO_AGENT": "Envie a transcrição para o usuário designado",
       "SEND_TO_OTHER_EMAIL_ADDRESS": "Enviar a transcrição para outro endereço de e-mail",
       "EMAIL": {
         "PLACEHOLDER": "Digite um endereço de e-mail",
@@ -476,7 +472,7 @@
     },
     "TEAM_MEMBERS": {
       "TITLE": "Convidar membros de seu time",
-      "DESCRIPTION": "Já que você está se preparando para conversar com seu cliente, traga seus colegas para ajudá-lo. Você pode convidar seus colegas adicionando os endereços de e-mail deles na lista de agentes.",
+      "DESCRIPTION": "Já que você está se preparando para conversar com seu cliente, traga seus colegas para ajudá-lo. Você pode convidar seus colegas adicionando os endereços de e-mail deles na lista de usuários.",
       "NEW_LINK": "Clique aqui para convidar um membro do time"
     },
     "LABELS": {
@@ -486,12 +482,12 @@
     },
     "CANNED_RESPONSES": {
       "TITLE": "Criar respostas prontas",
-      "DESCRIPTION": "Os modelos de respostas prontas ajudam você a responder rapidamente a uma conversa. Os agentes podem digitar o caractere '/' seguido pelo atalho para inserir uma resposta.",
+      "DESCRIPTION": "Os modelos de respostas prontas ajudam você a responder rapidamente a uma conversa. Os usuários podem digitar o caractere '/' seguido pelo atalho para inserir uma resposta.",
       "NEW_LINK": "Clique aqui para criar uma resposta pronta"
     }
   },
   "CONVERSATION_SIDEBAR": {
-    "ASSIGNEE_LABEL": "Agente atribuído",
+    "ASSIGNEE_LABEL": "Usuário atribuído",
     "SELF_ASSIGN": "Atribuir a mim",
     "TEAM_LABEL": "Time atribuído",
     "SELECT": {

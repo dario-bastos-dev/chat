@@ -71,6 +71,7 @@ const state = props.formState || {
   ccEmails: '',
   bccEmails: '',
   attachedFiles: [],
+  assignToMe: true,
 };
 
 const inboxTypes = computed(() => {
@@ -152,6 +153,7 @@ const newMessagePayload = () => {
     currentUser: props.currentUser,
     attachedFiles,
     directUploadsEnabled: props.isDirectUploadsEnabled,
+    assignToMe: state.assignToMe,
   });
 };
 
@@ -297,6 +299,7 @@ const clearForm = () => {
     ccEmails: '',
     bccEmails: '',
     attachedFiles: [],
+    assignToMe: true,
   });
   v$.value.$reset();
 };
@@ -325,6 +328,7 @@ const handleSendWhatsappMessage = async ({ message, templateParams }) => {
     message,
     templateParams,
     currentUser: props.currentUser,
+    assignToMe: state.assignToMe,
   });
   await emit('createConversation', {
     payload: whatsappMessagePayload,
@@ -339,6 +343,7 @@ const handleSendTwilioMessage = async ({ message, templateParams }) => {
     message,
     templateParams,
     currentUser: props.currentUser,
+    assignToMe: state.assignToMe,
   });
   await emit('createConversation', {
     payload: twilioMessagePayload,
@@ -449,6 +454,7 @@ useKeyboardEvents({
     />
     <ActionButtons
       v-else
+      v-model:assign-to-me="state.assignToMe"
       :attached-files="state.attachedFiles"
       :is-whatsapp-inbox="inboxTypes.isWhatsapp"
       :is-email-or-web-widget-inbox="inboxTypes.isEmailOrWebWidget"

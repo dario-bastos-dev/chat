@@ -8,7 +8,7 @@
     "YES": "Sim",
     "CANCEL": "Cancelar",
     "SEARCH_INPUT_PLACEHOLDER": "Pesquisar",
-    "ASSIGN_AGENT_TOOLTIP": "Atribuir Agente",
+    "ASSIGN_AGENT_TOOLTIP": "Atribuir Usuário",
     "ASSIGN_TEAM_TOOLTIP": "Atribuir time",
     "ASSIGN_SUCCESFUL": "Conversas atribuídas com sucesso.",
     "ASSIGN_FAILED": "Falha ao atribuir conversas. Por favor, tente novamente.",

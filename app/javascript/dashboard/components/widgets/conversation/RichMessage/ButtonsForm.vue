@@ -3,6 +3,7 @@ import { ref, computed, watchEffect } from 'vue';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+import ImageUploadField from './ImageUploadField.vue';
 
 const emit = defineEmits(['update']);
 
@@ -56,14 +57,9 @@ const hasInvalidButton = computed(() =>
   buttons.value.some(button => !isButtonValid(button))
 );
 
-const isImageUrlValid = computed(
-  () => !imageUrl.value.trim() || isHttpUrl(imageUrl.value)
-);
-
 const isValid = computed(() => {
   // Evolution GO rejects the send without a header and a body.
   if (!title.value.trim() || !body.value.trim()) return false;
-  if (!isImageUrlValid.value) return false;
 
   if (mode.value === 'pix') {
     return pixKey.value.trim().length > 0 && pixName.value.trim().length > 0;
@@ -183,20 +179,12 @@ watchEffect(() =>
       />
     </label>
 
-    <label class="flex flex-col gap-1">
+    <div class="flex flex-col gap-2">
       <span class="text-sm font-medium text-n-slate-12">
         {{ $t('CONVERSATION.RICH_MESSAGE.BUTTONS.IMAGE_LABEL') }}
       </span>
-      <input
-        v-model="imageUrl"
-        type="url"
-        class="!mb-0"
-        placeholder="https://exemplo.com/banner.jpg"
-      />
-      <span v-if="!isImageUrlValid" class="text-sm text-n-ruby-11">
-        {{ $t('CONVERSATION.RICH_MESSAGE.BUTTONS.IMAGE_ERROR') }}
-      </span>
-    </label>
+      <ImageUploadField v-model="imageUrl" />
+    </div>
 
     <template v-if="mode === 'cta'">
       <div class="flex flex-col gap-3">

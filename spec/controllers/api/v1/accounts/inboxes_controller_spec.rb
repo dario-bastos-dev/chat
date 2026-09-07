@@ -1298,6 +1298,22 @@ RSpec.describe 'Inboxes API', type: :request do
         expect(response).to have_http_status(:success)
         expect(inbox.reload.agent_bot_inbox.event_names).to eq []
       end
+
+      it 'sets the conversation and contact custom attribute key allow-lists' do
+        post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/set_agent_bot",
+             headers: admin.create_new_auth_token,
+             params: valid_params.merge(
+               event_names: ['custom_attribute_updated'],
+               conversation_custom_attribute_keys: ['priority_level'],
+               contact_custom_attribute_keys: ['plan']
+             ),
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        agent_bot_inbox = inbox.reload.agent_bot_inbox
+        expect(agent_bot_inbox.conversation_custom_attribute_keys).to eq ['priority_level']
+        expect(agent_bot_inbox.contact_custom_attribute_keys).to eq ['plan']
+      end
     end
   end
 

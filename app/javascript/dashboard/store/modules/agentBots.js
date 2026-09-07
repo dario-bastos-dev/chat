@@ -46,6 +46,8 @@ export const getters = {
           'conversation_status_changed',
           'webwidget_triggered',
         ],
+        conversationCustomAttributeKeys: ['all'],
+        contactCustomAttributeKeys: ['all'],
       }
     );
   },
@@ -162,6 +164,9 @@ export const actions = {
           inboxId,
           initialConversationStatus: agentBotInbox.initial_conversation_status,
           eventNames: agentBotInbox.event_names,
+          conversationCustomAttributeKeys:
+            agentBotInbox.conversation_custom_attribute_keys,
+          contactCustomAttributeKeys: agentBotInbox.contact_custom_attribute_keys,
         });
       }
     } catch (error) {
@@ -173,19 +178,30 @@ export const actions = {
 
   setAgentBotInbox: async (
     { commit },
-    { inboxId, botId, initialConversationStatus, eventNames }
+    {
+      inboxId,
+      botId,
+      initialConversationStatus,
+      eventNames,
+      conversationCustomAttributeKeys,
+      contactCustomAttributeKeys,
+    }
   ) => {
     commit(types.SET_AGENT_BOT_UI_FLAG, { isSettingAgentBot: true });
     try {
       await InboxesAPI.setAgentBot(inboxId, botId, {
         initialConversationStatus,
         eventNames,
+        conversationCustomAttributeKeys,
+        contactCustomAttributeKeys,
       });
       commit(types.SET_AGENT_BOT_INBOX, { agentBotId: botId, inboxId });
       commit(types.SET_AGENT_BOT_INBOX_CONFIG, {
         inboxId,
         initialConversationStatus,
         eventNames,
+        conversationCustomAttributeKeys,
+        contactCustomAttributeKeys,
       });
     } catch (error) {
       throwErrorMessage(error);
@@ -248,11 +264,22 @@ export const mutations = {
   },
   [types.SET_AGENT_BOT_INBOX_CONFIG](
     $state,
-    { inboxId, initialConversationStatus, eventNames }
+    {
+      inboxId,
+      initialConversationStatus,
+      eventNames,
+      conversationCustomAttributeKeys,
+      contactCustomAttributeKeys,
+    }
   ) {
     $state.agentBotInboxConfig = {
       ...$state.agentBotInboxConfig,
-      [inboxId]: { initialConversationStatus, eventNames },
+      [inboxId]: {
+        initialConversationStatus,
+        eventNames,
+        conversationCustomAttributeKeys,
+        contactCustomAttributeKeys,
+      },
     };
   },
   [types.UPDATE_AGENT_BOT_AVATAR]($state, { id, thumbnail }) {

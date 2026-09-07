@@ -4,10 +4,17 @@ import { useMapGetter } from 'dashboard/composables/store';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
 import WhatsAppTemplateParser from 'dashboard/components-next/whatsapp/WhatsAppTemplateParser.vue';
 import SingleSelect from 'dashboard/components-next/filter/inputs/SingleSelect.vue';
+import NextButton from 'dashboard/components-next/button/Button.vue';
+import NextInput from 'dashboard/components-next/input/Input.vue';
+import {
+  BUTTON_LABEL_MAX,
+  getSendMessageButtonError,
+} from 'dashboard/helper/validations';
 
 // `action_params` holds a plain string for a free text message and an object
 // for a template, so rules saved before templates were supported keep loading
-// as text without any migration.
+// as text without any migration. A text message with interactive buttons is
+// stored as `{ content, title, buttons: [{ title, url? }] }` in the same slot.
 const modelValue = defineModel({ type: [String, Object], default: '' });
 
 defineProps({
@@ -17,13 +24,85 @@ defineProps({
   },
 });
 
+const MAX_BUTTONS = 3;
+
 const inboxes = useMapGetter('inboxes/getInboxes');
 
+const isObject = value => !!value && typeof value === 'object';
+
 const isTemplate = computed(
-  () => !!modelValue.value && typeof modelValue.value === 'object'
+  () => isObject(modelValue.value) && 'template_params' in modelValue.value
 );
 
 const mode = ref(isTemplate.value ? 'template' : 'text');
+
+// Text-mode state lives in local refs and is mirrored back into `modelValue` by
+// the watcher below, so the free-text editor and the button rows stay decoupled.
+const text = ref(
+  isObject(modelValue.value)
+    ? modelValue.value.content || ''
+    : modelValue.value || ''
+);
+
+// Header above the interactive message. Optional everywhere except WhatsApp Lite, which rejects a
+// button send without it; the template carries a standing note to that effect.
+const header = ref(isObject(modelValue.value) ? modelValue.value.title || '' : '');
+
+let buttonSeq = 0;
+const nextButton = (title = '', url = '') => {
+  buttonSeq += 1;
+  return { id: buttonSeq, title, url };
+};
+
+const buttons = ref(
+  isObject(modelValue.value) && Array.isArray(modelValue.value.buttons)
+    ? modelValue.value.buttons.map(button =>
+        nextButton(button.title || '', button.url || '')
+      )
+    : []
+);
+
+const addButton = () => {
+  if (buttons.value.length >= MAX_BUTTONS) return;
+  buttons.value.push(nextButton());
+};
+
+const removeButton = index => {
+  buttons.value.splice(index, 1);
+};
+
+// One item per row: a filled `url` makes it a link button, otherwise a quick reply. Blank-label
+// rows are kept so validation flags them instead of silently dropping the row; the backend
+// filters them out.
+const serializeButtons = () =>
+  buttons.value.map(button => {
+    const item = { title: button.title.trim() };
+    const url = button.url.trim();
+    if (url) item.url = url;
+    return item;
+  });
+
+const syncTextMode = () => {
+  if (mode.value !== 'text') return;
+
+  const serialized = serializeButtons();
+  modelValue.value = serialized.length
+    ? { content: text.value, title: header.value.trim(), buttons: serialized }
+    : text.value;
+};
+
+watch([text, header, buttons], syncTextMode, { deep: true });
+
+// Runs the same check as the save-time validation (helper/validations.js) on the serialized
+// shape, then maps the returned code to its inline message. The header is optional here; the
+// template shows a standing note that WhatsApp Lite still needs it.
+const buttonIssueKey = computed(() => {
+  const code = getSendMessageButtonError({
+    content: text.value,
+    buttons: serializeButtons(),
+  });
+  return code ? `AUTOMATION.ACTION.BUTTONS.ERRORS.${code}` : null;
+});
 
 const templateInboxId = ref(null);
 const parserRef = ref(null);
@@ -94,7 +173,14 @@ watch(whatsappInboxes, resolveInboxFromTemplate, { immediate: true });
 
 const onModeChange = value => {
   mode.value = value;
-  modelValue.value = value === 'template' ? { template_params: {} } : '';
+  if (value === 'template') {
+    modelValue.value = { template_params: {} };
+    return;
+  }
+  text.value = '';
+  header.value = '';
+  buttons.value = [];
+  modelValue.value = '';
 };
 
 const onInboxChange = option => {
@@ -163,14 +249,83 @@ watch(
       </button>
     </div>
 
-    <WootMessageEditor
-      v-if="mode === 'text'"
-      v-model="modelValue"
-      rows="4"
-      enable-variables
-      :placeholder="$t('AUTOMATION.ACTION.TEAM_MESSAGE_INPUT_PLACEHOLDER')"
-      class="[&_.ProseMirror-menubar]:hidden px-3 py-1 bg-n-alpha-1 rounded-lg outline outline-1 outline-n-weak dark:outline-n-strong"
-    />
+    <template v-if="mode === 'text'">
+      <WootMessageEditor
+        v-model="text"
+        rows="4"
+        enable-variables
+        :placeholder="$t('AUTOMATION.ACTION.TEAM_MESSAGE_INPUT_PLACEHOLDER')"
+        class="[&_.ProseMirror-menubar]:hidden px-3 py-1 bg-n-alpha-1 rounded-lg outline outline-1 outline-n-weak dark:outline-n-strong"
+      />
+
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <label class="text-sm font-medium text-n-slate-12 !mb-0">
+            {{ $t('AUTOMATION.ACTION.BUTTONS.LABEL') }}
+          </label>
+          <NextButton
+            v-if="buttons.length < MAX_BUTTONS"
+            icon="i-lucide-plus"
+            blue
+            faded
+            xs
+            :label="$t('AUTOMATION.ACTION.BUTTONS.ADD')"
+            @click="addButton"
+          />
+        </div>
+
+        <p v-if="!buttons.length" class="text-sm text-n-slate-11">
+          {{ $t('AUTOMATION.ACTION.BUTTONS.HINT') }}
+        </p>
+
+        <NextInput
+          v-if="buttons.length"
+          v-model="header"
+          type="text"
+          size="sm"
+          :maxlength="60"
+          :placeholder="$t('AUTOMATION.ACTION.BUTTONS.HEADER_PLACEHOLDER')"
+        />
+
+        <p v-if="buttons.length" class="text-sm text-n-slate-11">
+          {{ $t('AUTOMATION.ACTION.BUTTONS.HEADER_HINT') }}
+        </p>
+
+        <div
+          v-for="(button, index) in buttons"
+          :key="button.id"
+          class="flex flex-col gap-2 p-3 border rounded-lg border-n-weak"
+        >
+          <div class="flex items-center gap-2">
+            <NextInput
+              v-model="button.title"
+              type="text"
+              size="sm"
+              class="flex-1"
+              :maxlength="BUTTON_LABEL_MAX"
+              :placeholder="$t('AUTOMATION.ACTION.BUTTONS.TITLE_PLACEHOLDER')"
+            />
+            <NextButton
+              sm
+              solid
+              slate
+              icon="i-lucide-trash"
+              @click="removeButton(index)"
+            />
+          </div>
+          <NextInput
+            v-model="button.url"
+            type="url"
+            size="sm"
+            :placeholder="$t('AUTOMATION.ACTION.BUTTONS.URL_PLACEHOLDER')"
+          />
+        </div>
+
+        <p v-if="buttonIssueKey" class="text-sm text-n-ruby-11">
+          {{ $t(buttonIssueKey) }}
+        </p>
+      </div>
+    </template>
 
     <template v-else>
       <p v-if="!inboxOptions.length" class="text-sm text-n-slate-11">
