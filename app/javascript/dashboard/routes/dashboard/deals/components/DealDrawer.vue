@@ -1289,12 +1289,6 @@ export default {
         this.isUpdating = false;
       }
     },
-    formatCurrency(value) {
-      return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: this.deal.currency || 'BRL',
-      }).format(value);
-    },
     formatDate(date) {
       if (!date) return '-';
       return formatDistanceToNow(new Date(date), {

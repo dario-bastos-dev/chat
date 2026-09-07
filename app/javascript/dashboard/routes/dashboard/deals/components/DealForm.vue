@@ -1,5 +1,5 @@
 <template>
-  <div class="deal-form bg-n-surface-2 p-6 rounded-2xl border border-n-weak min-w-[460px] max-w-full shadow-2xl">
+  <div class="deal-form bg-n-surface-2 p-6 rounded-2xl border border-n-weak min-w-[480px] max-w-full shadow-2xl">
     <!-- Header -->
     <div class="flex items-center justify-between pb-4 mb-5 border-b border-n-weak">
       <h2 class="text-base font-semibold text-n-slate-12 m-0 tracking-tight">
@@ -16,7 +16,7 @@
           <input
             v-model="form.title"
             type="text"
-            class="w-full text-xs md:text-sm text-n-slate-12 bg-n-alpha-1 hover:bg-n-alpha-2 focus:bg-n-alpha-2 border border-n-weak focus:border-n-brand rounded-xl h-10 px-3 transition-all duration-150 outline-none placeholder:text-n-slate-9 focus:ring-2 focus:ring-n-brand/20"
+            class="reset-base block w-full text-xs md:text-sm text-n-slate-12 bg-n-alpha-1 hover:bg-n-alpha-2 focus:bg-n-alpha-2 border border-n-weak focus:border-n-brand rounded-xl h-10 px-3 transition-all duration-150 outline-none placeholder:text-n-slate-9 focus:ring-2 focus:ring-n-brand/20"
             :placeholder="$t('CRM.DEALS.FORM.TITLE_PLACEHOLDER')"
             required
           />
@@ -38,7 +38,7 @@
               type="number"
               min="0"
               step="0.01"
-              class="w-full text-xs md:text-sm text-n-slate-12 bg-n-alpha-1 hover:bg-n-alpha-2 focus:bg-n-alpha-2 border border-n-weak focus:border-n-brand rounded-xl h-10 pl-10 pr-3 transition-all duration-150 outline-none placeholder:text-n-slate-9 focus:ring-2 focus:ring-n-brand/20"
+              class="reset-base block w-full text-xs md:text-sm text-n-slate-12 bg-n-alpha-1 hover:bg-n-alpha-2 focus:bg-n-alpha-2 border border-n-weak focus:border-n-brand rounded-xl h-10 pl-10 pr-3 transition-all duration-150 outline-none placeholder:text-n-slate-9 focus:ring-2 focus:ring-n-brand/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               :placeholder="$t('CRM.DEALS.FORM.VALUE_PLACEHOLDER')"
             />
           </div>
@@ -96,10 +96,10 @@
         <!-- Contato -->
         <div class="flex flex-col gap-1.5">
           <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">{{ $t('CRM.DEALS.FORM.CONTACT') }} *</label>
-          <div class="contact-selector-wrap">
+          <div>
             <div
               v-if="selectedContact"
-              class="flex items-center justify-between bg-n-alpha-1 hover:bg-n-alpha-2 border border-n-weak p-3 rounded-xl h-12 transition-all duration-150"
+              class="flex items-center justify-between bg-n-alpha-1 hover:bg-n-alpha-2 border border-n-weak px-3 rounded-xl h-10 transition-all duration-150"
             >
               <div class="flex items-center gap-2.5 min-w-0">
                 <Avatar
@@ -129,7 +129,7 @@
               :menu-items="contactMenuItems"
               :is-loading="isSearchingContacts"
               :show-dropdown="contacts.length > 0"
-              class="contact-tag-input w-full text-xs md:text-sm text-n-slate-12"
+              class="w-full min-h-10 items-center px-3 bg-n-alpha-1 hover:bg-n-alpha-2 !border-n-weak focus-within:!border-n-brand rounded-xl transition-all duration-150"
               @input="searchContacts"
               @add="setSelectedContact"
             />
@@ -420,29 +420,8 @@ export default {
 
 <style lang="scss" scoped>
 .deal-form {
-  min-width: 480px;
-
-  /* Proteções estritas contra estilos globais legados de formulários do Chatwoot (Foundation) */
-  input[type="text"],
-  select {
-    margin-bottom: 0 !important;
-    box-shadow: none !important;
-    font-family: inherit !important;
-    transition: all 0.15s ease-in-out !important;
-
-    &:focus {
-      box-shadow: 0 0 0 2px var(--n-brand-alpha, rgba(37, 99, 235, 0.2)) !important;
-    }
-  }
-
-  /* Remover setas padrão nativas do navegador nos elementos select */
-  select {
-    -webkit-appearance: none !important;
-    -moz-appearance: none !important;
-    appearance: none !important;
-  }
-
-  /* Garantir consistência estética nos botões mesmo contra CSS global */
+  /* O CSS global de botao do Chatwoot (Foundation) ainda alcanca os botoes do
+     formulario; as utilitarias do template so vencem com !important. */
   button {
     font-family: inherit !important;
     box-shadow: none !important;
@@ -454,22 +433,7 @@ export default {
   }
 }
 
-.contact-tag-input {
-  :deep(.inline-input) {
-    @apply h-10 mb-0 border-0 bg-transparent p-0 !important;
-    input {
-      @apply h-10 mb-0 text-xs md:text-sm text-n-slate-12 bg-n-alpha-1 hover:bg-n-alpha-2 focus:bg-n-alpha-2 border border-n-weak focus:border-n-brand rounded-xl px-3 transition-all duration-150 outline-none w-full !important;
-      box-shadow: none !important;
-      margin-bottom: 0 !important;
-      
-      &:focus {
-        @apply border-n-brand !important;
-        box-shadow: 0 0 0 2px var(--n-brand-alpha, rgba(37, 99, 235, 0.2)) !important;
-      }
-    }
-  }
-}
-
+/* Os dropdowns de etapa e responsavel abrem por cima do modal. */
 :deep(.modal-container),
 .deal-form,
 .deal-form form {
