@@ -51,6 +51,50 @@ describe Whatsapp::Providers::EvolutionGoService do
         .with { |req| JSON.parse(req.body)['id'].present? }
     end
 
+    it 'addresses a group by its jid instead of guessing the domain from the length' do
+      stub_send('send/text')
+
+      service.send_message('120363111122223333@g.us', message)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/text')
+          .with { |req| JSON.parse(req.body)['number'] == '120363111122223333@g.us' }
+      )
+    end
+
+    it 'addresses a legacy hyphenated group instead of refusing to send' do
+      stub_send('send/text')
+
+      service.send_message('5511999999999-1600000000@g.us', message)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/text')
+          .with { |req| JSON.parse(req.body)['number'] == '5511999999999-1600000000@g.us' }
+      )
+    end
+
+    it 'keeps a jid that already names its own domain' do
+      stub_send('send/text')
+
+      service.send_message('27041265119351@lid', message)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/text')
+          .with { |req| JSON.parse(req.body)['number'] == '27041265119351@lid' }
+      )
+    end
+
+    it 'still turns a bare phone number into a whatsapp jid' do
+      stub_send('send/text')
+
+      service.send_message('5511988887777', message)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/text')
+          .with { |req| JSON.parse(req.body)['number'] == '5511988887777@s.whatsapp.net' }
+      )
+    end
+
     it 'releases the claimed source_id when nothing was sent' do
       stub_send('send/text', status: 500)
 

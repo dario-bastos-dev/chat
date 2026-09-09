@@ -1134,8 +1134,23 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     "#{phone}@s.whatsapp.net" if phone.present?
   end
 
+  # A value that already names its own domain is a full jid and must survive untouched. EvoGO
+  # addresses a group that way, and the length heuristic in format_recipient_jid cannot tell an
+  # 18 digit group id from a lid, so stripping the domain here would send the message to a
+  # @lid that does not exist. The device suffix is dropped for the same reason the incoming
+  # service drops it.
+  KNOWN_JID_DOMAINS = ['@g.us', '@lid', '@s.whatsapp.net'].freeze
+
+  def known_jid(value)
+    jid = value.to_s.gsub(/:[^@]+/, '')
+    jid if KNOWN_JID_DOMAINS.any? { |domain| jid.end_with?(domain) }
+  end
+
   def extract_phone_number(value)
     return nil if value.blank?
+
+    jid = known_jid(value)
+    return jid if jid.present?
 
     # Get the part before @, then take the part before any : (device ID)
     phone = value.to_s.split('@').first.split(':').first.gsub(/^\+/, '')
@@ -1144,6 +1159,9 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   end
 
   def format_recipient_jid(source_id)
+    known = known_jid(source_id)
+    return known if known.present?
+
     # If it's a LID (starts with 1 or 2 and is long, or we detected it before)
     # Standard phone numbers are usually shorter than LIDs
     if source_id.length > 15 || source_id.start_with?('1', '2')
