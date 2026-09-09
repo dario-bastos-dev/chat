@@ -72,7 +72,12 @@ class Whatsapp::OneoffCampaignService
     sent_count = 0
 
     if target_type == 'conversations'
-      scope = campaign.account.conversations.where(inbox_id: campaign.inbox_id, status: :open).tagged_with(audience_labels, any: true)
+      # A campaign speaks to one person, and a group jid is a usable address, so groups are kept
+      # out of the audience entirely: leaving them in the scope would also count them as sent.
+      # The contact branch below needs no equivalent, since a group carries no phone number.
+      scope = campaign.account.conversations.where(inbox_id: campaign.inbox_id, status: :open)
+                      .where.not(contact_id: campaign.account.contacts.whatsapp_groups)
+                      .tagged_with(audience_labels, any: true)
       scope.find_each do |conversation|
         next if already_processed.include?(conversation.id)
         next unless conversation.reload.open?

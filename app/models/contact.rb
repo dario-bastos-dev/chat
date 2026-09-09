@@ -159,6 +159,14 @@ class Contact < ApplicationRecord
     contact_inboxes.find_by!(inbox_id: inbox_id).source_id
   end
 
+  # A WhatsApp group chat is stored as a contact so it can hold a conversation, but it stands for
+  # a room full of people rather than a person: anything addressed to an individual has to skip it.
+  def whatsapp_group?
+    identifier.to_s.end_with?('@g.us')
+  end
+
+  scope :whatsapp_groups, -> { where('contacts.identifier LIKE ?', '%@g.us') }
+
   def push_event_data
     data = {
       additional_attributes: additional_attributes,

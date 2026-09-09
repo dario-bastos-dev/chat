@@ -30,6 +30,24 @@ describe CsatSurveyService do
       end
     end
 
+    context 'when the conversation is a whatsapp group' do
+      let(:contact) { create(:contact, account: account, identifier: '120363111122223333@g.us', phone_number: nil) }
+      # The factory mints its own contact unless one is passed, so the group has to be named here.
+      let(:conversation) do
+        create(:conversation, contact: contact, contact_inbox: contact_inbox, inbox: inbox, account: account, status: :resolved)
+      end
+
+      before do
+        allow(conversation).to receive(:can_reply?).and_return(true)
+      end
+
+      it 'does not survey everyone in the group' do
+        service.perform
+
+        expect(MessageTemplates::Template::CsatSurvey).not_to have_received(:new)
+      end
+    end
+
     context 'when outside messaging window' do
       before do
         allow(conversation).to receive(:can_reply?).and_return(false)

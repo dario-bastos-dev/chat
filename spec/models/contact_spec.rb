@@ -5,6 +5,24 @@ require 'rails_helper'
 require Rails.root.join 'spec/models/concerns/avatarable_shared.rb'
 
 RSpec.describe Contact do
+  describe '#whatsapp_group?' do
+    it 'is true for a contact that stands for a whatsapp group' do
+      contact = build(:contact, identifier: '120363111122223333@g.us', phone_number: nil)
+
+      expect(contact.whatsapp_group?).to be(true)
+    end
+
+    it 'is false for a person' do
+      contact = build(:contact, identifier: '5511988887777@s.whatsapp.net', phone_number: '+5511988887777')
+
+      expect(contact.whatsapp_group?).to be(false)
+    end
+
+    it 'is false when the contact has no identifier' do
+      expect(build(:contact, identifier: nil).whatsapp_group?).to be(false)
+    end
+  end
+
   context 'with validations' do
     it { is_expected.to validate_presence_of(:account_id) }
   end

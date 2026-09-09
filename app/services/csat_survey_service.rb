@@ -42,7 +42,9 @@ class CsatSurveyService
   end
 
   def conversation_allows_csat?
-    conversation.resolved? && !conversation.tweet?
+    # A survey asks one person how the service was. Sending it to a group chat would put the
+    # question in front of everyone in the room.
+    conversation.resolved? && !conversation.tweet? && !contact.whatsapp_group?
   end
 
   def csat_enabled?

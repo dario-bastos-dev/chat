@@ -221,6 +221,35 @@ describe Whatsapp::OneoffCampaignService do
       end
     end
 
+    context 'when the audience targets conversations and one of them is a whatsapp group' do
+      let!(:evolution_channel) do
+        create(:channel_whatsapp, account: account, provider: 'evolution_go',
+                                  provider_config: { 'instance_token' => 'token', 'instance_id' => 'id' },
+                                  validate_provider_config: false, sync_templates: false,
+                                  provider_instance_callbacks: false)
+      end
+      let(:evolution_inbox) { evolution_channel.inbox }
+      let!(:group_campaign) do
+        create(:campaign, inbox: evolution_inbox, account: account,
+                          audience: [{ type: 'Label', id: label1.id }, { type: 'Target', value: 'conversations' }],
+                          template_params: template_params)
+      end
+      let(:group_contact) { create(:contact, account: account, identifier: '120363111122223333@g.us', phone_number: nil) }
+      let(:group_contact_inbox) do
+        create(:contact_inbox, contact: group_contact, inbox: evolution_inbox, source_id: '120363111122223333@g.us')
+      end
+      let!(:group_conversation) do
+        create(:conversation, contact: group_contact, contact_inbox: group_contact_inbox,
+                              inbox: evolution_inbox, account: account, status: :open)
+      end
+
+      before { group_conversation.update_labels([label1.title]) }
+
+      it 'does not deliver the campaign into the group' do
+        expect { described_class.new(campaign: group_campaign).perform }.not_to change(Message, :count)
+      end
+    end
+
     context 'when template_params is missing' do
       let(:template_params) { nil }
 
