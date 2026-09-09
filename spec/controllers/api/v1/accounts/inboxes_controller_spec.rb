@@ -287,6 +287,32 @@ RSpec.describe 'Inboxes API', type: :request do
     end
   end
 
+  describe 'GET /api/v1/accounts/{account.id}/inboxes/{inbox.id}/evolution_go_settings' do
+    let(:channel) do
+      create(:channel_whatsapp, account: account, provider: 'evolution_go',
+                                provider_config: { 'instance_token' => 'instance-token', 'instance_id' => 'instance-id' },
+                                sync_templates: false, validate_provider_config: false,
+                                provider_instance_callbacks: false)
+    end
+
+    before do
+      create(:installation_config, name: 'EVOLUTIONGO_API_URL', value: 'https://evogo.test')
+      GlobalConfig.clear_cache
+      stub_request(:get, 'https://evogo.test/instance/instance-id/advanced-settings')
+        .to_return(status: 200,
+                   body: { data: { alwaysOnline: true, readMessages: false, ignoreGroups: false } }.to_json,
+                   headers: { 'Content-Type' => 'application/json' })
+    end
+
+    it 'realigns groups_enabled with what the instance is actually running' do
+      get "/api/v1/accounts/#{account.id}/inboxes/#{channel.inbox.id}/evolution_go_settings",
+          headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:success)
+      expect(channel.reload.provider_config['groups_enabled']).to be(true)
+    end
+  end
+
   describe 'GET /api/v1/accounts/{account.id}/inboxes/{inbox.id}/assignable_agents' do
     let(:inbox) { create(:inbox, account: account) }
 

@@ -637,7 +637,9 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     }
   end
 
-  # Only alwaysOnline and readMessages are user facing; the rest is fixed for this integration.
+  # Only alwaysOnline, readMessages and ignoreGroups are user facing; the rest is fixed for this
+  # integration. The instance drops group events on its own, so an inbox that has not opted in
+  # never even receives them.
   def advanced_settings_payload
     config = whatsapp_channel.provider_config || {}
 
@@ -645,7 +647,7 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       alwaysOnline: ['true', true].include?(config['always_online']),
       readMessages: ['true', true].include?(config['read_messages']),
       rejectCall: false,
-      ignoreGroups: true,
+      ignoreGroups: ['true', true].exclude?(config['groups_enabled']),
       ignoreStatus: true
     }
   end

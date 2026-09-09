@@ -33,6 +33,31 @@ describe Whatsapp::Providers::EvolutionGoService do
       )
   end
 
+  describe 'group toggle' do
+    let(:settings_url) { 'https://evogo.test/instance/instance-id/advanced-settings' }
+
+    it 'tells the instance to stop ignoring groups once the inbox opts in' do
+      channel.merge_provider_config!('groups_enabled' => true)
+      stub_request(:put, settings_url).to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      described_class.new(whatsapp_channel: channel.reload).send(:configure_advanced_settings)
+
+      expect(WebMock).to(
+        have_requested(:put, settings_url).with { |req| JSON.parse(req.body)['ignoreGroups'] == false }
+      )
+    end
+
+    it 'keeps groups ignored while the inbox has not opted in' do
+      stub_request(:put, settings_url).to_return(status: 200, body: '{}', headers: { 'Content-Type' => 'application/json' })
+
+      service.send(:configure_advanced_settings)
+
+      expect(WebMock).to(
+        have_requested(:put, settings_url).with { |req| JSON.parse(req.body)['ignoreGroups'] == true }
+      )
+    end
+  end
+
   describe '#send_message' do
     it 'claims the source_id before the request so the webhook echo dedups' do
       stub_send('send/text')

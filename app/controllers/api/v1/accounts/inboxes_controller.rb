@@ -257,9 +257,12 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     settings = result[:settings] || {}
     # Only keys the instance actually reported: a response in an unexpected shape would
     # otherwise blank out the stored toggles and the next save would push those blanks back.
-    updates = {}
-    updates['always_online'] = settings['alwaysOnline'] unless settings['alwaysOnline'].nil?
-    updates['read_messages'] = settings['readMessages'] unless settings['readMessages'].nil?
+    updates = {
+      'always_online' => settings['alwaysOnline'],
+      'read_messages' => settings['readMessages'],
+      # Stored the other way round: the instance says what it ignores, the inbox says what it wants.
+      'groups_enabled' => settings['ignoreGroups'].nil? ? nil : !settings['ignoreGroups']
+    }.compact
     @inbox.channel.merge_provider_config!(updates) if updates.any?
 
     render json: result
