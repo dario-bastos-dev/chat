@@ -75,7 +75,16 @@ class Webhooks::EvolutionGoEventsJob < MutexApplicationJob
     candidates = [info[:RecipientAlt], info[:Chat], info[:Sender], info[:SenderAlt]]
                  .map { |jid| jid.to_s.gsub(/:[^@]+/, '') }.compact_blank
 
-    candidates.find { |jid| jid.end_with?('@s.whatsapp.net') } || candidates.first
+    preferred_lock_jid(candidates)
+  end
+
+  # A group comes first: it is one chat shared by everyone in it, and Sender names the participant
+  # who spoke. Preferring the phone jid would lock per member instead of per group, and would make a
+  # member's own 1:1 chat wait on a lock taken for the group.
+  def preferred_lock_jid(candidates)
+    candidates.find { |jid| jid.end_with?('@g.us') } ||
+      candidates.find { |jid| jid.end_with?('@s.whatsapp.net') } ||
+      candidates.first
   end
 
   def process_pair_success(channel)
