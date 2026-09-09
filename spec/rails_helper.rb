@@ -44,6 +44,16 @@ rescue ActiveRecord::PendingMigrationError => e
 end
 RSpec.configure do |config|
   config.include FactoryBot::Syntax::Methods
+
+  # $alfred and $velma are connection pools built once, and in test they wrap a MockRedis that
+  # lives for the whole run. Without this, whatever an example writes stays visible to the next
+  # one: a dedup lock taken on a source_id, for instance, silently turns a later example that
+  # reuses that id into a no-op.
+  config.before do
+    [$alfred, $velma].each do |pool|
+      pool&.with { |connection| connection.redis.flushdb }
+    end
+  end
   # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
   config.fixture_path = Rails.root.join('spec/fixtures')
 

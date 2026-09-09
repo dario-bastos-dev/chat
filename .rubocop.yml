@@ -60,6 +60,8 @@ Style/GlobalVars:
     - 'config/initializers/rack_attack.rb'
     - 'lib/redis/alfred.rb'
     - 'lib/global_config.rb'
+    # Resets the pooled MockRedis between examples; see the hook in the file itself.
+    - 'spec/rails_helper.rb'
 
 Style/ClassVars:
   Exclude:

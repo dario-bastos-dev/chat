@@ -109,10 +109,14 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
       { 'locationMessage' => { 'name' => 'Office', 'degreesLatitude' => -23.5, 'degreesLongitude' => -46.6 } }
     end
 
-    it 'renders the coordinates as text' do
+    it 'stores the pin as a location attachment' do
       service.perform
 
-      expect(inbox.messages.last.content).to include('Office', 'maps.google.com')
+      attachment = inbox.messages.last.attachments.last
+      expect(attachment.file_type).to eq('location')
+      expect(attachment.coordinates_lat).to eq(-23.5)
+      expect(attachment.coordinates_long).to eq(-46.6)
+      expect(attachment.fallback_title).to eq('Office')
     end
   end
 
@@ -123,9 +127,21 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
       end
 
       it 'picks the id up from contextInfo' do
+        # Messages::InReplyToMessageBuilder resolves the external id against the conversation and
+        # drops it when nothing matches, so the quoted message has to be there first.
+        described_class.new(
+          inbox: inbox,
+          params: { 'event' => 'Message',
+                    'data' => { 'Info' => info.merge('ID' => 'quoted-id'),
+                                'Message' => { 'conversation' => 'the original' } } }
+        ).perform
+
         service.perform
 
-        expect(inbox.messages.last.content_attributes['in_reply_to_external_id']).to eq('quoted-id')
+        # Both messages carry the payload timestamp and Message is ordered by created_at, so the
+        # reply has to be addressed by its own id rather than by position.
+        reply = inbox.messages.find_by(source_id: 'wamid-1')
+        expect(reply.content_attributes['in_reply_to_external_id']).to eq('quoted-id')
       end
     end
   end
