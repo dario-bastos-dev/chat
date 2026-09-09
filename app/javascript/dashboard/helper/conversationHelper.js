@@ -92,3 +92,8 @@ export const getUnreadMessages = (messages, agentLastSeenAt) => {
     message => message.created_at * 1000 > agentLastSeenAt * 1000
   );
 };
+
+// A WhatsApp group is stored as a contact so it can hold a conversation, and its JID is what tells
+// it apart from a person. Groups created before ~2021 carry the creator number and a timestamp.
+export const isWhatsappGroupConversation = chat =>
+  Boolean(chat?.meta?.sender?.identifier?.endsWith('@g.us'));

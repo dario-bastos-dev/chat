@@ -7,9 +7,11 @@ import BackButton from '../BackButton.vue';
 import InboxName from '../InboxName.vue';
 import MoreActions from './MoreActions.vue';
 import Avatar from 'next/avatar/Avatar.vue';
+import Icon from 'dashboard/components-next/icon/Icon.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import ConversationCallButton from './ConversationCallButton.vue';
 import wootConstants from 'dashboard/constants/globals';
+import { isWhatsappGroupConversation } from 'dashboard/helper/conversationHelper';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
 import { snoozedReopenTime } from 'dashboard/helper/snoozeHelpers';
 import { useInbox } from 'dashboard/composables/useInbox';
@@ -67,6 +69,10 @@ const isHMACVerified = computed(() => {
   }
   return chatMetadata.value.hmac_verified;
 });
+
+const isGroupConversation = computed(() =>
+  isWhatsappGroupConversation(props.chat)
+);
 
 const currentContact = computed(() =>
   store.getters['contacts/getContact'](props.chat.meta.sender.id)
@@ -136,6 +142,12 @@ const copyConversationId = async () => {
           >
             {{ currentContact.name }}
           </span>
+          <Icon
+            v-if="isGroupConversation"
+            v-tooltip="$t('CONVERSATION.HEADER.GROUP')"
+            icon="i-lucide-users"
+            class="text-n-slate-11 flex-shrink-0 size-3.5"
+          />
           <fluent-icon
             v-if="!isHMACVerified"
             v-tooltip="$t('CONVERSATION.UNVERIFIED_SESSION')"

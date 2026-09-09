@@ -192,6 +192,7 @@
       "TRANSCRIPT_SHOW_LESS": "Mostrar menos"
     },
     "HEADER": {
+      "GROUP": "Grupo do WhatsApp",
       "RESOLVE_ACTION": "Resolver",
       "REOPEN_ACTION": "Reabrir",
       "OPEN_ACTION": "Abrir",

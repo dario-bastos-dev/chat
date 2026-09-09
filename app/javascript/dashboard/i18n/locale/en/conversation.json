@@ -208,6 +208,7 @@
       "TRANSCRIPT_SHOW_LESS": "Show less"
     },
     "HEADER": {
+      "GROUP": "WhatsApp group",
       "RESOLVE_ACTION": "Resolve",
       "REOPEN_ACTION": "Reopen",
       "OPEN_ACTION": "Open",

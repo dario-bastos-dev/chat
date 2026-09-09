@@ -3,6 +3,7 @@ import {
   getLastMessage,
   getReadMessages,
   getUnreadMessages,
+  isWhatsappGroupConversation,
 } from '../conversationHelper';
 import {
   conversationData,
@@ -96,6 +97,31 @@ describe('conversationHelper', () => {
       expect(getLastMessage(testConversation)).toEqual(
         testConversation.messages[1]
       );
+    });
+  });
+
+  describe('#isWhatsappGroupConversation', () => {
+    it('recognises a conversation whose contact stands for a group', () => {
+      const chat = { meta: { sender: { identifier: '120363111122223333@g.us' } } };
+
+      expect(isWhatsappGroupConversation(chat)).toBe(true);
+    });
+
+    it('recognises a legacy hyphenated group', () => {
+      const chat = { meta: { sender: { identifier: '5511999999999-1600000000@g.us' } } };
+
+      expect(isWhatsappGroupConversation(chat)).toBe(true);
+    });
+
+    it('does not mistake a person for a group', () => {
+      const chat = { meta: { sender: { identifier: '5511988887777@s.whatsapp.net' } } };
+
+      expect(isWhatsappGroupConversation(chat)).toBe(false);
+    });
+
+    it('copes with a conversation that carries no sender', () => {
+      expect(isWhatsappGroupConversation({})).toBe(false);
+      expect(isWhatsappGroupConversation(undefined)).toBe(false);
     });
   });
 });

@@ -1,6 +1,9 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
-import { getLastMessage } from 'dashboard/helper/conversationHelper';
+import {
+  getLastMessage,
+  isWhatsappGroupConversation,
+} from 'dashboard/helper/conversationHelper';
 import Avatar from 'next/avatar/Avatar.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import MessagePreview from './MessagePreview.vue';
@@ -32,6 +35,10 @@ const emit = defineEmits([
   'selectConversation',
   'deSelectConversation',
 ]);
+
+const isGroupConversation = computed(() =>
+  isWhatsappGroupConversation(props.chat)
+);
 
 const hovered = ref(false);
 
@@ -184,6 +191,11 @@ watch(
         class="conversation--user text-sm my-0 mx-2 capitalize pt-0.5 text-ellipsis overflow-hidden whitespace-nowrap flex-1 min-w-0 ltr:pr-16 rtl:pl-16 text-n-slate-12"
         :class="hasUnread ? 'font-semibold' : 'font-medium'"
       >
+        <Icon
+          v-if="isGroupConversation"
+          icon="i-lucide-users"
+          class="text-n-slate-11 inline-block align-text-bottom size-3.5"
+        />
         {{ currentContact.name }}
       </h4>
       <VoiceCallStatus
