@@ -27,6 +27,7 @@ const TOGGLES = [
   { key: 'always_online', i18n: 'ALWAYS_ONLINE' },
   { key: 'read_messages', i18n: 'READ_MESSAGES' },
   { key: 'groups_enabled', i18n: 'GROUPS_ENABLED' },
+  { key: 'bot_in_groups', i18n: 'BOT_IN_GROUPS' },
 ];
 
 const connectionStatus = ref('');
@@ -44,6 +45,7 @@ const settings = ref({
   always_online: false,
   read_messages: false,
   groups_enabled: false,
+  bot_in_groups: false,
   delay_enabled: true,
   delay_time: 2,
 });
@@ -237,6 +239,7 @@ onMounted(() => {
     always_online: config.always_online || false,
     read_messages: config.read_messages || false,
     groups_enabled: config.groups_enabled || false,
+    bot_in_groups: config.bot_in_groups || false,
     delay_enabled: config.delay_enabled !== false,
     // Always seconds — legacy millisecond values were normalized by migration.
     delay_time: config.delay_time || 2,

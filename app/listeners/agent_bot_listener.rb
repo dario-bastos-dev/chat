@@ -128,11 +128,22 @@ class AgentBotListener < BaseListener
   end
 
   def agent_bots_for(inbox, conversation = nil)
+    return [] if bot_silenced_in_group?(inbox, conversation)
+
     bots = []
     bots << conversation.assignee_agent_bot if conversation&.assignee_agent_bot.present?
     inbox_bot = active_inbox_agent_bot(inbox)
     bots << inbox_bot if inbox_bot.present?
     bots.compact.uniq
+  end
+
+  # A group chat is a room full of people talking to each other. A bot wired for one to one support
+  # would answer every participant, so it stays out until the inbox asks for it. This is the single
+  # place every bot event passes through, so guarding here covers all of them at once.
+  def bot_silenced_in_group?(inbox, conversation)
+    return false unless conversation&.contact&.whatsapp_group?
+
+    ['true', true].exclude?(inbox.channel.try(:provider_config)&.dig('bot_in_groups'))
   end
 
   def active_inbox_agent_bot(inbox)

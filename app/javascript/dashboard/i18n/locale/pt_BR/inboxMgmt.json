@@ -371,6 +371,10 @@
             "TITLE": "Sempre Online",
             "DESC": "Permanecer sempre online"
           },
+          "BOT_IN_GROUPS": {
+            "TITLE": "Agente de IA em grupos",
+            "DESC": "Deixar o agente de IA responder dentro das conversas de grupo"
+          },
           "GROUPS_ENABLED": {
             "TITLE": "Receber mensagens de grupos",
             "DESC": "Trazer as conversas de grupos do WhatsApp para a caixa de entrada"

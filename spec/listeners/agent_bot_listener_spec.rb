@@ -289,4 +289,64 @@ describe AgentBotListener do
       end
     end
   end
+
+  describe 'group conversations' do
+    let!(:channel) do
+      create(:channel_whatsapp, account: account, provider: 'evolution_go',
+                                provider_config: { 'instance_token' => 'token', 'instance_id' => 'id',
+                                                   'groups_enabled' => true },
+                                sync_templates: false, validate_provider_config: false,
+                                provider_instance_callbacks: false)
+    end
+    let(:group_contact) do
+      create(:contact, account: account, identifier: '120363111122223333@g.us', phone_number: nil)
+    end
+    let(:group_contact_inbox) do
+      create(:contact_inbox, contact: group_contact, inbox: channel.inbox, source_id: '120363111122223333@g.us')
+    end
+    let(:group_conversation) do
+      create(:conversation, account: account, inbox: channel.inbox, contact: group_contact,
+                            contact_inbox: group_contact_inbox)
+    end
+    let(:group_message) do
+      create(:message, message_type: 'incoming', account: account, inbox: channel.inbox,
+                       conversation: group_conversation)
+    end
+    let(:event) { Events::Base.new('message.created', Time.zone.now, message: group_message) }
+
+    before do
+      create(:agent_bot_inbox, inbox: channel.inbox, agent_bot: agent_bot)
+      # Creating the message already dispatches the listener, so it has to happen before the
+      # expectations or every count would be off by one.
+      group_message
+    end
+
+    it 'keeps the bot out of a group, so it does not answer every participant' do
+      expect(AgentBots::WebhookJob).not_to receive(:perform_later)
+
+      listener.message_created(event)
+    end
+
+    it 'lets the bot in once the inbox opts in' do
+      channel.merge_provider_config!('bot_in_groups' => true)
+
+      expect(AgentBots::WebhookJob).to receive(:perform_later).once
+
+      listener.message_created(event)
+    end
+
+    it 'still reaches the bot on a one to one conversation of the same inbox' do
+      direct_contact = create(:contact, account: account, phone_number: '+5511988887777')
+      direct_contact_inbox = create(:contact_inbox, contact: direct_contact, inbox: channel.inbox,
+                                                    source_id: '5511988887777')
+      direct_conversation = create(:conversation, account: account, inbox: channel.inbox,
+                                                  contact: direct_contact, contact_inbox: direct_contact_inbox)
+      direct_message = create(:message, message_type: 'incoming', account: account,
+                                        inbox: channel.inbox, conversation: direct_conversation)
+
+      expect(AgentBots::WebhookJob).to receive(:perform_later).once
+
+      listener.message_created(Events::Base.new('message.created', Time.zone.now, message: direct_message))
+    end
+  end
 end

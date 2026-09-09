@@ -378,6 +378,10 @@
             "TITLE": "Always Online",
             "DESC": "Keep the session always online"
           },
+          "BOT_IN_GROUPS": {
+            "TITLE": "AI agent in groups",
+            "DESC": "Let the AI agent answer inside group conversations"
+          },
           "GROUPS_ENABLED": {
             "TITLE": "Receive group messages",
             "DESC": "Bring WhatsApp group conversations into the inbox"
