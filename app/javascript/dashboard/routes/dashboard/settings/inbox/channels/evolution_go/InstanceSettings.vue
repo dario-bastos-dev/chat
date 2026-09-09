@@ -26,6 +26,7 @@ const STATUS_POLL_INTERVAL = 5000;
 const TOGGLES = [
   { key: 'always_online', i18n: 'ALWAYS_ONLINE' },
   { key: 'read_messages', i18n: 'READ_MESSAGES' },
+  { key: 'groups_enabled', i18n: 'GROUPS_ENABLED' },
 ];
 
 const connectionStatus = ref('');
@@ -42,6 +43,7 @@ const pollingInterval = ref(null);
 const settings = ref({
   always_online: false,
   read_messages: false,
+  groups_enabled: false,
   delay_enabled: true,
   delay_time: 2,
 });
@@ -219,6 +221,11 @@ const syncSettingsFromInstance = async () => {
 
     settings.value.always_online = Boolean(data.settings.alwaysOnline);
     settings.value.read_messages = Boolean(data.settings.readMessages);
+    // The instance reports what it ignores; the inbox stores what it wants to receive. An
+    // instance that reports nothing must not be read as one that accepts groups.
+    if (data.settings.ignoreGroups !== undefined) {
+      settings.value.groups_enabled = !data.settings.ignoreGroups;
+    }
   } catch (error) {
     // keep the stored values
   }
@@ -229,6 +236,7 @@ onMounted(() => {
   settings.value = {
     always_online: config.always_online || false,
     read_messages: config.read_messages || false,
+    groups_enabled: config.groups_enabled || false,
     delay_enabled: config.delay_enabled !== false,
     // Always seconds — legacy millisecond values were normalized by migration.
     delay_time: config.delay_time || 2,

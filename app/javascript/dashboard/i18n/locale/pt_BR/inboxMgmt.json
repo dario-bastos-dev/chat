@@ -371,6 +371,10 @@
             "TITLE": "Sempre Online",
             "DESC": "Permanecer sempre online"
           },
+          "GROUPS_ENABLED": {
+            "TITLE": "Receber mensagens de grupos",
+            "DESC": "Trazer as conversas de grupos do WhatsApp para a caixa de entrada"
+          },
           "READ_MESSAGES": {
             "TITLE": "Visualizar Mensagens",
             "DESC": "Marcar todas as mensagens como lidas"
