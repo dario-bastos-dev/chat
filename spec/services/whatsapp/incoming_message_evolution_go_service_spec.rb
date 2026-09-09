@@ -388,4 +388,104 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
       end
     end
   end
+
+  describe 'group conversations' do
+    let(:group_jid) { '120363111122223333@g.us' }
+    # Unique id per example: the dedup lock lives in a pooled MockRedis that is not reset between
+    # examples, so a shared source_id can make a later perform a no-op.
+    let(:info) do
+      super().merge(
+        'ID' => "wamid-group-#{SecureRandom.hex(4)}",
+        'IsGroup' => true,
+        'Chat' => group_jid,
+        'Sender' => '5511988887777@s.whatsapp.net',
+        'SenderAlt' => '27041265119351@lid',
+        'PushName' => 'Alex'
+      )
+    end
+
+    context 'when the channel has groups enabled' do
+      let(:channel) do
+        create(
+          :channel_whatsapp,
+          provider: 'evolution_go',
+          provider_config: { 'instance_token' => 'token', 'instance_id' => 'id', 'groups_enabled' => true },
+          sync_templates: false,
+          validate_provider_config: false,
+          provider_instance_callbacks: false
+        )
+      end
+
+      it 'addresses the conversation by the group, not by the participant' do
+        expect { service.perform }.to change(Message, :count).by(1)
+
+        contact_inbox = inbox.messages.last.conversation.contact_inbox
+        expect(contact_inbox.source_id).to eq(group_jid)
+        expect(contact_inbox.contact.identifier).to eq(group_jid)
+        expect(contact_inbox.contact.phone_number).to be_nil
+      end
+
+      it 'names the group contact instead of falling back to a random name' do
+        service.perform
+
+        expect(inbox.messages.last.conversation.contact.name).to eq('WhatsApp group (223333)')
+      end
+
+      it 'records who sent the message inside the group' do
+        service.perform
+
+        participant = inbox.messages.last.content_attributes['group_participant']
+        expect(participant['name']).to eq('Alex')
+        expect(participant['phone']).to eq('+5511988887777')
+        expect(participant['jid']).to eq('5511988887777@s.whatsapp.net')
+      end
+
+      it 'credits the message to the participant so a later reply quotes the right person' do
+        service.perform
+
+        expect(inbox.messages.last.content_attributes['sender_jid']).to eq('5511988887777@s.whatsapp.net')
+      end
+
+      it 'keeps messages from different participants on the same conversation' do
+        service.perform
+        other_info = info.merge(
+          'ID' => "wamid-group-#{SecureRandom.hex(4)}",
+          'Sender' => '5511977776666@s.whatsapp.net',
+          'SenderAlt' => '',
+          'PushName' => 'Bruna'
+        )
+        described_class.new(
+          inbox: inbox, params: { 'event' => 'Message', 'data' => { 'Info' => other_info, 'Message' => message_body } }
+        ).perform
+
+        expect(inbox.conversations.count).to eq(1)
+        expect(inbox.messages.count).to eq(2)
+      end
+
+      it 'keeps the echo of a reply sent from the phone on the same group conversation' do
+        service.perform
+        echo_info = info.merge(
+          'ID' => "wamid-group-#{SecureRandom.hex(4)}",
+          'IsFromMe' => true,
+          'Sender' => '5599999999999@s.whatsapp.net'
+        )
+        described_class.new(
+          inbox: inbox, params: { 'event' => 'Message', 'data' => { 'Info' => echo_info, 'Message' => message_body } }
+        ).perform
+
+        expect(inbox.conversations.count).to eq(1)
+        expect(inbox.messages.where(message_type: :outgoing).count).to eq(1)
+      end
+
+      it 'does not map the participant lid onto the group contact' do
+        expect { service.perform }.not_to change(Channel::WhatsappLidMapping, :count)
+      end
+    end
+
+    context 'when the channel does not have groups enabled' do
+      it 'ignores the message' do
+        expect { service.perform }.not_to change(Message, :count)
+      end
+    end
+  end
 end

@@ -277,6 +277,8 @@ pt_BR:
     attachment: 'Anexo'
     no_content: 'Sem conteúdo'
   conversations:
+    whatsapp:
+      group_default_name: 'Grupo do WhatsApp (%{id})'
     captain:
       handoff: 'Transferindo para que outro agente dê assistência.'
     messages:

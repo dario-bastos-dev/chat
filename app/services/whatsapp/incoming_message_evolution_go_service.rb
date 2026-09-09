@@ -34,12 +34,14 @@ class Whatsapp::IncomingMessageEvolutionGoService
     return if data_params.blank?
     return if info_params.blank?
 
-    # Skip groups, broadcasts, status
-    return if contact_jid.to_s.match?(/(@broadcast|status)/)
-    return if is_group?
+    return if skip_group_message?
 
-    # Skip invalid phone numbers (unless it's a LID)
-    if contact_phone_number.blank? && !contact_jid.to_s.include?('@lid')
+    # Skip broadcasts, status and newsletters
+    return if contact_jid.to_s.match?(/(@broadcast|status)/)
+    return if contact_jid.to_s.include?('@newsletter')
+
+    # Skip invalid phone numbers (unless it's a LID or a group, which have no phone number)
+    if contact_phone_number.blank? && !contact_jid.to_s.include?('@lid') && !is_group?
       Rails.logger.debug "[EVOLUTION_GO MSG] Invalid phone: #{contact_jid}"
       return
     end
@@ -135,6 +137,10 @@ class Whatsapp::IncomingMessageEvolutionGoService
   def contact_jid
     return @contact_jid if defined?(@contact_jid)
 
+    # A group is addressed by the chat itself. Sender names the participant who spoke, not the
+    # counterpart, so resolving it here would open one conversation per member.
+    return @contact_jid = group_jid if is_group?
+
     @contact_jid = if from_me?
                      # fromMe: Sender is our own LID, the contact is in RecipientAlt
                      jid = recipient_alt_jid
@@ -186,6 +192,45 @@ class Whatsapp::IncomingMessageEvolutionGoService
     info_params['IsGroup'] == true
   end
 
+  # A group is only ingested when the inbox opted in, and only when the payload actually names one:
+  # IsGroup also covers communities and announcement chats, which carry no @g.us chat jid.
+  def skip_group_message?
+    return false unless is_group?
+
+    !groups_enabled? || group_jid.blank?
+  end
+
+  def groups_enabled?
+    ['true', true].include?(inbox.channel.provider_config&.dig('groups_enabled'))
+  end
+
+  def group_jid
+    chat_jid if chat_jid.end_with?('@g.us')
+  end
+
+  # Who spoke inside the group. On an echo of our own message that is the business itself.
+  def participant_jid
+    return owner_jid if from_me?
+
+    preferred_identifier(sender_jid, sender_alt_jid)
+  end
+
+  def participant_phone
+    jid = participant_jid
+    jid = resolve_phone_from_lid(jid) || jid unless jid.to_s.include?('@s.whatsapp.net')
+    return nil unless jid.to_s.include?('@s.whatsapp.net')
+
+    digits = jid.split('@').first
+    "+#{digits}" if digits.match?(/^\d{7,15}$/)
+  end
+
+  # The group subject is not in the message payload, so the chat is named after its jid until
+  # the metadata is fetched. A blank name would make the builder mint a random one.
+  def group_display_name
+    I18n.t('conversations.whatsapp.group_default_name', id: group_jid.split('@').first.last(6),
+           locale: inbox.account.locale)
+  end
+
   def message_type
     info_params['Type'].to_s
   end
@@ -229,6 +274,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
   end
 
   def contact_source_id
+    return group_jid if is_group?
+
     id = contact_jid.split('@').first
     id.to_s.include?(':') ? id.split(':').first : id
   end
@@ -305,6 +352,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
   # --- Contact management ---
 
   def contact_attributes
+    return { name: group_display_name, phone_number: nil, identifier: group_jid } if is_group?
+
     {
       name: from_me? ? contact_phone_number : (push_name.presence || contact_phone_number),
       phone_number: contact_phone_number,
@@ -313,6 +362,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
   end
 
   def set_contact
+    return set_group_contact if is_group?
+
     # 1. Tenta encontrar o ContactInbox já existente nesta inbox (por source_id = JID atual)
     contact_inbox = find_existing_contact_inbox
 
@@ -379,6 +430,20 @@ class Whatsapp::IncomingMessageEvolutionGoService
     @contact = contact_inbox.contact
 
     update_contact_name_if_needed
+  end
+
+  # A group is a chat, not a person: none of the phone and LID reconciliation above applies to it,
+  # and running it would resolve the participant instead of the group.
+  def set_group_contact
+    contact_inbox = inbox.contact_inboxes.find_by(source_id: group_jid)
+    contact_inbox ||= ::ContactInboxWithContactBuilder.new(
+      source_id: group_jid,
+      inbox: inbox,
+      contact_attributes: contact_attributes
+    ).perform
+
+    @contact_inbox = contact_inbox
+    @contact = contact_inbox.contact
   end
 
   # Promotes a contact first seen by LID to its real phone number once WhatsApp reveals it.
@@ -464,6 +529,9 @@ class Whatsapp::IncomingMessageEvolutionGoService
   # @lid and RecipientAlt its phone — and they are often the only place both halves appear.
   def save_lid_mapping_if_needed
     return if @contact.blank?
+    # In a group the candidate jids name the participant, so the mapping would point their lid at
+    # the group contact and hijack their own 1:1 routing.
+    return if is_group?
 
     lid_jid = contact_candidate_jids.find { |j| j.to_s.include?('@lid') }
     phone_jid = contact_candidate_jids.find { |j| j.to_s.include?('@s.whatsapp.net') }
@@ -530,6 +598,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
   def set_contact_avatar
     return if @contact.blank?
     return if @contact.avatar.attached?
+    # A group avatar lives behind a different endpoint; fetching it is a later slice.
+    return if is_group?
 
     Rails.logger.info "[EVOLUTION_GO MSG] Scheduling avatar fetch for Contact #{@contact.id} (#{contact_jid})"
 
@@ -648,8 +718,17 @@ class Whatsapp::IncomingMessageEvolutionGoService
     attrs[:in_reply_to_external_id] = quoted_message_id if quoted_message_id.present?
     # Author of this message, so a later reply can quote it without guessing the addressing
     # mode. WhatsApp rejects a quote whose participant is in the wrong form.
-    attrs[:sender_jid] = from_me? ? owner_jid : contact_jid
+    attrs[:sender_jid] = group_or_contact_sender_jid
+    attrs[:group_participant] = { name: push_name, phone: participant_phone, jid: participant_jid } if is_group? && !from_me?
     attrs
+  end
+
+  # In a group contact_jid is the group, and quoting a group jid as the participant is rejected.
+  def group_or_contact_sender_jid
+    return owner_jid if from_me?
+    return participant_jid if is_group?
+
+    contact_jid
   end
 
   # Our own JID, as WhatsApp addressed it on this message.
