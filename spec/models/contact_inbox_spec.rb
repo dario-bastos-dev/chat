@@ -69,6 +69,33 @@ RSpec.describe ContactInbox do
         )
       end
 
+      it 'allows a whatsapp group jid as source_id on evolution_go inboxes' do
+        evolution_go_inbox = create(:channel_whatsapp, provider: 'evolution_go', sync_templates: false,
+                                                       validate_provider_config: false, provider_instance_callbacks: false).inbox
+        contact = create(:contact, account: evolution_go_inbox.account)
+        group = build(:contact_inbox, contact: contact, inbox: evolution_go_inbox, source_id: '120363111122223333@g.us')
+
+        expect(group.valid?).to be(true)
+      end
+
+      it 'allows a legacy hyphenated group jid as source_id on evolution_go inboxes' do
+        evolution_go_inbox = create(:channel_whatsapp, provider: 'evolution_go', sync_templates: false,
+                                                       validate_provider_config: false, provider_instance_callbacks: false).inbox
+        contact = create(:contact, account: evolution_go_inbox.account)
+        group = build(:contact_inbox, contact: contact, inbox: evolution_go_inbox, source_id: '5511999999999-1600000000@g.us')
+
+        expect(group.valid?).to be(true)
+      end
+
+      it 'rejects a whatsapp group jid as source_id on other whatsapp providers' do
+        cloud_inbox = create(:channel_whatsapp, provider: 'whatsapp_cloud', sync_templates: false,
+                                                validate_provider_config: false).inbox
+        contact = create(:contact, account: cloud_inbox.account)
+        group = build(:contact_inbox, contact: contact, inbox: cloud_inbox, source_id: '120363111122223333@g.us')
+
+        expect(group.valid?).to be(false)
+      end
+
       it 'validates twilio sms channel source_id' do
         twilio_sms_inbox = create(:channel_twilio_sms).inbox
         contact = create(:contact)

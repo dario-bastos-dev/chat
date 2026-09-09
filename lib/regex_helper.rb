@@ -20,4 +20,8 @@ module RegexHelper
   WHATSAPP_WAMID_TOKEN_REGEX = Regexp.new(WHATSAPP_WAMID_TOKEN_PATTERN, Regexp::IGNORECASE)
   TWILIO_CHANNEL_WHATSAPP_REGEX = Regexp.new("\\A(?:whatsapp:\\+\\d{1,15}|whatsapp:#{WHATSAPP_BSUID_PATTERN})\\z")
   WHATSAPP_CHANNEL_REGEX = Regexp.new("\\A(?:\\d{1,15}|#{WHATSAPP_BSUID_PATTERN})\\z")
+  # A WhatsApp group is addressed by its JID, not by a phone number. Modern groups are
+  # "120363111122223333@g.us"; groups created before ~2021 keep the creator's number and a
+  # timestamp, as in "5511999999999-1600000000@g.us".
+  WHATSAPP_GROUP_JID_REGEX = Regexp.new('\\A\\d{5,20}(?:-\\d{5,15})?@g\\.us\\z')
 end
