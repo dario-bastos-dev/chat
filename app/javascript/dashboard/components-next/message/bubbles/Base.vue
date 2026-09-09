@@ -8,6 +8,8 @@ import { emitter } from 'shared/helpers/mitt';
 import { useMessageContext } from '../provider.js';
 import { useI18n } from 'vue-i18n';
 
+import { parsePhoneNumber } from 'libphonenumber-js';
+
 import MessageFormatter from 'shared/helpers/MessageFormatter.js';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 import { MESSAGE_VARIANTS, ORIENTATION, SENDER_TYPES } from '../constants';
@@ -24,6 +26,7 @@ const {
   id,
   sender,
   senderType,
+  contentAttributes,
 } = useMessageContext();
 const { t } = useI18n();
 
@@ -31,6 +34,42 @@ const isCaptainMessage = computed(
   () =>
     (sender.value?.type ?? senderType.value) === SENDER_TYPES.CAPTAIN_ASSISTANT
 );
+
+// The six accent tokens the design system already carries. The colour is picked from the jid so
+// a participant keeps it across the whole conversation even after changing their display name.
+const PARTICIPANT_COLORS = [
+  'text-n-blue-11',
+  'text-n-ruby-11',
+  'text-n-teal-11',
+  'text-n-amber-11',
+  'text-n-iris-11',
+  'text-n-green-11',
+];
+
+const groupParticipant = computed(
+  () => contentAttributes?.value?.groupParticipant
+);
+
+// Whoever spoke in a group has to be named on the bubble. A participant reached only by their
+// LID has no phone to fall back on, so the identifier itself is the last resort.
+const participantName = computed(() => {
+  const participant = groupParticipant.value;
+  if (!participant) return '';
+  if (participant.name) return participant.name;
+  if (!participant.phone) return participant.jid?.split('@')[0] ?? '';
+
+  return (
+    parsePhoneNumber(participant.phone)?.formatInternational() ??
+    participant.phone
+  );
+});
+
+const participantColorClass = computed(() => {
+  const key = groupParticipant.value?.jid || participantName.value;
+  const seed = [...key].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+  return PARTICIPANT_COLORS[seed % PARTICIPANT_COLORS.length];
+});
 
 const metaColorClass = computed(() =>
   variant.value === MESSAGE_VARIANTS.PRIVATE
@@ -135,6 +174,14 @@ const replyToPreview = computed(() => {
         v-dompurify-html="replyToPreview"
         class="prose prose-bubble line-clamp-2"
       />
+    </div>
+    <div
+      v-if="participantName"
+      data-participant-name
+      class="mb-1 font-semibold truncate"
+      :class="participantColorClass"
+    >
+      {{ participantName }}
     </div>
     <slot />
     <template v-if="shouldShowMeta">
