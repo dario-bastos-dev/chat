@@ -224,11 +224,28 @@ class Whatsapp::IncomingMessageEvolutionGoService
     "+#{digits}" if digits.match?(/^\d{7,15}$/)
   end
 
-  # The group subject is not in the message payload, so the chat is named after its jid until
-  # the metadata is fetched. A blank name would make the builder mint a random one.
-  def group_display_name
+  def group_data
+    @group_data ||= data_params['groupData'] || {}
+  end
+
+  # The subject of the group. EvoGO ships it inside the message on most payloads, so the API is
+  # only asked when it is missing.
+  def resolved_group_name
+    return @resolved_group_name if defined?(@resolved_group_name)
+
+    @resolved_group_name = group_data['Name'].presence ||
+                           inbox.channel.provider_service.fetch_group_name(group_jid)
+  end
+
+  # Named after the jid while the subject is unknown. A blank name would make the builder mint a
+  # random one, and "wispy-sun-4821" in the conversation list helps nobody.
+  def provisional_group_name
     I18n.t('conversations.whatsapp.group_default_name', id: group_jid.split('@').first.last(6),
            locale: inbox.account.locale)
+  end
+
+  def group_display_name
+    resolved_group_name.presence || provisional_group_name
   end
 
   def message_type
@@ -444,6 +461,19 @@ class Whatsapp::IncomingMessageEvolutionGoService
 
     @contact_inbox = contact_inbox
     @contact = contact_inbox.contact
+
+    update_group_name_if_needed
+  end
+
+  # A group that entered before its subject was known carries the provisional name. The real one
+  # replaces it as soon as it shows up, but a name the agent typed is left alone.
+  def update_group_name_if_needed
+    return unless @contact.name == provisional_group_name
+    return if resolved_group_name.blank?
+
+    @contact.update!(name: resolved_group_name)
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO MSG] Failed to update group name: #{e.message}"
   end
 
   # Promotes a contact first seen by LID to its real phone number once WhatsApp reveals it.

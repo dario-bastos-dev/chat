@@ -498,6 +498,90 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
       end
     end
 
+    context 'when the payload carries the group data' do
+      let(:channel) do
+        create(
+          :channel_whatsapp,
+          provider: 'evolution_go',
+          provider_config: { 'instance_token' => 'token', 'instance_id' => 'id', 'groups_enabled' => true },
+          sync_templates: false,
+          validate_provider_config: false,
+          provider_instance_callbacks: false
+        )
+      end
+      let(:params) do
+        { 'event' => 'Message',
+          'data' => { 'Info' => info, 'Message' => message_body,
+                      'groupData' => { 'JID' => group_jid, 'Name' => 'Obra ABC', 'ParticipantCount' => 2 } } }
+      end
+
+      it 'names the group after its subject instead of the jid' do
+        service.perform
+
+        expect(inbox.messages.last.conversation.contact.name).to eq('Obra ABC')
+      end
+
+      it 'does not ask the API for something the payload already said' do
+        service.perform
+
+        expect(WebMock).not_to have_requested(:post, %r{/group/info})
+      end
+
+      it 'adopts the real name on a group that had only the provisional one' do
+        service.perform
+        group_contact = inbox.messages.last.conversation.contact
+        group_contact.update!(name: 'WhatsApp group (223333)')
+
+        described_class.new(
+          inbox: inbox,
+          params: params.deep_merge('data' => { 'Info' => info.merge('ID' => 'wamid-later') })
+        ).perform
+
+        expect(group_contact.reload.name).to eq('Obra ABC')
+      end
+
+      it 'leaves a name the agent chose alone' do
+        service.perform
+        group_contact = inbox.messages.last.conversation.contact
+        group_contact.update!(name: 'Obra ABC - engenharia')
+
+        described_class.new(
+          inbox: inbox,
+          params: params.deep_merge('data' => { 'Info' => info.merge('ID' => 'wamid-later') })
+        ).perform
+
+        expect(group_contact.reload.name).to eq('Obra ABC - engenharia')
+      end
+    end
+
+    context 'when the payload does not carry the group data' do
+      let(:channel) do
+        create(
+          :channel_whatsapp,
+          provider: 'evolution_go',
+          provider_config: { 'instance_token' => 'token', 'instance_id' => 'id', 'groups_enabled' => true },
+          sync_templates: false,
+          validate_provider_config: false,
+          provider_instance_callbacks: false
+        )
+      end
+
+      before do
+        create(:installation_config, name: 'EVOLUTIONGO_API_URL', value: 'https://evogo.test')
+        create(:installation_config, name: 'EVOLUTIONGO_API_TOKEN', value: 'global-token')
+        GlobalConfig.clear_cache
+        stub_request(:post, 'https://evogo.test/group/info')
+          .to_return(status: 200, body: [{ data: { Name: 'Obra ABC' }, message: 'success' }].to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+      end
+
+      it 'asks the API for the subject' do
+        service.perform
+
+        expect(inbox.messages.last.conversation.contact.name).to eq('Obra ABC')
+      end
+    end
+
     context 'when the channel does not have groups enabled' do
       it 'ignores the message' do
         expect { service.perform }.not_to change(Message, :count)

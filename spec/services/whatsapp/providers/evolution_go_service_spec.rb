@@ -33,6 +33,45 @@ describe Whatsapp::Providers::EvolutionGoService do
       )
   end
 
+  describe '#fetch_group_name' do
+    let(:info_url) { 'https://evogo.test/group/info' }
+
+    it 'reads the name out of the array the endpoint answers with' do
+      stub_request(:post, info_url).to_return(
+        status: 200,
+        body: [{ data: { JID: '120363429656097671@g.us', Name: 'Teste' }, message: 'success' }].to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
+
+      expect(service.fetch_group_name('120363429656097671@g.us')).to eq('Teste')
+    end
+
+    it 'asks for the group by its jid' do
+      stub_request(:post, info_url).to_return(status: 200, body: [{ data: { Name: 'Teste' } }].to_json,
+                                              headers: { 'Content-Type' => 'application/json' })
+
+      service.fetch_group_name('120363429656097671@g.us')
+
+      expect(WebMock).to(
+        have_requested(:post, info_url)
+          .with { |req| JSON.parse(req.body)['groupjid'] == '120363429656097671@g.us' }
+      )
+    end
+
+    it 'returns nothing when the endpoint fails' do
+      stub_request(:post, info_url).to_return(status: 500, body: '{}')
+
+      expect(service.fetch_group_name('120363429656097671@g.us')).to be_nil
+    end
+
+    it 'returns nothing when the group has no name' do
+      stub_request(:post, info_url).to_return(status: 200, body: [{ data: { Name: '' } }].to_json,
+                                              headers: { 'Content-Type' => 'application/json' })
+
+      expect(service.fetch_group_name('120363429656097671@g.us')).to be_nil
+    end
+  end
+
   describe 'group toggle' do
     let(:settings_url) { 'https://evogo.test/instance/instance-id/advanced-settings' }
 
