@@ -554,6 +554,78 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
       end
     end
 
+    context 'when the payload lists the group members' do
+      let(:channel) do
+        create(
+          :channel_whatsapp,
+          provider: 'evolution_go',
+          provider_config: { 'instance_token' => 'token', 'instance_id' => 'id', 'groups_enabled' => true },
+          sync_templates: false,
+          validate_provider_config: false,
+          provider_instance_callbacks: false
+        )
+      end
+      let(:participants) do
+        [{ 'JID' => '27041265119351@lid', 'PhoneNumber' => '5527998999017@s.whatsapp.net',
+           'LID' => '27041265119351@lid', 'IsAdmin' => false, 'IsSuperAdmin' => false },
+         { 'JID' => '246085134118923@lid', 'PhoneNumber' => '5527997774194@s.whatsapp.net',
+           'LID' => '246085134118923@lid', 'IsAdmin' => true, 'IsSuperAdmin' => true }]
+      end
+      let(:group_payload) do
+        { 'JID' => group_jid, 'Name' => 'Obra ABC', 'ParticipantCount' => 2,
+          'ParticipantVersionID' => 'v1', 'Participants' => participants }
+      end
+      let(:params) do
+        { 'event' => 'Message',
+          'data' => { 'Info' => info, 'Message' => message_body, 'groupData' => group_payload } }
+      end
+
+      it 'keeps the roster on the conversation' do
+        service.perform
+
+        attributes = inbox.messages.last.conversation.additional_attributes
+        expect(attributes['group_participant_count']).to eq(2)
+        expect(attributes['group_participants']).to eq(
+          [{ 'jid' => '27041265119351@lid', 'lid' => '27041265119351@lid',
+             'phone' => '5527998999017@s.whatsapp.net', 'admin' => false },
+           { 'jid' => '246085134118923@lid', 'lid' => '246085134118923@lid',
+             'phone' => '5527997774194@s.whatsapp.net', 'admin' => true }]
+        )
+      end
+
+      it 'does not rewrite the roster while the group has not changed' do
+        service.perform
+        conversation = inbox.messages.last.conversation
+
+        # Same version, different list: the version is what decides, so the stored one stays.
+        described_class.new(
+          inbox: inbox,
+          params: params.deep_merge(
+            'data' => { 'Info' => info.merge('ID' => 'wamid-2'),
+                        'groupData' => { 'ParticipantCount' => 99, 'Participants' => [participants.first] } }
+          )
+        ).perform
+
+        expect(conversation.reload.additional_attributes['group_participant_count']).to eq(2)
+      end
+
+      it 'takes the new roster once the group changes' do
+        service.perform
+        conversation = inbox.messages.last.conversation
+
+        described_class.new(
+          inbox: inbox,
+          params: params.deep_merge(
+            'data' => { 'Info' => info.merge('ID' => 'wamid-3'),
+                        'groupData' => { 'ParticipantVersionID' => 'v2', 'ParticipantCount' => 1,
+                                         'Participants' => [participants.first] } }
+          )
+        ).perform
+
+        expect(conversation.reload.additional_attributes['group_participant_count']).to eq(1)
+      end
+    end
+
     context 'when the payload does not carry the group data' do
       let(:channel) do
         create(

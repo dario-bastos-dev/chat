@@ -87,6 +87,7 @@ class Whatsapp::IncomingMessageEvolutionGoService
     set_contact_avatar
     save_lid_mapping_if_needed
     set_conversation
+    sync_group_participants
     create_message
   end
 
@@ -695,6 +696,40 @@ class Whatsapp::IncomingMessageEvolutionGoService
         contact_id: @contact.id,
         contact_inbox_id: @contact_inbox.id
       )
+    end
+  end
+
+  # Who is in the group, as EvoGO reported it alongside the message. Kept on the conversation so a
+  # reply can mention a member without asking the API who they are. WhatsApp bumps
+  # ParticipantVersionID whenever the roster changes, which is what spares a write per message.
+  def sync_group_participants
+    return unless is_group?
+    return if group_data['Participants'].blank?
+
+    version = group_data['ParticipantVersionID'].to_s
+    return if @conversation.additional_attributes['group_participants_version'] == version
+
+    @conversation.update!(
+      additional_attributes: @conversation.additional_attributes.merge(
+        'group_participants' => group_participants,
+        'group_participant_count' => group_data['ParticipantCount'],
+        'group_participants_version' => version
+      )
+    )
+  rescue StandardError => e
+    Rails.logger.error "[EVOLUTION_GO MSG] Failed to store group participants: #{e.message}"
+  end
+
+  # A member is addressed by their lid on a lid group and by their phone otherwise, so both are
+  # kept. The owner counts as an admin: the distinction does not matter to anything downstream.
+  def group_participants
+    group_data['Participants'].map do |participant|
+      {
+        'jid' => participant['JID'],
+        'lid' => participant['LID'],
+        'phone' => participant['PhoneNumber'],
+        'admin' => participant['IsAdmin'] == true || participant['IsSuperAdmin'] == true
+      }
     end
   end
 
