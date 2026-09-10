@@ -207,6 +207,11 @@ export default {
     showRichMessage() {
       return this.richMessageTypes.length > 0;
     },
+    // Only a group chat has a roster, so this doubles as the switch that tells the @ list apart
+    // from the agent mentions used on private notes.
+    groupParticipants() {
+      return this.currentChat?.additional_attributes?.group_participants || [];
+    },
     isWithinMessagingWindow() {
       return !!(
         this.currentChat?.can_reply ||
@@ -1478,6 +1483,7 @@ export default {
           allow-signature
           :channel-type="channelType"
           :medium="inbox.medium"
+          :group-participants="groupParticipants"
           @typing-off="onTypingOff"
           @typing-on="onTypingOn"
           @focus="onFocus"

@@ -207,6 +207,11 @@
       "TRANSCRIPT_SHOW_MORE": "Show more",
       "TRANSCRIPT_SHOW_LESS": "Show less"
     },
+    "GROUP_MENTION": {
+      "EVERYONE": "Everyone",
+      "EVERYONE_INFO": "Notify every member of the group",
+      "EVERYONE_HANDLE": "todos"
+    },
     "HEADER": {
       "GROUP": "WhatsApp group",
       "RESOLVE_ACTION": "Resolve",

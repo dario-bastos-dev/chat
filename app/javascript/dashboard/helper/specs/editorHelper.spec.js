@@ -681,6 +681,21 @@ describe('getContentNode', () => {
     };
   });
 
+  describe('group mention node creation', () => {
+    it('inserts the handle as plain text, which is what WhatsApp reads', () => {
+      const result = getContentNode(
+        mockEditorView,
+        'groupMention',
+        '@5527998999017 ',
+        { from: 0, to: 1 },
+        {}
+      );
+
+      expect(result.node).toEqual({ type: { name: 'text' }, text: '@5527998999017 ' });
+      expect(mockEditorView.state.schema.text).toHaveBeenCalledWith('@5527998999017 ');
+    });
+  });
+
   describe('mention node creation', () => {
     it('creates a user mention node with correct attributes', () => {
       const userContent = {

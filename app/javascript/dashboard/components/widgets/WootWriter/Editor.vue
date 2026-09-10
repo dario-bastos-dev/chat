@@ -14,6 +14,7 @@ import {
 import CannedResponse from '../conversation/CannedResponse.vue';
 import KeyboardEmojiSelector from './keyboardEmojiSelector.vue';
 import TagAgents from '../conversation/TagAgents.vue';
+import TagGroupParticipants from '../conversation/TagGroupParticipants.vue';
 import VariableList from '../conversation/VariableList.vue';
 import TagTools from '../conversation/TagTools.vue';
 import CopilotMenuBar from './CopilotMenuBar.vue';
@@ -96,6 +97,7 @@ const props = defineProps({
   conversationId: { type: Number, default: null },
   medium: { type: String, default: '' },
   focusOnMount: { type: Boolean, default: true },
+  groupParticipants: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
@@ -704,6 +706,7 @@ function insertSpecialContent(type, content) {
 
   const event_map = {
     mention: CONVERSATION_EVENTS.USED_MENTIONS,
+    groupMention: CONVERSATION_EVENTS.USED_MENTIONS,
     cannedResponse: CONVERSATION_EVENTS.INSERTED_A_CANNED_RESPONSE,
     variable: CONVERSATION_EVENTS.INSERTED_A_VARIABLE,
     emoji: CONVERSATION_EVENTS.INSERTED_AN_EMOJI,
@@ -889,6 +892,14 @@ useEmitter(BUS_EVENTS.INSERT_INTO_RICH_EDITOR, insertContentIntoEditor);
       'opacity-50 cursor-not-allowed pointer-events-none': disabled,
     }"
   >
+    <TagGroupParticipants
+      v-if="showUserMentions && !isPrivate && groupParticipants.length"
+      :search-key="mentionSearchKey"
+      :participants="groupParticipants"
+      @select-participant="
+        content => insertSpecialContent('groupMention', content)
+      "
+    />
     <TagAgents
       v-if="showUserMentions && isPrivate"
       :search-key="mentionSearchKey"

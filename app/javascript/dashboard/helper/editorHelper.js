@@ -512,6 +512,10 @@ const createNode = (editorView, nodeType, content) => {
         sanitizedContent
       );
     }
+    // A WhatsApp group mention is plain text on purpose: the recipient's phone renders the handle
+    // from the text itself, and the internal mention node only means something inside Chatwoot.
+    case 'groupMention':
+      return state.schema.text(content);
     case 'variable':
       return state.schema.text(content);
     case 'emoji':
@@ -548,6 +552,11 @@ const nodeCreators = {
       to,
     };
   },
+  groupMention: (editorView, content, from, to) => ({
+    node: createNode(editorView, 'groupMention', content),
+    from,
+    to,
+  }),
   variable: (editorView, content, from, to, variables) => ({
     node: createNode(
       editorView,
