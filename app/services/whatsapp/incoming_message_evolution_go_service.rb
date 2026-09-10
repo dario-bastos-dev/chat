@@ -229,13 +229,16 @@ class Whatsapp::IncomingMessageEvolutionGoService
     @group_data ||= data_params['groupData'] || {}
   end
 
-  # The subject of the group. EvoGO ships it inside the message on most payloads, so the API is
-  # only asked when it is missing.
-  def resolved_group_name
-    return @resolved_group_name if defined?(@resolved_group_name)
+  # Everything EvoGO knows about the group. It rides along with most messages; only when it does
+  # not is /group/info asked, and that one answer carries the name and the members alike.
+  def group_info
+    return @group_info if defined?(@group_info)
 
-    @resolved_group_name = group_data['Name'].presence ||
-                           inbox.channel.provider_service.fetch_group_name(group_jid)
+    @group_info = group_data.presence || inbox.channel.provider_service.fetch_group_info(group_jid) || {}
+  end
+
+  def resolved_group_name
+    group_info['Name'].presence
   end
 
   # Named after the jid while the subject is unknown. A blank name would make the builder mint a
@@ -702,15 +705,18 @@ class Whatsapp::IncomingMessageEvolutionGoService
   # ParticipantVersionID whenever the roster changes, which is what spares a write per message.
   def sync_group_participants
     return unless is_group?
-    return if group_data['Participants'].blank?
+    # Nothing new arrived and the roster is already stored: asking the API on every message of a
+    # group whose payload omits groupData would be a request per message.
+    return if group_data.blank? && @conversation.additional_attributes['group_participants'].present?
+    return if group_info['Participants'].blank?
 
-    version = group_data['ParticipantVersionID'].to_s
+    version = group_info['ParticipantVersionID'].to_s
     return if @conversation.additional_attributes['group_participants_version'] == version
 
     @conversation.update!(
       additional_attributes: @conversation.additional_attributes.merge(
         'group_participants' => group_participants,
-        'group_participant_count' => group_data['ParticipantCount'],
+        'group_participant_count' => group_info['ParticipantCount'],
         'group_participants_version' => version
       )
     )
@@ -721,14 +727,31 @@ class Whatsapp::IncomingMessageEvolutionGoService
   # A member is addressed by their lid on a lid group and by their phone otherwise, so both are
   # kept. The owner counts as an admin: the distinction does not matter to anything downstream.
   def group_participants
-    group_data['Participants'].map do |participant|
+    known = contact_names_by_phone
+    group_info['Participants'].map do |participant|
+      phone = participant['PhoneNumber']
       {
         'jid' => participant['JID'],
         'lid' => participant['LID'],
-        'phone' => participant['PhoneNumber'],
+        'phone' => phone,
+        'name' => participant['DisplayName'].presence || known[phone.to_s.split('@').first],
         'admin' => participant['IsAdmin'] == true || participant['IsSuperAdmin'] == true
       }
     end
+  end
+
+  # EvoGO leaves DisplayName empty for anyone who is not in the phone's own address book, so a
+  # member the account has already talked to is named after their contact. One query for the whole
+  # roster, and only while the roster is being written, which the version id already makes rare.
+  def contact_names_by_phone
+    phones = group_info['Participants'].filter_map { |p| p['PhoneNumber'].to_s.split('@').first.presence }
+    return {} if phones.empty?
+
+    inbox.account.contacts
+         .where(phone_number: phones.map { |phone| "+#{phone}" })
+         .pluck(:phone_number, :name)
+         .to_h { |phone_number, name| [phone_number.delete_prefix('+'), name.presence] }
+         .compact
   end
 
   # --- Message creation ---

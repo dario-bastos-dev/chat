@@ -587,6 +587,32 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
           'data' => { 'Info' => info, 'Message' => message_body, 'groupData' => group_payload } }
       end
 
+      it 'names a member the account already knows as a contact' do
+        create(:contact, account: channel.account, name: 'Dário Bastos', phone_number: '+5527998999017')
+
+        service.perform
+
+        roster = inbox.messages.last.conversation.additional_attributes['group_participants']
+        expect(roster.first['name']).to eq('Dário Bastos')
+      end
+
+      it 'prefers the display name the group itself reports' do
+        create(:contact, account: channel.account, name: 'Dário Bastos', phone_number: '+5527998999017')
+        participants.first['DisplayName'] = 'Dário da Obra'
+
+        service.perform
+
+        roster = inbox.messages.last.conversation.additional_attributes['group_participants']
+        expect(roster.first['name']).to eq('Dário da Obra')
+      end
+
+      it 'leaves a stranger without a name rather than inventing one' do
+        service.perform
+
+        roster = inbox.messages.last.conversation.additional_attributes['group_participants']
+        expect(roster.last['name']).to be_nil
+      end
+
       it 'keeps the roster on the conversation' do
         service.perform
 
@@ -594,9 +620,9 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
         expect(attributes['group_participant_count']).to eq(2)
         expect(attributes['group_participants']).to eq(
           [{ 'jid' => '27041265119351@lid', 'lid' => '27041265119351@lid',
-             'phone' => '5527998999017@s.whatsapp.net', 'admin' => false },
+             'phone' => '5527998999017@s.whatsapp.net', 'name' => nil, 'admin' => false },
            { 'jid' => '246085134118923@lid', 'lid' => '246085134118923@lid',
-             'phone' => '5527997774194@s.whatsapp.net', 'admin' => true }]
+             'phone' => '5527997774194@s.whatsapp.net', 'name' => nil, 'admin' => true }]
         )
       end
 
@@ -658,6 +684,40 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
         service.perform
 
         expect(inbox.messages.last.conversation.contact.name).to eq('Obra ABC')
+      end
+
+      it 'keeps the members that came with that same answer' do
+        stub_request(:post, 'https://evogo.test/group/info').to_return(
+          status: 200,
+          body: [{ data: { Name: 'Obra ABC', ParticipantCount: 1, ParticipantVersionID: 'v1',
+                           Participants: [{ JID: '2704@lid', LID: '2704@lid',
+                                            PhoneNumber: '5527998999017@s.whatsapp.net',
+                                            IsAdmin: false, IsSuperAdmin: false }] } }].to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+        service.perform
+
+        attributes = inbox.messages.last.conversation.additional_attributes
+        expect(attributes['group_participant_count']).to eq(1)
+        expect(attributes['group_participants'].first['jid']).to eq('2704@lid')
+      end
+
+      it 'does not ask again on the next message of a group it already knows' do
+        stub_request(:post, 'https://evogo.test/group/info').to_return(
+          status: 200,
+          body: [{ data: { Name: 'Obra ABC', ParticipantCount: 1, ParticipantVersionID: 'v1',
+                           Participants: [{ JID: '2704@lid', PhoneNumber: '5527998999017@s.whatsapp.net' }] } }].to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+        service.perform
+        WebMock.reset_executed_requests!
+
+        described_class.new(
+          inbox: inbox, params: params.deep_merge('data' => { 'Info' => info.merge('ID' => 'wamid-2') })
+        ).perform
+
+        expect(WebMock).not_to have_requested(:post, 'https://evogo.test/group/info')
       end
     end
 

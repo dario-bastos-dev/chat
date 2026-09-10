@@ -114,7 +114,7 @@ describe Whatsapp::Providers::EvolutionGoService do
     end
   end
 
-  describe '#fetch_group_name' do
+  describe '#fetch_group_info' do
     let(:info_url) { 'https://evogo.test/group/info' }
 
     it 'reads the name out of the array the endpoint answers with' do
@@ -124,14 +124,14 @@ describe Whatsapp::Providers::EvolutionGoService do
         headers: { 'Content-Type' => 'application/json' }
       )
 
-      expect(service.fetch_group_name('120363429656097671@g.us')).to eq('Teste')
+      expect(service.fetch_group_info('120363429656097671@g.us')['Name']).to eq('Teste')
     end
 
     it 'asks for the group by its jid' do
       stub_request(:post, info_url).to_return(status: 200, body: [{ data: { Name: 'Teste' } }].to_json,
                                               headers: { 'Content-Type' => 'application/json' })
 
-      service.fetch_group_name('120363429656097671@g.us')
+      service.fetch_group_info('120363429656097671@g.us')
 
       expect(WebMock).to(
         have_requested(:post, info_url)
@@ -142,14 +142,20 @@ describe Whatsapp::Providers::EvolutionGoService do
     it 'returns nothing when the endpoint fails' do
       stub_request(:post, info_url).to_return(status: 500, body: '{}')
 
-      expect(service.fetch_group_name('120363429656097671@g.us')).to be_nil
+      expect(service.fetch_group_info('120363429656097671@g.us')).to be_nil
     end
 
-    it 'returns nothing when the group has no name' do
-      stub_request(:post, info_url).to_return(status: 200, body: [{ data: { Name: '' } }].to_json,
-                                              headers: { 'Content-Type' => 'application/json' })
+    it 'hands back the members that came with it, not only the name' do
+      stub_request(:post, info_url).to_return(
+        status: 200,
+        body: [{ data: { Name: 'Teste',
+                         Participants: [{ JID: '2704@lid', PhoneNumber: '5527998999017@s.whatsapp.net' }] } }].to_json,
+        headers: { 'Content-Type' => 'application/json' }
+      )
 
-      expect(service.fetch_group_name('120363429656097671@g.us')).to be_nil
+      info = service.fetch_group_info('120363429656097671@g.us')
+
+      expect(info['Participants'].first['JID']).to eq('2704@lid')
     end
   end
 

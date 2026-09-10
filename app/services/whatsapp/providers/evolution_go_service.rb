@@ -504,7 +504,7 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
   # The subject of a group chat. Unlike the rest of the API, this endpoint answers with an array,
   # so the first entry is unwrapped here rather than at the call site.
-  def fetch_group_name(group_jid)
+  def fetch_group_info(group_jid)
     return nil unless evolution_go_configured? && instance_token.present?
 
     response = evolution_request(
@@ -517,9 +517,9 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
     return nil unless response.success?
 
-    Array.wrap(response.parsed_response).first&.dig('data', 'Name').presence
+    Array.wrap(response.parsed_response).first&.dig('data')
   rescue StandardError => e
-    Rails.logger.error "[EVOLUTION_GO] Fetch group name error: #{e.message}"
+    Rails.logger.error "[EVOLUTION_GO] Fetch group info error: #{e.message}"
     nil
   end
 
