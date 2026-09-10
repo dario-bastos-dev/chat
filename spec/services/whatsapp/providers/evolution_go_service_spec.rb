@@ -33,6 +33,73 @@ describe Whatsapp::Providers::EvolutionGoService do
       )
   end
 
+  describe 'mentions in a group' do
+    let(:group_jid) { '120363429656097671@g.us' }
+    let(:conversation) do
+      create(:conversation, inbox: channel.inbox,
+                            additional_attributes: {
+                              'group_participants' => [
+                                { 'jid' => '27041265119351@lid', 'lid' => '27041265119351@lid',
+                                  'phone' => '5527998999017@s.whatsapp.net', 'admin' => false },
+                                { 'jid' => '246085134118923@lid', 'lid' => '246085134118923@lid',
+                                  'phone' => '5527997774194@s.whatsapp.net', 'admin' => true }
+                              ]
+                            })
+    end
+
+    it 'marks everyone when the agent writes @todos' do
+      stub_send('send/text')
+      message = create(:message, conversation: conversation, inbox: channel.inbox,
+                                 message_type: :outgoing, content: '@todos reunião às 14h')
+
+      service.send_message(group_jid, message)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/text')
+          .with { |req| JSON.parse(req.body)['mentionAll'] == true }
+      )
+    end
+
+    it 'marks the member whose number the agent typed' do
+      stub_send('send/text')
+      message = create(:message, conversation: conversation, inbox: channel.inbox,
+                                 message_type: :outgoing, content: '@5527998999017 confere?')
+
+      service.send_message(group_jid, message)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/text')
+          .with { |req| JSON.parse(req.body)['mentionedJid'] == ['27041265119351@lid'] }
+      )
+    end
+
+    it 'ignores a number that belongs to nobody in the group' do
+      stub_send('send/text')
+      message = create(:message, conversation: conversation, inbox: channel.inbox,
+                                 message_type: :outgoing, content: '@5511000000000 oi')
+
+      service.send_message(group_jid, message)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/text')
+          .with { |req| !JSON.parse(req.body).key?('mentionedJid') }
+      )
+    end
+
+    it 'says nothing about mentions on a plain message' do
+      stub_send('send/text')
+      message = create(:message, conversation: conversation, inbox: channel.inbox,
+                                 message_type: :outgoing, content: 'bom dia')
+
+      service.send_message(group_jid, message)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/text')
+          .with { |req| JSON.parse(req.body).keys.none? { |key| key.start_with?('mention') } }
+      )
+    end
+  end
+
   describe '#get_avatar' do
     it 'asks for a group picture by the group jid' do
       stub_request(:post, 'https://evogo.test/user/avatar')

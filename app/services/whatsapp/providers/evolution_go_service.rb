@@ -713,17 +713,7 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   end
 
   def send_text_message(phone_number, message, message_id = nil)
-    recipient_jid = format_recipient_jid(phone_number)
-
-    body = {
-      number: recipient_jid,
-      text: message.outgoing_content,
-      delay: message_delay
-    }
-    body[:id] = message_id if message_id.present?
-
-    quoted = quoted_context(message, recipient_jid)
-    body[:quoted] = quoted if quoted.present?
+    body = text_message_body(format_recipient_jid(phone_number), message, message_id)
 
     response = evolution_request(
       :post,
@@ -1113,6 +1103,44 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO] Attachment URL error: #{e.message}"
     attachment.download_url
+  end
+
+  def text_message_body(recipient_jid, message, message_id)
+    body = {
+      number: recipient_jid,
+      text: message.outgoing_content,
+      delay: message_delay
+    }
+    body[:id] = message_id if message_id.present?
+
+    quoted = quoted_context(message, recipient_jid)
+    body[:quoted] = quoted if quoted.present?
+
+    body.merge(mentions_for(message))
+  end
+
+  # WhatsApp only notifies someone when the message names them, so the agent writing @todos or
+  # @<number> has to become mentionAll or mentionedJid. The roster kept on the conversation is what
+  # turns a typed number into the jid that group addresses its members by.
+  def mentions_for(message)
+    participants = message.conversation&.additional_attributes&.dig('group_participants')
+    return {} if participants.blank?
+
+    text = message.outgoing_content.to_s
+    return { mentionAll: true } if text.match?(/@todos\b/i)
+
+    jids = mentioned_jids(text, participants)
+    jids.any? ? { mentionedJid: jids } : {}
+  end
+
+  def mentioned_jids(text, participants)
+    typed = text.scan(/@(\d{7,20})/).flatten.uniq
+    return [] if typed.empty?
+
+    participants.filter_map do |participant|
+      addresses = [participant['phone'], participant['lid']].compact.map { |jid| jid.split('@').first }
+      participant['jid'] if typed.intersect?(addresses)
+    end
   end
 
   # Build quoted context for reply messages.
