@@ -493,6 +493,13 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
         expect(inbox.messages.where(message_type: :outgoing).count).to eq(1)
       end
 
+      it 'schedules the group picture download' do
+        expect(Webhooks::EvolutionGoContactAvatarJob).to receive(:perform_later)
+          .with(kind_of(Integer), channel.id, group_jid)
+
+        service.perform
+      end
+
       it 'does not map the participant lid onto the group contact' do
         expect { service.perform }.not_to change(Channel::WhatsappLidMapping, :count)
       end

@@ -629,8 +629,6 @@ class Whatsapp::IncomingMessageEvolutionGoService
   def set_contact_avatar
     return if @contact.blank?
     return if @contact.avatar.attached?
-    # A group avatar lives behind a different endpoint; fetching it is a later slice.
-    return if is_group?
 
     Rails.logger.info "[EVOLUTION_GO MSG] Scheduling avatar fetch for Contact #{@contact.id} (#{contact_jid})"
 

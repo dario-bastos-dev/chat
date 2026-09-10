@@ -33,6 +33,20 @@ describe Whatsapp::Providers::EvolutionGoService do
       )
   end
 
+  describe '#get_avatar' do
+    it 'asks for a group picture by the group jid' do
+      stub_request(:post, 'https://evogo.test/user/avatar')
+        .to_return(status: 200, body: { data: { url: 'https://evogo.test/pic.jpg' } }.to_json,
+                   headers: { 'Content-Type' => 'application/json' })
+
+      expect(service.get_avatar('120363429656097671@g.us')).to eq('https://evogo.test/pic.jpg')
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/user/avatar')
+          .with { |req| JSON.parse(req.body)['number'] == '120363429656097671@g.us' }
+      )
+    end
+  end
+
   describe '#fetch_group_name' do
     let(:info_url) { 'https://evogo.test/group/info' }
 
