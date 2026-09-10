@@ -517,9 +517,7 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
     return nil unless response.success?
 
-    payload = response.parsed_response
-    payload = payload.first if payload.is_a?(Array)
-    payload.is_a?(Hash) ? payload.dig('data', 'Name').presence : nil
+    Array.wrap(response.parsed_response).first&.dig('data', 'Name').presence
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO] Fetch group name error: #{e.message}"
     nil

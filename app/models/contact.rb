@@ -77,6 +77,9 @@ class Contact < ApplicationRecord
 
   enum contact_type: { visitor: 0, lead: 1, customer: 2 }
 
+  # A WhatsApp group chat is stored as a contact so it can hold a conversation; see #whatsapp_group?
+  scope :whatsapp_groups, -> { where('contacts.identifier LIKE ?', '%@g.us') }
+
   # CRM Lead scopes
   scope :leads, -> { where(is_lead: true) }
   scope :by_lead_source, ->(source) { where(lead_source: source) }
@@ -164,8 +167,6 @@ class Contact < ApplicationRecord
   def whatsapp_group?
     identifier.to_s.end_with?('@g.us')
   end
-
-  scope :whatsapp_groups, -> { where('contacts.identifier LIKE ?', '%@g.us') }
 
   def push_event_data
     data = {

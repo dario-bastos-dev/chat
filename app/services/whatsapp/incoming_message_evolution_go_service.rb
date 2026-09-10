@@ -217,7 +217,7 @@ class Whatsapp::IncomingMessageEvolutionGoService
 
   def participant_phone
     jid = participant_jid
-    jid = resolve_phone_from_lid(jid) || jid unless jid.to_s.include?('@s.whatsapp.net')
+    jid = resolve_phone_from_lid(jid) if jid.to_s.include?('@lid')
     return nil unless jid.to_s.include?('@s.whatsapp.net')
 
     digits = jid.split('@').first
@@ -245,7 +245,7 @@ class Whatsapp::IncomingMessageEvolutionGoService
   end
 
   def group_display_name
-    resolved_group_name.presence || provisional_group_name
+    resolved_group_name || provisional_group_name
   end
 
   def message_type
@@ -748,15 +748,16 @@ class Whatsapp::IncomingMessageEvolutionGoService
     attrs[:in_reply_to_external_id] = quoted_message_id if quoted_message_id.present?
     # Author of this message, so a later reply can quote it without guessing the addressing
     # mode. WhatsApp rejects a quote whose participant is in the wrong form.
-    attrs[:sender_jid] = group_or_contact_sender_jid
+    attrs[:sender_jid] = author_jid
     attrs[:group_participant] = { name: push_name, phone: participant_phone, jid: participant_jid } if is_group? && !from_me?
     attrs
   end
 
-  # In a group contact_jid is the group, and quoting a group jid as the participant is rejected.
-  def group_or_contact_sender_jid
-    return owner_jid if from_me?
-    return participant_jid if is_group?
+  # Who wrote this message, as WhatsApp addresses them. In a group contact_jid is the group itself,
+  # and a quote whose participant is a group jid is rejected, so the participant answers for both
+  # cases: it already resolves to our own jid on an echo.
+  def author_jid
+    return participant_jid if from_me? || is_group?
 
     contact_jid
   end
