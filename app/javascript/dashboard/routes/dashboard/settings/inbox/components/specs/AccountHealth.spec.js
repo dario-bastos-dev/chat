@@ -2,11 +2,13 @@ import { shallowMount } from '@vue/test-utils';
 import ButtonV4 from 'next/button/Button.vue';
 import AccountHealth from '../AccountHealth.vue';
 
+const { mockLocale } = vi.hoisted(() => ({ mockLocale: { value: 'en' } }));
+
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: key => key,
     te: () => false,
-    locale: { value: 'en' },
+    locale: mockLocale,
   }),
 }));
 
@@ -22,6 +24,7 @@ describe('AccountHealth', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    mockLocale.value = 'en';
   });
 
   it('opens the phone numbers page for the correct WhatsApp Business Account', async () => {
@@ -65,6 +68,16 @@ describe('AccountHealth', () => {
     expect(wrapper.text()).not.toContain(
       'INBOX_MGMT.ACCOUNT_HEALTH.VALUES.MODES.CUSTOM_MODE'
     );
+  });
+
+  it('formats the last onboarded time for app locales with an underscore, such as pt_BR', () => {
+    mockLocale.value = 'pt_BR';
+
+    const wrapper = mountComponent({
+      last_onboarded_time: '2025-06-01T12:00:00+0000',
+    });
+
+    expect(wrapper.text()).toContain('1 de jun. de 2025, 12:00');
   });
 
   it('shows the current error instead of stale health data', () => {

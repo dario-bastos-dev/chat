@@ -77,7 +77,8 @@ const formatDateTime = value => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
 
-  return new Intl.DateTimeFormat(locale.value, {
+  // App locales use underscores (pt_BR), which Intl rejects as a language tag.
+  return new Intl.DateTimeFormat(locale.value.replace('_', '-'), {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date);
