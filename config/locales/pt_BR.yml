@@ -66,6 +66,7 @@ pt_BR:
         invalid: is not a valid email address
     validations:
       presence: não pode ficar em branco
+      team_membership: deve pertencer ao time selecionado
     webhook:
       invalid: Eventos inválidos
     signup:

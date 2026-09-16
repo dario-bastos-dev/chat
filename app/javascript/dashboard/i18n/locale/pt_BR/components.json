@@ -1,4 +1,26 @@
 {
+  "VISIBILITY_SELECTOR": {
+    "LABEL": "Visibilidade",
+    "OPTIONS": {
+      "GLOBAL": {
+        "LABEL": "Pública",
+        "DESCRIPTION": "Visível e utilizável por todos na conta."
+      },
+      "TEAM": {
+        "LABEL": "Time",
+        "DESCRIPTION": "Visível e utilizável apenas pelos membros do time selecionado."
+      },
+      "PERSONAL": {
+        "LABEL": "Privada",
+        "DESCRIPTION": "Visível e utilizável apenas por você."
+      }
+    },
+    "TEAM": {
+      "LABEL": "Time",
+      "PLACEHOLDER": "Selecione um time",
+      "EMPTY": "Você ainda não faz parte de nenhum time."
+    }
+  },
   "PAGINATION_FOOTER": {
     "SHOWING": "Exibindo {startItem} - {endItem} de {totalItems} itens",
     "CURRENT_PAGE_INFO": "{currentPage} de {totalPages} páginas"

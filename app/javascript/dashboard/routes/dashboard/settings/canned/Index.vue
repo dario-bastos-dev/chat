@@ -9,6 +9,7 @@ import { useI18n } from 'vue-i18n';
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
 import { picoSearch } from '@scmmishra/pico-search';
 import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
+import { useAdmin } from 'dashboard/composables/useAdmin';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
@@ -25,8 +26,21 @@ defineOptions({
 const getters = useStoreGetters();
 const store = useStore();
 const { t } = useI18n();
+const { isAdmin } = useAdmin();
 
 const { getPlainText } = useMessageFormatter();
+
+const currentUserId = computed(() => getters.getCurrentUser.value?.id);
+const canManage = record =>
+  isAdmin.value || record.created_by_id === currentUserId.value;
+
+const visibilityLabelKey = record => {
+  if (record.visibility === 'global')
+    return 'CANNED_MGMT.LIST.VISIBILITY.GLOBAL';
+  if (record.visibility === 'team_visibility')
+    return 'CANNED_MGMT.LIST.VISIBILITY.TEAM';
+  return 'CANNED_MGMT.LIST.VISIBILITY.PERSONAL';
+};
 
 const showAddPopup = ref(false);
 const loading = ref({});
@@ -212,21 +226,34 @@ const tableHeaders = computed(() => {
             <template #default>
               <BaseTableCell class="max-w-0">
                 <div class="flex flex-col gap-2 min-w-0">
-                  <span class="text-heading-3 text-n-slate-12 truncate block">
-                    {{ cannedItem.short_code }}
-                  </span>
+                  <div class="flex items-center gap-2">
+                    <span class="text-heading-3 text-n-slate-12 truncate block">
+                      {{ cannedItem.short_code }}
+                    </span>
+                    <span
+                      class="text-label-small text-n-slate-11 px-1.5 py-0.5 rounded bg-n-slate-3"
+                    >
+                      {{ $t(visibilityLabelKey(cannedItem)) }}
+                    </span>
+                  </div>
                   <p class="text-body-main text-n-slate-11 line-clamp-5">
                     {{ getPlainText(cannedItem.content) }}
                   </p>
-                  <p v-if="cannedItem.file_url" class="text-sm text-n-slate-10 mt-1 flex items-center gap-1">
-                    <span class="i-lucide-paperclip size-3"></span>
+                  <p
+                    v-if="cannedItem.file_url"
+                    class="text-sm text-n-slate-10 mt-1 flex items-center gap-1"
+                  >
+                    <span class="i-lucide-paperclip size-3" />
                     <span>{{ cannedItem.file_name }}</span>
                   </p>
                 </div>
               </BaseTableCell>
 
               <BaseTableCell align="end" class="w-24">
-                <div class="flex gap-3 justify-end flex-shrink-0">
+                <div
+                  v-if="canManage(cannedItem)"
+                  class="flex gap-3 justify-end flex-shrink-0"
+                >
                   <Button
                     v-tooltip.top="$t('CANNED_MGMT.EDIT.BUTTON_TEXT')"
                     icon="i-woot-edit-pen"
@@ -263,6 +290,8 @@ const tableHeaders = computed(() => {
         :ed-file-url="activeResponse.file_url"
         :ed-file-name="activeResponse.file_name"
         :ed-file-content-type="activeResponse.file_content_type"
+        :ed-visibility="activeResponse.visibility"
+        :ed-team-id="activeResponse.team_id"
         :on-close="hideEditPopup"
       />
     </woot-modal>

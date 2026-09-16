@@ -5,10 +5,12 @@ import validations, { getLabelTitleErrorMessage } from './validations';
 import { useVuelidate } from '@vuelidate/core';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
+import VisibilitySelector from 'dashboard/components-next/visibility/VisibilitySelector.vue';
 
 export default {
   components: {
     NextButton,
+    VisibilitySelector,
   },
   props: {
     selectedResponse: {
@@ -26,12 +28,15 @@ export default {
       description: '',
       showOnSidebar: true,
       color: '',
+      visibility: 'personal',
+      teamId: null,
     };
   },
   validations,
   computed: {
     ...mapGetters({
       uiFlags: 'labels/getUIFlags',
+      myTeams: 'teams/getMyTeams',
     }),
     pageTitle() {
       return `${this.$t('LABEL_MGMT.EDIT.TITLE')} - ${
@@ -45,6 +50,7 @@ export default {
   },
   mounted() {
     this.setFormValues();
+    this.$store.dispatch('teams/get');
   },
   methods: {
     onClose() {
@@ -55,6 +61,8 @@ export default {
       this.description = this.selectedResponse.description;
       this.showOnSidebar = this.selectedResponse.show_on_sidebar;
       this.color = this.selectedResponse.color;
+      this.visibility = this.selectedResponse.visibility || 'personal';
+      this.teamId = this.selectedResponse.team_id || null;
     },
     editLabel() {
       this.$store
@@ -64,6 +72,8 @@ export default {
           description: this.description,
           title: this.title.toLowerCase(),
           show_on_sidebar: this.showOnSidebar,
+          visibility: this.visibility,
+          team_id: this.visibility === 'team_visibility' ? this.teamId : null,
         })
         .then(() => {
           useAlert(this.$t('LABEL_MGMT.EDIT.API.SUCCESS_MESSAGE'));
@@ -112,6 +122,14 @@ export default {
         <label for="conversation_creation">
           {{ $t('LABEL_MGMT.FORM.SHOW_ON_SIDEBAR.LABEL') }}
         </label>
+      </div>
+      <div class="w-full mt-2">
+        <VisibilitySelector
+          v-model="visibility"
+          :team-id="teamId"
+          :teams="myTeams"
+          @update:team-id="teamId = $event"
+        />
       </div>
       <div class="flex items-center justify-end w-full gap-2 px-0 py-2">
         <NextButton

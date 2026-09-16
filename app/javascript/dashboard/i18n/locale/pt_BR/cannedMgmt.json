@@ -17,6 +17,11 @@
         "SHORT_CODE": "Atalho",
         "CONTENT": "Conteúdo",
         "ACTIONS": "Ações"
+      },
+      "VISIBILITY": {
+        "GLOBAL": "Pública",
+        "TEAM": "Time",
+        "PERSONAL": "Privada"
       }
     },
     "ADD": {

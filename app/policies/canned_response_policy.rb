@@ -1,14 +1,14 @@
-class LabelPolicy < ApplicationPolicy
+class CannedResponsePolicy < ApplicationPolicy
   def index?
+    true
+  end
+
+  def create?
     true
   end
 
   def show?
     visible_to_user?
-  end
-
-  def create?
-    true
   end
 
   def update?

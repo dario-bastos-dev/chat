@@ -6,12 +6,14 @@ import { useAlert } from 'dashboard/composables';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Modal from '../../../../components/Modal.vue';
+import VisibilitySelector from 'dashboard/components-next/visibility/VisibilitySelector.vue';
 
 export default {
   components: {
     NextButton,
     Modal,
     WootMessageEditor,
+    VisibilitySelector,
   },
   props: {
     id: { type: Number, default: null },
@@ -20,6 +22,8 @@ export default {
     edFileUrl: { type: String, default: '' },
     edFileName: { type: String, default: '' },
     edFileContentType: { type: String, default: '' },
+    edVisibility: { type: String, default: 'personal' },
+    edTeamId: { type: [Number, String], default: null },
     onClose: { type: Function, default: () => {} },
   },
   setup() {
@@ -44,6 +48,8 @@ export default {
       audioChunks: [],
       recordingTime: 0,
       recordingInterval: null,
+      visibility: this.edVisibility,
+      teamId: this.edTeamId,
       show: true,
     };
   },
@@ -55,6 +61,9 @@ export default {
     content: {},
   },
   computed: {
+    myTeams() {
+      return this.$store.getters['teams/getMyTeams'];
+    },
     pageTitle() {
       return `${this.$t('CANNED_MGMT.EDIT.TITLE')} - ${this.edshortCode}`;
     },
@@ -83,7 +92,8 @@ export default {
       return '';
     },
     isCurrentAudioFile() {
-      if (this.file) return this.file.type && this.file.type.startsWith('audio/');
+      if (this.file)
+        return this.file.type && this.file.type.startsWith('audio/');
       if (this.hasExistingFile)
         return (
           this.existingFileContentType &&
@@ -97,6 +107,9 @@ export default {
         return this.existingFileUrl;
       return '';
     },
+  },
+  mounted() {
+    this.$store.dispatch('teams/get');
   },
   beforeUnmount() {
     this.stopRecording();
@@ -186,6 +199,8 @@ export default {
         id: this.id,
         short_code: this.shortCode,
         content: this.content,
+        visibility: this.visibility,
+        team_id: this.visibility === 'team_visibility' ? this.teamId : null,
       };
       if (this.file) {
         payload.file = this.file;
@@ -245,6 +260,15 @@ export default {
               @blur="v$.content.$touch"
             />
           </div>
+        </div>
+
+        <div class="w-full mt-3">
+          <VisibilitySelector
+            v-model="visibility"
+            :team-id="teamId"
+            :teams="myTeams"
+            @update:team-id="teamId = $event"
+          />
         </div>
 
         <!-- File attachment section -->

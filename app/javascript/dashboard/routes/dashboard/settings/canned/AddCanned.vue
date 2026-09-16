@@ -6,6 +6,7 @@ import { useAlert } from 'dashboard/composables';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Modal from '../../../../components/Modal.vue';
 import WootMessageEditor from 'dashboard/components/widgets/WootWriter/Editor.vue';
+import VisibilitySelector from 'dashboard/components-next/visibility/VisibilitySelector.vue';
 
 export default {
   name: 'AddCanned',
@@ -13,6 +14,7 @@ export default {
     NextButton,
     Modal,
     WootMessageEditor,
+    VisibilitySelector,
   },
   props: {
     responseContent: {
@@ -38,6 +40,8 @@ export default {
       audioChunks: [],
       recordingTime: 0,
       recordingInterval: null,
+      visibility: 'personal',
+      teamId: null,
       addCanned: {
         showLoading: false,
         message: '',
@@ -53,6 +57,9 @@ export default {
     content: {},
   },
   computed: {
+    myTeams() {
+      return this.$store.getters['teams/getMyTeams'];
+    },
     isFormValid() {
       return (
         !this.v$.shortCode.$invalid &&
@@ -68,6 +75,9 @@ export default {
       return this.file && this.file.type && this.file.type.startsWith('audio/');
     },
   },
+  mounted() {
+    this.$store.dispatch('teams/get');
+  },
   beforeUnmount() {
     this.stopRecording();
     if (this.filePreview) {
@@ -80,6 +90,8 @@ export default {
       this.content = '';
       this.file = null;
       this.filePreview = null;
+      this.visibility = 'personal';
+      this.teamId = null;
       this.v$.shortCode.$reset();
       this.v$.content.$reset();
     },
@@ -144,6 +156,8 @@ export default {
           short_code: this.shortCode,
           content: this.content,
           file: this.file || undefined,
+          visibility: this.visibility,
+          team_id: this.visibility === 'team_visibility' ? this.teamId : null,
         })
         .then(() => {
           this.addCanned.showLoading = false;
@@ -198,6 +212,15 @@ export default {
           </div>
         </div>
 
+        <div class="w-full mt-3">
+          <VisibilitySelector
+            v-model="visibility"
+            :team-id="teamId"
+            :teams="myTeams"
+            @update:team-id="teamId = $event"
+          />
+        </div>
+
         <!-- File attachment section -->
         <div class="w-full mt-3">
           <label class="block mb-1 text-sm font-medium text-n-slate-12">
@@ -210,11 +233,7 @@ export default {
             >
               <span class="i-lucide-paperclip size-4" />
               {{ $t('CANNED_MGMT.ADD.FORM.FILE.ATTACH') }}
-              <input
-                type="file"
-                class="hidden"
-                @change="handleFileSelect"
-              />
+              <input type="file" class="hidden" @change="handleFileSelect" />
             </label>
             <button
               type="button"

@@ -4,6 +4,7 @@ import { computed, onBeforeMount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
 import { picoSearch } from '@scmmishra/pico-search';
+import { useAdmin } from 'dashboard/composables/useAdmin';
 
 import AddLabel from './AddLabel.vue';
 import EditLabel from './EditLabel.vue';
@@ -19,6 +20,19 @@ import {
 const getters = useStoreGetters();
 const store = useStore();
 const { t } = useI18n();
+const { isAdmin } = useAdmin();
+
+const currentUserId = computed(() => getters.getCurrentUser.value?.id);
+const canManage = record =>
+  isAdmin.value || record.created_by_id === currentUserId.value;
+
+const visibilityLabelKey = record => {
+  if (record.visibility === 'global')
+    return 'LABEL_MGMT.LIST.VISIBILITY.GLOBAL';
+  if (record.visibility === 'team_visibility')
+    return 'LABEL_MGMT.LIST.VISIBILITY.TEAM';
+  return 'LABEL_MGMT.LIST.VISIBILITY.PERSONAL';
+};
 
 const loading = ref({});
 const showAddPopup = ref(false);
@@ -139,9 +153,16 @@ onBeforeMount(() => {
           <BaseTableRow v-for="label in items" :key="label.title" :item="label">
             <template #default>
               <BaseTableCell>
-                <span class="text-body-main text-n-slate-12">
-                  {{ label.title }}
-                </span>
+                <div class="flex items-center gap-2">
+                  <span class="text-body-main text-n-slate-12">
+                    {{ label.title }}
+                  </span>
+                  <span
+                    class="text-label-small text-n-slate-11 px-1.5 py-0.5 rounded bg-n-slate-3"
+                  >
+                    {{ $t(visibilityLabelKey(label)) }}
+                  </span>
+                </div>
               </BaseTableCell>
 
               <BaseTableCell>
@@ -163,7 +184,10 @@ onBeforeMount(() => {
               </BaseTableCell>
 
               <BaseTableCell align="end">
-                <div class="flex gap-3 justify-end flex-shrink-0">
+                <div
+                  v-if="canManage(label)"
+                  class="flex gap-3 justify-end flex-shrink-0"
+                >
                   <Button
                     v-tooltip.top="$t('LABEL_MGMT.FORM.EDIT')"
                     icon="i-woot-edit-pen"

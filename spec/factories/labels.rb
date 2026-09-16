@@ -4,5 +4,6 @@ FactoryBot.define do
   factory :label do
     account
     sequence(:title) { |n| "Label_#{n}" }
+    visibility { :global }
   end
 end

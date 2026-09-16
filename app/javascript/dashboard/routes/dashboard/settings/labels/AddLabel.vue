@@ -6,10 +6,12 @@ import { getRandomColor } from 'dashboard/helper/labelColor';
 import { useVuelidate } from '@vuelidate/core';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
+import VisibilitySelector from 'dashboard/components-next/visibility/VisibilitySelector.vue';
 
 export default {
   components: {
     NextButton,
+    VisibilitySelector,
   },
   props: {
     prefillTitle: {
@@ -27,12 +29,15 @@ export default {
       description: '',
       title: '',
       showOnSidebar: true,
+      visibility: 'personal',
+      teamId: null,
     };
   },
   validations,
   computed: {
     ...mapGetters({
       uiFlags: 'labels/getUIFlags',
+      myTeams: 'teams/getMyTeams',
     }),
     labelTitleErrorMessage() {
       const errorMessage = getLabelTitleErrorMessage(this.v$);
@@ -42,6 +47,7 @@ export default {
   mounted() {
     this.color = getRandomColor();
     this.title = this.prefillTitle.toLowerCase();
+    this.$store.dispatch('teams/get');
   },
   methods: {
     onClose() {
@@ -54,6 +60,8 @@ export default {
           description: this.description,
           title: this.title.toLowerCase(),
           show_on_sidebar: this.showOnSidebar,
+          visibility: this.visibility,
+          team_id: this.visibility === 'team_visibility' ? this.teamId : null,
         });
         useAlert(this.$t('LABEL_MGMT.ADD.API.SUCCESS_MESSAGE'));
         this.onClose();
@@ -108,6 +116,14 @@ export default {
         <label for="conversation_creation">
           {{ $t('LABEL_MGMT.FORM.SHOW_ON_SIDEBAR.LABEL') }}
         </label>
+      </div>
+      <div class="w-full mt-2">
+        <VisibilitySelector
+          v-model="visibility"
+          :team-id="teamId"
+          :teams="myTeams"
+          @update:team-id="teamId = $event"
+        />
       </div>
       <div class="flex items-center justify-end w-full gap-2 px-0 py-2">
         <NextButton

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_09_04_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_16_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -378,6 +378,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_04_120000) do
     t.text "content"
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
+    t.integer "visibility", default: 0, null: false
+    t.bigint "created_by_id"
+    t.bigint "team_id"
+    t.index ["created_by_id"], name: "index_canned_responses_on_created_by_id"
+    t.index ["team_id"], name: "index_canned_responses_on_team_id"
   end
 
   create_table "captain_assistant_responses", force: :cascade do |t|
@@ -1257,7 +1262,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_04_120000) do
     t.bigint "account_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "visibility", default: 0, null: false
+    t.bigint "created_by_id"
+    t.bigint "team_id"
     t.index ["account_id"], name: "index_labels_on_account_id"
+    t.index ["created_by_id"], name: "index_labels_on_created_by_id"
+    t.index ["team_id"], name: "index_labels_on_team_id"
     t.index ["title", "account_id"], name: "index_labels_on_title_and_account_id", unique: true
   end
 

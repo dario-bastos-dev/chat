@@ -17,6 +17,11 @@
         "SHORT_CODE": "Short code",
         "CONTENT": "Content",
         "ACTIONS": "Actions"
+      },
+      "VISIBILITY": {
+        "GLOBAL": "Public",
+        "TEAM": "Team",
+        "PERSONAL": "Private"
       }
     },
     "ADD": {

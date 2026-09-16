@@ -1,4 +1,26 @@
 {
+  "VISIBILITY_SELECTOR": {
+    "LABEL": "Visibility",
+    "OPTIONS": {
+      "GLOBAL": {
+        "LABEL": "Public",
+        "DESCRIPTION": "Visible and usable by everyone in the account."
+      },
+      "TEAM": {
+        "LABEL": "Team",
+        "DESCRIPTION": "Visible and usable only by members of the selected team."
+      },
+      "PERSONAL": {
+        "LABEL": "Private",
+        "DESCRIPTION": "Visible and usable only by you."
+      }
+    },
+    "TEAM": {
+      "LABEL": "Team",
+      "PLACEHOLDER": "Select a team",
+      "EMPTY": "You are not a member of any team yet."
+    }
+  },
   "PAGINATION_FOOTER": {
     "SHOWING": "Showing {startItem} - {endItem} of {totalItems} item | Showing {startItem} - {endItem} of {totalItems} items",
     "CURRENT_PAGE_INFO": "{currentPage} of {totalPages} page | {currentPage} of {totalPages} pages"

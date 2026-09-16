@@ -18,6 +18,11 @@
         "DESCRIPTION": "Description",
         "COLOR": "Color",
         "ACTION": "Actions"
+      },
+      "VISIBILITY": {
+        "GLOBAL": "Public",
+        "TEAM": "Team",
+        "PERSONAL": "Private"
       }
     },
     "FORM": {

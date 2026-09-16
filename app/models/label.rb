@@ -7,18 +7,24 @@
 #  description     :text
 #  show_on_sidebar :boolean
 #  title           :string
+#  visibility      :integer          default("personal"), not null
 #  created_at      :datetime         not null
 #  updated_at      :datetime         not null
 #  account_id      :bigint
+#  created_by_id   :bigint
+#  team_id         :bigint
 #
 # Indexes
 #
 #  index_labels_on_account_id            (account_id)
+#  index_labels_on_created_by_id         (created_by_id)
+#  index_labels_on_team_id               (team_id)
 #  index_labels_on_title_and_account_id  (title,account_id) UNIQUE
 #
 class Label < ApplicationRecord
   include RegexHelper
   include AccountCacheRevalidator
+  include VisibilityScopable
 
   belongs_to :account
 

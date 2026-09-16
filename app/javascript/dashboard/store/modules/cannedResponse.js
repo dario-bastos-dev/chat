@@ -9,10 +9,24 @@ function buildPayload(obj) {
     formData.append('canned_response[short_code]', obj.short_code || '');
     formData.append('canned_response[content]', obj.content || '');
     formData.append('canned_response[file]', obj.file);
+    if (obj.visibility) {
+      formData.append('canned_response[visibility]', obj.visibility);
+    }
+    if (obj.team_id) {
+      formData.append('canned_response[team_id]', obj.team_id);
+    }
     return formData;
   }
   if (obj.remove_file) {
-    return { canned_response: { short_code: obj.short_code, content: obj.content }, remove_file: true };
+    return {
+      canned_response: {
+        short_code: obj.short_code,
+        content: obj.content,
+        visibility: obj.visibility,
+        team_id: obj.team_id,
+      },
+      remove_file: true,
+    };
   }
   return obj;
 }

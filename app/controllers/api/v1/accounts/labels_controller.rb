@@ -1,6 +1,8 @@
 class Api::V1::Accounts::LabelsController < Api::V1::Accounts::BaseController
   before_action :fetch_label, except: [:index, :create]
-  before_action :check_authorization
+  before_action :check_authorization, except: [:index, :create]
+
+  rescue_from ArgumentError, with: :render_invalid_enum_value
 
   def index
     @labels = policy_scope(Current.account.labels)
@@ -9,7 +11,7 @@ class Api::V1::Accounts::LabelsController < Api::V1::Accounts::BaseController
   def show; end
 
   def create
-    @label = Current.account.labels.create!(permitted_params)
+    @label = Current.account.labels.create!(permitted_params.merge(created_by_id: current_user.id))
   end
 
   def update
@@ -36,7 +38,15 @@ class Api::V1::Accounts::LabelsController < Api::V1::Accounts::BaseController
     @label = Current.account.labels.find(params[:id])
   end
 
+  def check_authorization
+    authorize(@label)
+  end
+
+  def render_invalid_enum_value(exception)
+    render json: { error: exception.message }, status: :unprocessable_entity
+  end
+
   def permitted_params
-    params.require(:label).permit(:title, :description, :color, :show_on_sidebar)
+    params.require(:label).permit(:title, :description, :color, :show_on_sidebar, :visibility, :team_id)
   end
 end
