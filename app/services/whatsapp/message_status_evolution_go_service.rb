@@ -41,7 +41,7 @@ class Whatsapp::MessageStatusEvolutionGoService
     when 'Delivered', 'ServerAck'
       handle_delivered
     when 'Read'
-      from_me? ? handle_read_by_agent : handle_read_by_contact
+      from_me? ? handle_read_by_contact : handle_read_by_agent
     when 'ReadSelf'
       handle_read_by_agent
     when 'PlayedSelf'
@@ -54,7 +54,7 @@ class Whatsapp::MessageStatusEvolutionGoService
     end
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO STATUS] Error: #{e.message}"
-    Rails.logger.debug "[EVOLUTION_GO STATUS] Backtrace:\n#{e.backtrace.first(5).join("\n")}"
+    Rails.logger.debug { "[EVOLUTION_GO STATUS] Backtrace:\n#{e.backtrace.first(5).join("\n")}" }
   end
 
   private
@@ -109,11 +109,11 @@ class Whatsapp::MessageStatusEvolutionGoService
       next if conversation.blank?
 
       # Only update if the receipt timestamp is newer
-      if conversation.agent_last_seen_at.blank? || conversation.agent_last_seen_at < receipt_timestamp
-        conversation.update!(agent_last_seen_at: receipt_timestamp)
-        conversation.dispatch_conversation_updated_event
-        Rails.logger.info "[EVOLUTION_GO STATUS] Conversation #{conv_id} marked as read by agent (phone) and broadcasted"
-      end
+      next unless conversation.agent_last_seen_at.blank? || conversation.agent_last_seen_at < receipt_timestamp
+
+      conversation.update!(agent_last_seen_at: receipt_timestamp)
+      conversation.dispatch_conversation_updated_event
+      Rails.logger.info "[EVOLUTION_GO STATUS] Conversation #{conv_id} marked as read by agent (phone) and broadcasted"
     end
   end
 
