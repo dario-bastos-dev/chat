@@ -17,6 +17,13 @@ module AssignmentHandler
   end
 
   def validate_current_assignee_team
+    # Uma regra de criacao de conversa que define o time esta completando a conversa, nao
+    # transferindo: sem isso o vendedor que abriu a conversa pelo compose perde ela para o
+    # round robin do time sempre que nao for membro dele. Nos demais eventos trocar o time
+    # continua sendo roteamento e desatribui quem nao e do time, como no upstream.
+    rule = Current.executed_by
+    return if rule.instance_of?(AutomationRule) && rule.event_name == 'conversation_created'
+
     self.assignee_id = nil if team&.members&.exclude?(assignee)
   end
 

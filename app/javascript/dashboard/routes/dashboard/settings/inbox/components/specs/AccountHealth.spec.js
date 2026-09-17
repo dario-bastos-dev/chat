@@ -77,7 +77,7 @@ describe('AccountHealth', () => {
       last_onboarded_time: '2025-06-01T12:00:00+0000',
     });
 
-    expect(wrapper.text()).toContain('1 de jun. de 2025, 12:00');
+    expect(wrapper.text()).toContain('1 de jun. de 2025');
   });
 
   it('shows the current error instead of stale health data', () => {

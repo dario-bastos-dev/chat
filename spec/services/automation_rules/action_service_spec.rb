@@ -175,6 +175,33 @@ RSpec.describe AutomationRules::ActionService do
       end
     end
 
+    describe '#perform with assign_team action' do
+      let(:team) { create(:team, account: account, allow_auto_assign: false) }
+
+      before do
+        conversation.update!(assignee: agent)
+        rule.update!(actions: [{ action_name: 'assign_team', action_params: [team.id] }])
+      end
+
+      it 'keeps the assignee outside the team when the rule runs on conversation creation' do
+        rule.update!(event_name: 'conversation_created')
+
+        described_class.new(rule, account, conversation).perform
+
+        expect(conversation.reload.team).to eq(team)
+        expect(conversation.assignee).to eq(agent)
+      end
+
+      it 'unassigns the agent outside the team when the rule runs on other events' do
+        rule.update!(event_name: 'message_created')
+
+        described_class.new(rule, account, conversation).perform
+
+        expect(conversation.reload.team).to eq(team)
+        expect(conversation.assignee).to be_nil
+      end
+    end
+
     describe '#perform with send_email_transcript action' do
       before do
         allow(account).to receive(:email_transcript_enabled?).and_return(true)
