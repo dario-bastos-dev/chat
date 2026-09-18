@@ -1068,7 +1068,8 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       delay: message_delay
     }
     body[:id] = message_id if message_id.present?
-    body[:caption] = caption if caption.present?
+    # The @ handles live in the caption, so the mentions ride on the one file that carries it.
+    body.merge!(caption: caption, **mentions_for(message)) if caption.present?
 
     quoted = quoted_context(message, recipient_jid)
     body[:quoted] = quoted if quoted.present?
