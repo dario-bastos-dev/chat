@@ -863,9 +863,17 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     quoted = quoted_context(message, recipient_jid)
     body[:quoted] = quoted if quoted.present?
 
-    sent_id = post_send('send/link', body, 'Link')
+    sent_id = post_send('send/link', body, 'Link') || fallback_link_to_text(phone_number, message, reserved_id)
     release_source_id(message, reserved_id) if sent_id.blank?
     sent_id
+  end
+
+  # Evolution GO builds the preview card by fetching the page itself; a slow, unreachable or
+  # bot-blocking link makes /send/link hang until its own internal timeout and fail. Falling
+  # back to plain text still gets the link to the contact, just without the card.
+  def fallback_link_to_text(phone_number, message, reserved_id)
+    Rails.logger.warn "[EVOLUTION_GO] Link send failed, falling back to plain text"
+    send_text_message(phone_number, message, reserved_id)
   end
 
   # Chatwoot's `cards` content type maps onto the carousel: each item becomes a card whose header

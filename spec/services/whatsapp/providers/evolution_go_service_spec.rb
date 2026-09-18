@@ -442,6 +442,35 @@ describe Whatsapp::Providers::EvolutionGoService do
     end
   end
 
+  describe 'send/link failure' do
+    it 'falls back to send/text so the link still reaches the contact' do
+      stub_send('send/link', status: 500)
+      stub_send('send/text')
+      message = create(:message, conversation: conversation, inbox: channel.inbox,
+                                 message_type: :outgoing, content: 'olha isso https://example.com/promo')
+
+      sent_id = service.send_message('5511988887777', message)
+
+      expect(WebMock).to have_requested(:post, 'https://evogo.test/send/link')
+      expect(WebMock).to have_requested(:post, 'https://evogo.test/send/text')
+        .with { |req| JSON.parse(req.body)['text'] == 'olha isso https://example.com/promo' }
+      expect(sent_id).to eq('returned-id')
+      expect(message.reload.source_id).to be_present
+    end
+
+    it 'clears the reserved source_id when both send/link and the text fallback fail' do
+      stub_send('send/link', status: 500)
+      stub_send('send/text', status: 500)
+      message = create(:message, conversation: conversation, inbox: channel.inbox,
+                                 message_type: :outgoing, content: 'olha isso https://example.com/promo')
+
+      sent_id = service.send_message('5511988887777', message)
+
+      expect(sent_id).to be_nil
+      expect(message.reload.source_id).to be_nil
+    end
+  end
+
   describe '#get_pairing_code' do
     it 'registers the webhook before pairing, since /instance/pair takes no webhookUrl' do
       stub_request(:post, 'https://evogo.test/instance/connect').to_return(status: 200, body: '{}')
