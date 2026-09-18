@@ -32,11 +32,13 @@ const items = computed(() => {
 
   const members = props.participants.map(participant => {
     const phone = digitsOf(participant.phone);
+    // A member reached only by lid has no phone; the lid itself is all there is to show.
+    const number = phone ? `+${phone}` : digitsOf(participant.jid);
     return {
       id: participant.jid || phone,
       handle: phone || digitsOf(participant.jid),
-      displayName: participant.name || `+${phone}`,
-      displayInfo: participant.name ? `+${phone}` : '',
+      displayName: participant.name || number,
+      displayInfo: participant.name ? number : '',
     };
   });
 
