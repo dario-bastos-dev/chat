@@ -1,5 +1,9 @@
 {
   "INBOX_MGMT": {
+    "OUT_OF_OFFICE_IN_GROUPS": {
+      "LABEL": "Enviar a mensagem de ausência também em grupos",
+      "HELP_TEXT": "Desmarcado, as conversas de grupo do WhatsApp não recebem a mensagem de fora do expediente."
+    },
     "GREETING_IN_GROUPS": {
       "LABEL": "Enviar a saudação também em grupos",
       "HELP_TEXT": "Desmarcado, as conversas de grupo do WhatsApp não recebem a saudação."

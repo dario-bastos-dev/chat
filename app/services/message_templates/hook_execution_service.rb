@@ -14,8 +14,12 @@ class MessageTemplates::HookExecutionService
   delegate :contact, to: :conversation
 
   def trigger_templates
-    ::MessageTemplates::Template::OutOfOffice.new(conversation: conversation).perform if should_send_out_of_office_message?
-    ::MessageTemplates::Template::Greeting.new(conversation: conversation).perform if should_send_greeting?
+    if should_send_out_of_office_message? && !withheld_from_group?('out_of_office_in_groups')
+      ::MessageTemplates::Template::OutOfOffice.new(conversation: conversation).perform
+    end
+    if should_send_greeting? && !withheld_from_group?('greeting_in_groups')
+      ::MessageTemplates::Template::Greeting.new(conversation: conversation).perform
+    end
     ::MessageTemplates::Template::EmailCollect.new(conversation: conversation).perform if inbox.enable_email_collect && should_send_email_collect?
   end
 
@@ -42,17 +46,16 @@ class MessageTemplates::HookExecutionService
     return false if conversation.campaign.present?
     # should not send if its a tweet message
     return false if conversation.tweet?
-    return false if greeting_withheld_from_group?
 
     first_message_from_contact? && inbox.greeting_enabled? && inbox.greeting_message.present?
   end
 
-  # A greeting is written for one person ("tell us your name and what brings you here"), so a group
-  # only gets it once the inbox says so.
-  def greeting_withheld_from_group?
+  # The greeting and the away message are written for one person ("tell us your name", "we will get
+  # back to you"), so a group only gets each of them once the inbox allows it by its own setting.
+  def withheld_from_group?(setting)
     return false unless contact.whatsapp_group?
 
-    ['true', true].exclude?(inbox.channel.try(:provider_config)&.dig('greeting_in_groups'))
+    ['true', true].exclude?(inbox.channel.try(:provider_config)&.dig(setting))
   end
 
   def email_collect_was_sent?
