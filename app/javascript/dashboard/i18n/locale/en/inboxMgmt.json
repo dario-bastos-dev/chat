@@ -1,5 +1,9 @@
 {
   "INBOX_MGMT": {
+    "OUT_OF_OFFICE_IN_GROUPS": {
+      "LABEL": "Also send the away message in groups",
+      "HELP_TEXT": "When unchecked, WhatsApp group conversations do not receive the out of office message."
+    },
     "GREETING_IN_GROUPS": {
       "LABEL": "Also send the greeting in groups",
       "HELP_TEXT": "When unchecked, WhatsApp group conversations do not receive the greeting."

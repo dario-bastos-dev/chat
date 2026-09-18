@@ -98,6 +98,36 @@ describe MessageTemplates::HookExecutionService do
       expect(MessageTemplates::Template::Greeting).to have_received(:new).with(conversation: conversation)
     end
 
+    context 'when the inbox is out of office' do
+      before do
+        inbox.update!(greeting_enabled: false, working_hours_enabled: true, out_of_office_message: 'Estamos fora do expediente')
+        inbox.working_hours.today.update!(closed_all_day: true)
+        allow(MessageTemplates::Template::OutOfOffice).to receive(:new).and_call_original
+      end
+
+      it 'does not tell the whole group the office is closed by default' do
+        create(:message, conversation: conversation, account: inbox.account, inbox: inbox)
+
+        expect(MessageTemplates::Template::OutOfOffice).not_to have_received(:new)
+      end
+
+      it 'tells the group once the inbox allows it' do
+        channel.merge_provider_config!('out_of_office_in_groups' => true)
+
+        create(:message, conversation: conversation, account: inbox.account, inbox: inbox)
+
+        expect(MessageTemplates::Template::OutOfOffice).to have_received(:new).with(conversation: conversation)
+      end
+
+      it 'keeps the two settings apart: allowing the greeting does not allow the away message' do
+        channel.merge_provider_config!('greeting_in_groups' => true)
+
+        create(:message, conversation: conversation, account: inbox.account, inbox: inbox)
+
+        expect(MessageTemplates::Template::OutOfOffice).not_to have_received(:new)
+      end
+    end
+
     it 'still greets a one to one conversation of the same inbox' do
       person = create(:contact, account: inbox.account, phone_number: '+5511988887777')
       person_inbox = create(:contact_inbox, contact: person, inbox: inbox, source_id: '5511988887777')

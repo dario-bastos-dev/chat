@@ -14,6 +14,7 @@ import {
 } from '../helpers/businessHour';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
+import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 
 const DEFAULT_TIMEZONE = {
   label: 'Pacific Time (US & Canada) (GMT-07:00)',
@@ -28,6 +29,7 @@ export default {
     NextButton,
     WootMessageEditor,
     ComboBox,
+    Checkbox,
   },
   mixins: [inboxMixin],
   props: {
@@ -40,6 +42,7 @@ export default {
     return {
       isBusinessHoursEnabled: false,
       unavailableMessage: '',
+      awayMessageInGroups: false,
       timeZone: DEFAULT_TIMEZONE,
       dayNames: {
         0: 'Sunday',
@@ -102,6 +105,9 @@ export default {
         : defaultTimeSlot;
       this.isBusinessHoursEnabled = isEnabled;
       this.unavailableMessage = unavailableMessage || '';
+      this.awayMessageInGroups = [true, 'true'].includes(
+        this.inbox.provider_config?.out_of_office_in_groups
+      );
       this.timeSlots = slots;
       this.timeZone =
         this.timeZones.find(item => timeZone === item.value) ||
@@ -121,7 +127,14 @@ export default {
           out_of_office_message: this.unavailableMessage,
           working_hours: timeSlotTransform(this.timeSlots),
           timezone: this.timeZone.value,
-          channel: {},
+          // The server merges a partial provider_config into the stored one.
+          channel: this.isAEvolutionGoWhatsAppChannel
+            ? {
+                provider_config: {
+                  out_of_office_in_groups: this.awayMessageInGroups,
+                },
+              }
+            : {},
         };
         await this.$store.dispatch('inboxes/updateInbox', payload);
         useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
@@ -153,6 +166,20 @@ export default {
             :min-height="4"
           />
           <textarea v-else v-model="unavailableMessage" type="text" />
+          <label
+            v-if="isAEvolutionGoWhatsAppChannel"
+            class="flex items-start gap-2 mt-3 cursor-pointer"
+          >
+            <Checkbox v-model="awayMessageInGroups" class="mt-0.5" />
+            <span class="flex flex-col gap-0.5">
+              <span class="text-sm text-n-slate-12">
+                {{ $t('INBOX_MGMT.OUT_OF_OFFICE_IN_GROUPS.LABEL') }}
+              </span>
+              <span class="text-xs text-n-slate-11">
+                {{ $t('INBOX_MGMT.OUT_OF_OFFICE_IN_GROUPS.HELP_TEXT') }}
+              </span>
+            </span>
+          </label>
         </div>
       </template>
     </SettingsToggleSection>

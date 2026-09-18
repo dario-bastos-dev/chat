@@ -86,6 +86,27 @@ describe Whatsapp::Providers::EvolutionGoService do
       )
     end
 
+    it 'marks people on a picture too, on the file that carries the caption' do
+      stub_send('send/media')
+      message = create(:message, conversation: conversation, inbox: channel.inbox,
+                                 message_type: :outgoing, content: '@5527998999017 segue a planta')
+      message.attachments.create!(account_id: channel.account_id, file_type: :image,
+                                  file: { io: StringIO.new('a'), filename: 'a.png', content_type: 'image/png' })
+      message.attachments.create!(account_id: channel.account_id, file_type: :image,
+                                  file: { io: StringIO.new('b'), filename: 'b.png', content_type: 'image/png' })
+
+      service.send_message(group_jid, message.reload)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/media')
+          .with { |req| JSON.parse(req.body)['mentionedJid'] == ['27041265119351@lid'] }.once
+      )
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/media')
+          .with { |req| JSON.parse(req.body)['caption'].blank? && !JSON.parse(req.body).key?('mentionedJid') }.once
+      )
+    end
+
     it 'says nothing about mentions on a plain message' do
       stub_send('send/text')
       message = create(:message, conversation: conversation, inbox: channel.inbox,
