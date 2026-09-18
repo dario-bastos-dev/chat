@@ -770,21 +770,6 @@ export default {
     toggleLockToSingleConversation(value) {
       this.locktoSingleConversation = value;
     },
-    async registerWebhook() {
-      try {
-        this.isRegisteringWebhook = true;
-        await InboxHealthAPI.registerWebhook(this.currentInboxId);
-        useAlert(this.$t('INBOX_MGMT.ACCOUNT_HEALTH.WEBHOOK.REGISTER_SUCCESS'));
-        await this.fetchHealthData();
-      } catch (error) {
-        useAlert(
-          error.message ||
-            this.$t('INBOX_MGMT.ACCOUNT_HEALTH.WEBHOOK.REGISTER_ERROR')
-        );
-      } finally {
-        this.isRegisteringWebhook = false;
-      }
-    },
   },
   validations: {
     webhookUrl: {
