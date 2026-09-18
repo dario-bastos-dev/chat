@@ -487,7 +487,10 @@ class Conversation < ApplicationRecord
       if conv_seq.new_record? || !conv_seq.active?
         conv_seq.active = true
         conv_seq.current_step = sequence.steps.order(:position).first
-        conv_seq.last_step_executed_at = nil
+        # Time.current, não nil: um conv_seq reativado (já existia, estava inativo) tem created_at
+        # antigo, e o job usa created_at como fallback quando last_step_executed_at é nil — isso
+        # faria o wait_time do 1º passo contar a partir da criação original em vez da reativação.
+        conv_seq.last_step_executed_at = Time.current
       end
 
       conv_seq.save! if conv_seq.changed? || conv_seq.new_record?
