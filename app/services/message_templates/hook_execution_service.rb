@@ -42,8 +42,17 @@ class MessageTemplates::HookExecutionService
     return false if conversation.campaign.present?
     # should not send if its a tweet message
     return false if conversation.tweet?
+    return false if greeting_withheld_from_group?
 
     first_message_from_contact? && inbox.greeting_enabled? && inbox.greeting_message.present?
+  end
+
+  # A greeting is written for one person ("tell us your name and what brings you here"), so a group
+  # only gets it once the inbox says so.
+  def greeting_withheld_from_group?
+    return false unless contact.whatsapp_group?
+
+    ['true', true].exclude?(inbox.channel.try(:provider_config)&.dig('greeting_in_groups'))
   end
 
   def email_collect_was_sent?

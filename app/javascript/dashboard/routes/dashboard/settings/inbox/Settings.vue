@@ -22,6 +22,7 @@ import InboxHealthAPI from 'dashboard/api/inboxHealth';
 import PreChatFormSettings from './PreChatForm/Settings.vue';
 import WeeklyAvailability from './components/WeeklyAvailability.vue';
 import GreetingsEditor from 'shared/components/GreetingsEditor.vue';
+import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import GreetingQuickReplies from './components/GreetingQuickReplies.vue';
 import ConfigurationPage from './settingsPage/ConfigurationPage.vue';
 import CustomerSatisfactionPage from './settingsPage/CustomerSatisfactionPage.vue';
@@ -62,6 +63,7 @@ export default {
     CustomerSatisfactionPage,
     FacebookReauthorize,
     GreetingsEditor,
+    Checkbox,
     GreetingQuickReplies,
     PreChatFormSettings,
     SettingIntroBanner,
@@ -105,6 +107,7 @@ export default {
       avatarFile: null,
       avatarUrl: '',
       greetingEnabled: true,
+      greetingInGroups: false,
       greetingMessage: '',
       greetingItems: [],
       emailCollectEnabled: false,
@@ -547,6 +550,9 @@ export default {
       this.selectedInboxName = this.inbox.name;
       this.webhookUrl = this.inbox.webhook_url;
       this.greetingEnabled = this.inbox.greeting_enabled || false;
+      this.greetingInGroups = [true, 'true'].includes(
+        this.inbox.provider_config?.greeting_in_groups
+      );
       this.greetingMessage = this.inbox.greeting_message || '';
       this.greetingItems = this.inbox.greeting_items || [];
       this.emailCollectEnabled = this.inbox.enable_email_collect;
@@ -711,6 +717,17 @@ export default {
           payload.avatar = this.avatarFile;
         }
         await this.$store.dispatch('inboxes/updateInbox', payload);
+        // provider_config is an object, and the payload above goes out as FormData, which would
+        // flatten it into "[object Object]". The server merges a partial config into the stored one.
+        if (this.isAEvolutionGoWhatsAppChannel) {
+          await this.$store.dispatch('inboxes/updateInbox', {
+            id: this.currentInboxId,
+            formData: false,
+            channel: {
+              provider_config: { greeting_in_groups: this.greetingInGroups },
+            },
+          });
+        }
         useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
         this.showBusinessNameInput = false;
       } catch (error) {
@@ -1327,6 +1344,20 @@ export default {
                     v-if="isAnInstagramChannel"
                     v-model="greetingItems"
                   />
+                  <label
+                    v-if="isAEvolutionGoWhatsAppChannel"
+                    class="flex items-start gap-2 mt-3 cursor-pointer"
+                  >
+                    <Checkbox v-model="greetingInGroups" class="mt-0.5" />
+                    <span class="flex flex-col gap-0.5">
+                      <span class="text-sm text-n-slate-12">
+                        {{ $t('INBOX_MGMT.GREETING_IN_GROUPS.LABEL') }}
+                      </span>
+                      <span class="text-xs text-n-slate-11">
+                        {{ $t('INBOX_MGMT.GREETING_IN_GROUPS.HELP_TEXT') }}
+                      </span>
+                    </span>
+                  </label>
                 </template>
               </SettingsToggleSection>
 

@@ -59,6 +59,56 @@ describe MessageTemplates::HookExecutionService do
     end
   end
 
+  context 'when the conversation is a whatsapp group' do
+    let(:channel) do
+      create(:channel_whatsapp, provider: 'evolution_go',
+                                provider_config: { 'instance_token' => 'token', 'instance_id' => 'id',
+                                                   'groups_enabled' => true },
+                                sync_templates: false, validate_provider_config: false,
+                                provider_instance_callbacks: false)
+    end
+    let(:inbox) { channel.inbox }
+    let(:group_contact) do
+      create(:contact, account: inbox.account, identifier: '120363111122223333@g.us', phone_number: nil)
+    end
+    let(:group_contact_inbox) do
+      create(:contact_inbox, contact: group_contact, inbox: inbox, source_id: '120363111122223333@g.us')
+    end
+    let(:conversation) do
+      create(:conversation, account: inbox.account, inbox: inbox, contact: group_contact,
+                            contact_inbox: group_contact_inbox)
+    end
+
+    before do
+      inbox.update!(greeting_enabled: true, greeting_message: 'Informe seu nome e o resumo do caso')
+      allow(MessageTemplates::Template::Greeting).to receive(:new).and_call_original
+    end
+
+    it 'does not greet the whole group by default' do
+      create(:message, conversation: conversation, account: inbox.account, inbox: inbox)
+
+      expect(MessageTemplates::Template::Greeting).not_to have_received(:new)
+    end
+
+    it 'greets the group once the inbox allows it' do
+      channel.merge_provider_config!('greeting_in_groups' => true)
+
+      create(:message, conversation: conversation, account: inbox.account, inbox: inbox)
+
+      expect(MessageTemplates::Template::Greeting).to have_received(:new).with(conversation: conversation)
+    end
+
+    it 'still greets a one to one conversation of the same inbox' do
+      person = create(:contact, account: inbox.account, phone_number: '+5511988887777')
+      person_inbox = create(:contact_inbox, contact: person, inbox: inbox, source_id: '5511988887777')
+      direct = create(:conversation, account: inbox.account, inbox: inbox, contact: person, contact_inbox: person_inbox)
+
+      create(:message, conversation: direct, account: inbox.account, inbox: inbox)
+
+      expect(MessageTemplates::Template::Greeting).to have_received(:new).with(conversation: direct)
+    end
+  end
+
   context 'when it is a first message from web widget' do
     it 'calls ::MessageTemplates::Template::EmailCollect' do
       contact = create(:contact, email: nil)

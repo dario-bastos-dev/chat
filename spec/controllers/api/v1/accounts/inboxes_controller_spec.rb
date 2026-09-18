@@ -567,6 +567,28 @@ RSpec.describe 'Inboxes API', type: :request do
     end
   end
 
+  describe 'PATCH greeting_in_groups on an Evolution GO inbox' do
+    let(:channel) do
+      create(:channel_whatsapp, account: account, provider: 'evolution_go',
+                                provider_config: { 'instance_token' => 'instance-token', 'instance_id' => 'instance-id',
+                                                   'groups_enabled' => true, 'bot_in_groups' => true },
+                                sync_templates: false, validate_provider_config: false,
+                                provider_instance_callbacks: false)
+    end
+
+    it 'stores the flag without wiping the other group settings' do
+      patch "/api/v1/accounts/#{account.id}/inboxes/#{channel.inbox.id}",
+            params: { channel: { provider_config: { greeting_in_groups: true } } },
+            headers: admin.create_new_auth_token,
+            as: :json
+
+      expect(response).to have_http_status(:success)
+      config = channel.reload.provider_config
+      expect(config['greeting_in_groups']).to be(true)
+      expect(config).to include('groups_enabled' => true, 'bot_in_groups' => true, 'instance_token' => 'instance-token')
+    end
+  end
+
   describe 'PATCH /api/v1/accounts/{account.id}/inboxes/:id' do
     let(:inbox) { create(:inbox, account: account) }
 
