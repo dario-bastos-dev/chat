@@ -1,14 +1,17 @@
 # frozen_string_literal: true
 
-# Metricas do CRM. Todas partem de um escopo ja filtrado por permissao, para o
-# relatorio nunca mostrar negocios que o usuario nao pode ver no Kanban.
+# Metricas do CRM de um unico funil. Todas partem de um escopo ja filtrado por
+# permissao, para o relatorio nunca mostrar negocios que o usuario nao pode ver
+# no Kanban.
 #
-# O periodo filtra pela data de criacao do negocio, exceto onde indicado.
+# Cada metrica usa a data do evento que ela mede: novos pela criacao, ganhos
+# por won_at e perdidos por lost_at. Assim "ganhos no periodo" sao os negocios
+# fechados no periodo, e nao os criados nele que por acaso ja fecharam. O que e
+# "em aberto" e sempre a situacao atual, independente do periodo.
 class Crm::ReportBuilder
-  GROUP_BY = { 'day' => :day, 'week' => :week, 'month' => :month }.freeze
+  GROUP_BY = { 'day' => :day, 'week' => :week, 'month' => :month, 'year' => :year }.freeze
   DEFAULT_RANGE_DAYS = 30
-  TOP_DEALS_LIMIT = 10
-  MAX_TOP_DEALS = 50
+  TOP_OPEN_DEALS_LIMIT = 5
 
   def initialize(account:, scope:, params: {})
     @account = account
@@ -16,131 +19,129 @@ class Crm::ReportBuilder
     @params = params
   end
 
-  def summary
-    won = period_scope.won_deals
-    lost = period_scope.lost_deals
-    closed_count = won.count + lost.count
-
+  # Tudo sai de uma chamada so, com os mesmos parametros: secoes buscadas em
+  # requisicoes separadas chegavam a mostrar periodos diferentes na mesma tela.
+  def overview
     {
-      totalDeals: period_scope.count,
-      totalValue: period_scope.sum(:value).to_f,
-      wonDeals: won.count,
-      lostDeals: lost.count,
-      winRate: closed_count.zero? ? 0 : (won.count * 100.0 / closed_count).round(1),
-      avgCycleTime: avg_cycle_time_in_days,
-      weightedForecast: weighted_forecast,
-      currency: @account.crm_currency
+      currency: @account.crm_currency,
+      summary: summary,
+      timeline: timeline,
+      openPipeline: open_pipeline,
+      agents: agents,
+      topOpenDeals: top_open_deals
     }
   end
 
-  # Um item por etapa do funil, na ordem das etapas.
-  def funnel
-    counts = period_scope.group(:stage_id).count
-    values = period_scope.group(:stage_id).sum(:value)
+  def summary
+    won_count = won_deals.count
+    lost_count = lost_deals.count
 
-    stages.map do |stage|
-      {
-        id: stage.id,
-        name: stage.name,
-        count: counts[stage.id] || 0,
-        value: (values[stage.id] || 0).to_f
-      }
-    end
+    {
+      newDeals: new_deals.count,
+      wonDeals: won_count,
+      wonValue: won_deals.sum(:value).to_f,
+      lostDeals: lost_count,
+      lostValue: lost_deals.sum(:value).to_f,
+      winRate: rate(won_count, won_count + lost_count),
+      avgCycleDays: avg_cycle_days,
+      openDeals: open_deals.count,
+      openValue: open_deals.sum(:value).to_f
+    }
   end
 
-  # Criados por data de criacao; ganhos e perdidos pelas datas de fechamento,
-  # que e o que faz a serie temporal ser lida corretamente.
-  def deals_over_time
-    created = period_scope.group_by_period(group_by, :created_at, range: range).count
-    won = won_lost_series(:won_at, 'won')
-    lost = won_lost_series(:lost_at, 'lost')
+  def timeline
+    created = new_deals.group_by_period(group_by, :created_at, range: range).count
+    won = won_deals.group_by_period(group_by, :won_at, range: range).count
+    lost = lost_deals.group_by_period(group_by, :lost_at, range: range).count
 
     created.keys.map do |date|
-      {
-        date: date.to_s,
-        created: created[date] || 0,
-        won: won[date] || 0,
-        lost: lost[date] || 0
-      }
+      { date: date.to_s, created: created[date] || 0, won: won[date] || 0, lost: lost[date] || 0 }
     end
   end
 
-  def won_lost
-    {
-      won: period_scope.won_deals.count,
-      lost: period_scope.lost_deals.count,
-      wonValue: period_scope.won_deals.sum(:value).to_f,
-      lostValue: period_scope.lost_deals.sum(:value).to_f,
-      lostReasons: period_scope.lost_deals.group(:lost_reason).count
-    }
+  # Negocios abertos hoje, por etapa. Etapas de ganho/perda ficam de fora: um
+  # negocio nelas nunca esta aberto (Deal#sync_status_with_stage_type).
+  def open_pipeline
+    counts = open_deals.group(:stage_id).count
+    values = open_deals.group(:stage_id).sum(:value)
+
+    stages.where.not(stage_type: %w[done closed]).map do |stage|
+      { id: stage.id, name: stage.name, color: stage.color, count: counts[stage.id] || 0, value: (values[stage.id] || 0).to_f }
+    end
   end
 
-  def agent_performance
-    totals = period_scope.where.not(assignee_id: nil).group(:assignee_id).count
-    won = period_scope.won_deals.where.not(assignee_id: nil).group(:assignee_id).count
-    values = period_scope.where.not(assignee_id: nil).group(:assignee_id).sum(:value)
+  # Uma linha por responsavel, incluindo "sem responsavel" (id nil), para a
+  # soma da tabela bater com os totais do resumo.
+  def agents
+    created = new_deals.group(:assignee_id).count
+    won = won_deals.group(:assignee_id).count
+    lost = lost_deals.group(:assignee_id).count
+    won_values = won_deals.group(:assignee_id).sum(:value)
+    open = open_deals.group(:assignee_id).count
 
-    User.where(id: totals.keys).map do |user|
-      total = totals[user.id] || 0
-      won_count = won[user.id] || 0
+    ids = (created.keys + won.keys + lost.keys + open.keys).uniq
+    users = User.where(id: ids.compact).index_by(&:id)
+
+    ids.map do |id|
+      won_count = won[id] || 0
       {
-        id: user.id,
-        name: user.name,
-        thumbnail: user.avatar_url,
-        totalDeals: total,
+        id: id,
+        name: users[id]&.name,
+        thumbnail: users[id]&.avatar_url,
+        newDeals: created[id] || 0,
         wonDeals: won_count,
-        totalValue: (values[user.id] || 0).to_f,
-        winRate: total.zero? ? 0 : (won_count * 100.0 / total).round(1)
+        lostDeals: lost[id] || 0,
+        wonValue: (won_values[id] || 0).to_f,
+        winRate: rate(won_count, won_count + (lost[id] || 0)),
+        openDeals: open[id] || 0
       }
-    end.sort_by { |agent| -agent[:totalValue] }
+    end.sort_by { |row| [-row[:wonValue], -row[:wonDeals], -row[:newDeals], -row[:openDeals]] }
   end
 
-  def cycle_time
-    closed = period_scope.won_deals.where.not(won_at: nil)
-    durations = closed.pluck(:created_at, :won_at).map { |created, closed_at| (closed_at - created) / 1.day }
-
-    {
-      average: durations.any? ? (durations.sum / durations.size).round(1) : 0,
-      median: median(durations),
-      sampleSize: durations.size
-    }
-  end
-
-  def top_deals
-    limit = [(@params[:limit].presence || TOP_DEALS_LIMIT).to_i, MAX_TOP_DEALS].min
-    relation = period_scope
-    relation = relation.where(status: @params[:status]) if @params[:status].present?
-
-    relation.includes(:contact, :stage, :assignee)
-            .order(value: :desc, id: :desc)
-            .limit(limit)
-            .map do |deal|
+  # So negocios com valor: listar os de valor zero nao aponta prioridade nenhuma.
+  def top_open_deals
+    open_deals.where('deals.value > 0')
+              .includes(:contact, :stage, :assignee)
+              .order(value: :desc, id: :desc)
+              .limit(TOP_OPEN_DEALS_LIMIT)
+              .map do |deal|
       {
         id: deal.id,
         title: deal.title,
         value: deal.value.to_f,
-        status: deal.status,
-        contact: { name: deal.contact&.name },
-        stage: { name: deal.stage&.name },
-        assignee: { name: deal.assignee&.name }
+        contactName: deal.contact&.name,
+        stageName: deal.stage&.name,
+        assigneeName: deal.assignee&.name
       }
     end
   end
 
   private
 
-  def period_scope
-    @period_scope ||= @scope.where(created_at: range, pipeline_id: pipeline_id)
+  def pipeline_scope
+    @pipeline_scope ||= @scope.where(pipeline_id: @params.fetch(:pipeline_id))
+  end
+
+  def new_deals
+    pipeline_scope.where(created_at: range)
+  end
+
+  def won_deals
+    pipeline_scope.won_deals.where(won_at: range)
+  end
+
+  def lost_deals
+    pipeline_scope.lost_deals.where(lost_at: range)
+  end
+
+  def open_deals
+    pipeline_scope.open_deals
   end
 
   def stages
     Stage.joins(:pipeline)
-         .where(pipelines: { account_id: @account.id }, pipeline_id: pipeline_id)
+         .where(pipelines: { account_id: @account.id }, pipeline_id: @params.fetch(:pipeline_id))
          .ordered
-  end
-
-  def pipeline_id
-    @params.fetch(:pipeline_id)
   end
 
   def range
@@ -155,30 +156,18 @@ class Crm::ReportBuilder
     GROUP_BY[@params[:group_by].to_s] || :day
   end
 
-  def won_lost_series(column, status)
-    @scope.where(status: status, pipeline_id: pipeline_id, column => range)
-          .group_by_period(group_by, column, range: range).count
+  # nil quando nao ha base: "0%" ou "0 dias" sem nenhum negocio fechado e um
+  # numero inventado.
+  def rate(part, total)
+    return if total.zero?
+
+    (part * 100.0 / total).round(1)
   end
 
-  def avg_cycle_time_in_days
-    durations = period_scope.won_deals.where.not(won_at: nil)
-                            .pluck(:created_at, :won_at)
-                            .map { |created, closed| (closed - created) / 1.day }
-    return 0 if durations.empty?
+  def avg_cycle_days
+    durations = won_deals.pluck(:created_at, :won_at).map { |created, won| (won - created) / 1.day }
+    return if durations.empty?
 
-    (durations.sum / durations.size).round(1)
-  end
-
-  def weighted_forecast
-    period_scope.where(status: 'open').joins(:stage)
-                .sum('deals.value * stages.win_probability / 100.0').to_f
-  end
-
-  def median(values)
-    return 0 if values.empty?
-
-    sorted = values.sort
-    mid = sorted.size / 2
-    (sorted.size.odd? ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2.0).round(1)
+    (durations.sum / durations.size).round(2)
   end
 end

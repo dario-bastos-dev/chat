@@ -101,6 +101,9 @@ pt_BR:
     data_import:
       data_type:
         invalid: Tipo de dado inválido
+    crm:
+      reports:
+        pipeline_required: 'Selecione um funil'
     contacts:
       import:
         failed: Arquivo vazio

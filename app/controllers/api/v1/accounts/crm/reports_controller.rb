@@ -1,35 +1,24 @@
 # frozen_string_literal: true
 
 class Api::V1::Accounts::Crm::ReportsController < Api::V1::Accounts::BaseController
+  CSV_SUMMARY_ROWS = {
+    'Novos negócios' => :newDeals,
+    'Ganhos' => :wonDeals,
+    'Valor ganho' => :wonValue,
+    'Perdidos' => :lostDeals,
+    'Valor perdido' => :lostValue,
+    'Taxa de ganho (%)' => :winRate,
+    'Ciclo médio até o ganho (dias)' => :avgCycleDays,
+    'Em aberto agora' => :openDeals,
+    'Valor em aberto' => :openValue
+  }.freeze
+  CSV_AGENT_COLUMNS = %i[newDeals wonDeals lostDeals winRate wonValue openDeals].freeze
+
   before_action :check_authorization
   before_action :ensure_pipeline
 
-  def summary
-    render json: builder.summary
-  end
-
-  def funnel
-    render json: builder.funnel
-  end
-
-  def deals_over_time
-    render json: builder.deals_over_time
-  end
-
-  def won_lost
-    render json: builder.won_lost
-  end
-
-  def agent_performance
-    render json: builder.agent_performance
-  end
-
-  def cycle_time
-    render json: builder.cycle_time
-  end
-
-  def top_deals
-    render json: builder.top_deals
+  def overview
+    render json: builder.overview
   end
 
   def download
@@ -62,19 +51,23 @@ class Api::V1::Accounts::Crm::ReportsController < Api::V1::Accounts::BaseControl
   end
 
   def report_params
-    params.permit(:from, :to, :pipeline_id, :group_by, :limit, :status, :report_type).to_h.symbolize_keys
+    params.permit(:from, :to, :pipeline_id, :group_by).to_h.symbolize_keys
   end
 
   def to_csv
-    CSV.generate(headers: true) do |csv|
-      csv << ['Etapa', 'Negócios', 'Valor']
-      builder.funnel.each { |row| csv << [row[:name], row[:count], row[:value]] }
+    report = builder.overview
+
+    CSV.generate do |csv|
+      csv << %w[Indicador Valor]
+      CSV_SUMMARY_ROWS.each { |label, key| csv << [label, report[:summary][key]] }
 
       csv << []
-      csv << ['Agente', 'Negócios', 'Ganhos', 'Valor', 'Taxa de ganho (%)']
-      builder.agent_performance.each do |row|
-        csv << [row[:name], row[:totalDeals], row[:wonDeals], row[:totalValue], row[:winRate]]
-      end
+      csv << ['Etapa', 'Negócios em aberto', 'Valor']
+      report[:openPipeline].each { |row| csv << [row[:name], row[:count], row[:value]] }
+
+      csv << []
+      csv << ['Responsável', 'Novos', 'Ganhos', 'Perdidos', 'Taxa de ganho (%)', 'Valor ganho', 'Em aberto']
+      report[:agents].each { |row| csv << [row[:name] || 'Sem responsável', *row.values_at(*CSV_AGENT_COLUMNS)] }
     end
   end
 end

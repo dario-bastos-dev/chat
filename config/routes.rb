@@ -250,13 +250,7 @@ Rails.application.routes.draw do
           namespace :crm do
             resources :reports, only: [] do
               collection do
-                get :summary
-                get :funnel
-                get :deals_over_time
-                get :won_lost
-                get :agent_performance
-                get :cycle_time
-                get :top_deals
+                get :overview
                 get :download
               end
             end
