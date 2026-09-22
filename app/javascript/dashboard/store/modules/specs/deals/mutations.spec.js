@@ -68,4 +68,90 @@ describe('#mutations', () => {
       assigneeId: null,
     });
   });
+  describe('MOVE_DEAL_ON_BOARD', () => {
+    // Etapa 10 com um negocio do dia 1; etapa 20 com um do dia 20 e um de agosto.
+    const buildBoard = () => ({
+      board: {
+        stages: [
+          {
+            id: 10,
+            total_count: 1,
+            total_value: 100,
+            deals: [
+              { id: 1, value: 100, created_at: '2026-09-01T10:00:00.000Z' },
+            ],
+          },
+          {
+            id: 20,
+            total_count: 2,
+            total_value: 50,
+            deals: [
+              { id: 2, value: 50, created_at: '2026-09-20T10:00:00.000Z' },
+              { id: 3, value: 0, created_at: '2026-08-01T10:00:00.000Z' },
+            ],
+          },
+        ],
+      },
+    });
+
+    it('places the moved deal by the newest-first order, not at the drop point', () => {
+      const state = buildBoard();
+
+      mutations[types.MOVE_DEAL_ON_BOARD](state, {
+        dealId: 1,
+        toStageId: 20,
+        sort: 'created_at_desc',
+      });
+
+      expect(state.board.stages[1].deals.map(deal => deal.id)).toEqual([
+        2, 1, 3,
+      ]);
+    });
+
+    it('places the moved deal by the oldest-first order', () => {
+      const state = buildBoard();
+
+      mutations[types.MOVE_DEAL_ON_BOARD](state, {
+        dealId: 1,
+        toStageId: 20,
+        sort: 'created_at_asc',
+      });
+
+      expect(state.board.stages[1].deals.map(deal => deal.id)).toEqual([
+        3, 1, 2,
+      ]);
+    });
+
+    // No Kanban o draggable ja moveu o card para o array de destino, na posicao
+    // em que foi solto, quando esta mutation roda.
+    it('re-sorts a card that the drag already dropped into the target stage', () => {
+      const state = buildBoard();
+      const [dragged] = state.board.stages[0].deals.splice(0, 1);
+      state.board.stages[1].deals.unshift(dragged);
+
+      mutations[types.MOVE_DEAL_ON_BOARD](state, {
+        dealId: 1,
+        toStageId: 20,
+        sort: 'created_at_desc',
+      });
+
+      expect(state.board.stages[1].deals.map(deal => deal.id)).toEqual([
+        2, 1, 3,
+      ]);
+    });
+
+    it('moves the count and the value from one stage to the other', () => {
+      const state = buildBoard();
+
+      mutations[types.MOVE_DEAL_ON_BOARD](state, {
+        dealId: 1,
+        toStageId: 20,
+        sort: 'created_at_desc',
+      });
+
+      const [source, target] = state.board.stages;
+      expect([source.total_count, source.total_value]).toEqual([0, 0]);
+      expect([target.total_count, target.total_value]).toEqual([3, 150]);
+    });
+  });
 });

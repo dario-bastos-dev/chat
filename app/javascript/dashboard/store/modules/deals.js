@@ -2,6 +2,7 @@ import * as MutationHelpers from 'shared/helpers/vuex/mutationHelpers';
 import types from '../mutation-types';
 import DealsAPI from '../../api/deals';
 import PipelinesAPI from '../../api/pipelines';
+import { compareDeals } from '../../helper/dealSort';
 
 const DEALS_PER_STAGE = 20;
 
@@ -207,7 +208,9 @@ export const actions = {
     }
   },
 
-  move: async function moveDeal({ commit, getters }, { id, stageId, position }) {
+  // A ordem da coluna vem da data, entao o card e reposicionado pela ordenacao
+  // do board e nao pelo indice em que foi solto.
+  move: async function moveDeal({ commit, getters }, { id, stageId, sort }) {
     commit(types.SET_DEALS_UI_FLAG, { isMoving: true });
 
     // Optimistic Update: atualiza localmente no Vuex para evitar o efeito "ioiô" no Kanban
@@ -217,14 +220,13 @@ export const actions = {
         ...deal,
         stage_id: stageId,
         stage: { ...deal.stage, id: stageId },
-        position: position
       };
       commit(types.EDIT_DEAL, optimisticDeal);
     }
-    commit(types.MOVE_DEAL_ON_BOARD, { dealId: id, toStageId: stageId, position });
+    commit(types.MOVE_DEAL_ON_BOARD, { dealId: id, toStageId: stageId, sort });
 
     try {
-      const response = await DealsAPI.move(id, stageId, position);
+      const response = await DealsAPI.move(id, stageId);
       commit(types.EDIT_DEAL, response.data);
       return response.data;
     } catch (error) {
@@ -339,7 +341,7 @@ export const mutations = {
 
   // Move o card entre colunas na hora, ajustando os totais das duas pontas,
   // para o Kanban nao piscar esperando a resposta da API.
-  [types.MOVE_DEAL_ON_BOARD](_state, { dealId, toStageId, position }) {
+  [types.MOVE_DEAL_ON_BOARD](_state, { dealId, toStageId, sort }) {
     let moved = null;
 
     _state.board.stages.forEach(stage => {
@@ -361,7 +363,7 @@ export const mutations = {
       stage_id: toStageId,
       stage: { ...moved.stage, id: toStageId },
     };
-    target.deals.splice(position ?? target.deals.length, 0, updated);
+    target.deals = [...target.deals, updated].sort(compareDeals(sort));
     target.total_count = (target.total_count || 0) + 1;
     target.total_value = Number(target.total_value || 0) + Number(moved.value || 0);
   },

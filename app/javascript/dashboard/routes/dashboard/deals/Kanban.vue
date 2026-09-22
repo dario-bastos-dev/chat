@@ -763,6 +763,7 @@ import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import DealForm from './components/DealForm.vue';
 import BulkLabelsModal from './components/BulkLabelsModal.vue';
 import KanbanSortMenu from './components/KanbanSortMenu.vue';
+import { DEFAULT_DEAL_SORT } from 'dashboard/helper/dealSort';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import BulkAttributesModal from './components/BulkAttributesModal.vue';
 import BulkScheduleModal from './components/BulkScheduleModal.vue';
@@ -885,7 +886,7 @@ export default {
     // fixa de visualizacao, como a ordenacao da lista de conversas.
     sortBy: {
       get() {
-        return this.uiSettings?.deals_kanban_sort_by || 'created_at_desc';
+        return this.uiSettings?.deals_kanban_sort_by || DEFAULT_DEAL_SORT;
       },
       set(value) {
         this.updateUISettings({ deals_kanban_sort_by: value });
@@ -1122,7 +1123,7 @@ export default {
         await this.moveDeal({
           id: dealId,
           stageId: newStageId,
-          position: event.newIndex,
+          sort: this.sortBy,
         });
       } catch (error) {
         this.$toast.error(this.$t('CRM.DEALS.MOVE_ERROR'));
