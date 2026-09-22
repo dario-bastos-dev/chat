@@ -86,6 +86,7 @@ conversations:
     filter_operators:
       - "equal_to"
       - "not_equal_to"
+      - "contains"
       - "is_present"
       - "is_not_present"
   browser_language:

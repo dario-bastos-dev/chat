@@ -200,6 +200,54 @@ RSpec.describe AutomationRules::ConditionsFilterService do
         end
       end
 
+      context 'when filter_operator is contains' do
+        before do
+          conversation.update_labels(%w[bug feature urgent])
+        end
+
+        it 'will return true when the label is among the conversation labels' do
+          rule.conditions = [
+            { 'values': ['feature'], 'attribute_key': 'labels', 'query_operator': nil, 'filter_operator': 'contains' }
+          ]
+          rule.save
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'will return true when any of the selected labels is present' do
+          rule.conditions = [
+            { 'values': %w[billing urgent], 'attribute_key': 'labels', 'query_operator': nil, 'filter_operator': 'contains' }
+          ]
+          rule.save
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'will return false when none of the selected labels is present' do
+          rule.conditions = [
+            { 'values': ['billing'], 'attribute_key': 'labels', 'query_operator': nil, 'filter_operator': 'contains' }
+          ]
+          rule.save
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(false)
+        end
+
+        it 'will return true when two contains conditions are joined with AND and both labels are present' do
+          rule.conditions = [
+            { 'values': ['bug'], 'attribute_key': 'labels', 'query_operator': 'AND', 'filter_operator': 'contains' },
+            { 'values': ['urgent'], 'attribute_key': 'labels', 'query_operator': nil, 'filter_operator': 'contains' }
+          ]
+          rule.save
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'will return false when two contains conditions are joined with AND and one label is missing' do
+          rule.conditions = [
+            { 'values': ['bug'], 'attribute_key': 'labels', 'query_operator': 'AND', 'filter_operator': 'contains' },
+            { 'values': ['billing'], 'attribute_key': 'labels', 'query_operator': nil, 'filter_operator': 'contains' }
+          ]
+          rule.save
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(false)
+        end
+      end
+
       context 'when filter_operator is is_present' do
         before do
           rule.conditions = [

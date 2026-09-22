@@ -144,7 +144,7 @@ class FilterService
       "AND taggings.tag_id IN (SELECT tags.id FROM tags WHERE tags.name IN (:value_#{current_index}))"
 
     case query_hash[:filter_operator]
-    when 'equal_to'
+    when 'equal_to', 'contains'
       "EXISTS (#{tag_model_relation_query} #{tag_query}) #{query_operator}"
     when 'not_equal_to'
       "NOT EXISTS (#{tag_model_relation_query} #{tag_query}) #{query_operator}"

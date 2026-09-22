@@ -3,6 +3,7 @@ import {
   OPERATOR_TYPES_2,
   OPERATOR_TYPES_3,
   OPERATOR_TYPES_6,
+  OPERATOR_TYPES_7,
 } from './operators';
 
 const CRM_CONDITIONS = [
@@ -116,7 +117,7 @@ export const AUTOMATIONS = {
         key: 'labels',
         name: 'LABELS',
         inputType: 'multi_select',
-        filterOperators: OPERATOR_TYPES_3,
+        filterOperators: OPERATOR_TYPES_7,
       },
       {
         key: 'is_first_message',
@@ -258,7 +259,7 @@ export const AUTOMATIONS = {
         key: 'labels',
         name: 'LABELS',
         inputType: 'multi_select',
-        filterOperators: OPERATOR_TYPES_3,
+        filterOperators: OPERATOR_TYPES_7,
       },
     ],
     actions: [
@@ -394,7 +395,7 @@ export const AUTOMATIONS = {
         key: 'labels',
         name: 'LABELS',
         inputType: 'multi_select',
-        filterOperators: OPERATOR_TYPES_3,
+        filterOperators: OPERATOR_TYPES_7,
       },
     ],
     actions: [
@@ -528,7 +529,7 @@ export const AUTOMATIONS = {
         key: 'labels',
         name: 'LABELS',
         inputType: 'multi_select',
-        filterOperators: OPERATOR_TYPES_3,
+        filterOperators: OPERATOR_TYPES_7,
       },
     ],
     actions: [
@@ -748,7 +749,7 @@ export const AUTOMATIONS = {
         key: 'labels',
         name: 'LABELS',
         inputType: 'multi_select',
-        filterOperators: OPERATOR_TYPES_3,
+        filterOperators: OPERATOR_TYPES_7,
       },
     ],
     actions: [

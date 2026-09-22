@@ -174,18 +174,15 @@ class AutomationRules::ConditionsFilterService < FilterService
 
   def build_label_query_string(query_hash, current_index, query_operator)
     case query_hash['filter_operator']
-    when 'equal_to'
+    when 'equal_to', 'not_equal_to'
       return " 1=0 #{query_operator} " if query_hash['values'].blank?
 
       value_placeholder = "value_#{current_index}"
       @filter_values[value_placeholder] = query_hash['values'].first
-      " tags.name = :#{value_placeholder} #{query_operator} "
-    when 'not_equal_to'
-      return " 1=0 #{query_operator} " if query_hash['values'].blank?
-
-      value_placeholder = "value_#{current_index}"
-      @filter_values[value_placeholder] = query_hash['values'].first
-      " tags.name != :#{value_placeholder} #{query_operator} "
+      sql_operator = query_hash['filter_operator'] == 'equal_to' ? '=' : '!='
+      " tags.name #{sql_operator} :#{value_placeholder} #{query_operator} "
+    when 'contains'
+      label_contains_query_string(query_hash, current_index, query_operator)
     when 'is_present'
       " tags.id IS NOT NULL #{query_operator} "
     when 'is_not_present'
@@ -193,6 +190,18 @@ class AutomationRules::ConditionsFilterService < FilterService
     else
       " tags.id #{filter_operation(query_hash, current_index)} #{query_operator} "
     end
+  end
+
+  # EXISTS olha todas as etiquetas da conversa, nao so a linha do JOIN com `tags`,
+  # entao varias condicoes "contem" combinadas com AND funcionam.
+  def label_contains_query_string(query_hash, current_index, query_operator)
+    return " 1=0 #{query_operator} " if query_hash['values'].blank?
+
+    value_placeholder = "value_#{current_index}"
+    @filter_values[value_placeholder] = query_hash['values']
+    ' EXISTS (SELECT 1 FROM taggings label_taggings INNER JOIN tags label_tags ON label_tags.id = label_taggings.tag_id ' \
+      "WHERE label_taggings.taggable_id = conversations.id AND label_taggings.taggable_type = 'Conversation' " \
+      "AND label_tags.name IN (:#{value_placeholder})) #{query_operator} "
   end
 
   private
