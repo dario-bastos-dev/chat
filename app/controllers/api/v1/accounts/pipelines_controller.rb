@@ -26,6 +26,7 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
     @total_values = scope.group(:stage_id).sum(:value)
     @weighted_forecast = weighted_forecast_for(scope)
     @currency = Current.account.crm_currency
+    load_assignee_options
     @deals_by_stage = @stages.index_with do |stage|
       scope.where(stage_id: stage.id)
            .includes(:contact, :assignee, :stage, :pipeline)
@@ -88,6 +89,15 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
     scope.where(status: 'open')
          .joins(:stage)
          .sum('deals.value * stages.win_probability / 100.0')
+  end
+
+  # Opcoes do filtro de responsavel: quem aparece nos negocios que este usuario
+  # enxerga no funil, pelo mesmo policy_scope do board. Ignora os filtros de
+  # proposito, senao escolher um responsavel sumiria com os outros do seletor.
+  def load_assignee_options
+    assignee_ids = policy_scope(Deal).where(pipeline_id: @pipeline.id).distinct.pluck(:assignee_id)
+    @has_unassigned = assignee_ids.include?(nil)
+    @assignees = User.where(id: assignee_ids.compact).order(:name)
   end
 
   # Filtrar por etapa reduz o board aquela coluna. Manter as demais visiveis e

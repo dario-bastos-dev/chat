@@ -29,6 +29,7 @@ const mountPanel = (props = {}) =>
         { key: 'plano', name: 'Plano' },
       ],
       hasActiveFilters: false,
+      showUnassigned: true,
       ...props,
     },
   });
@@ -44,6 +45,15 @@ describe('KanbanFiltersPanel', () => {
     expect(
       optionValues(wrapper.find('#deal-filter-assignee')).slice(1)
     ).toEqual(['none', '1', '2']);
+  });
+
+  // Sem negocios livres visiveis, "sem responsavel" so levaria a um board vazio.
+  it('leaves out "no assignee" when no unassigned deal is visible', () => {
+    const wrapper = mountPanel({ showUnassigned: false });
+
+    expect(
+      optionValues(wrapper.find('#deal-filter-assignee')).slice(1)
+    ).toEqual(['1', '2']);
   });
 
   it('emits the whole filter object with only the changed field updated', async () => {

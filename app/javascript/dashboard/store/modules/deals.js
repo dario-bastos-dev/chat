@@ -16,6 +16,9 @@ export const state = {
     loadingStageIds: [],
     currency: 'BRL',
     weightedForecast: 0,
+    // Opcoes do filtro de responsavel, vindas do servidor com o board.
+    assignees: [],
+    hasUnassigned: false,
   },
   meta: {
     currentPage: 1,
@@ -86,6 +89,12 @@ export const getters = {
   },
   getWeightedForecast(_state) {
     return _state.board.weightedForecast;
+  },
+  getBoardAssignees(_state) {
+    return _state.board.assignees;
+  },
+  getBoardHasUnassigned(_state) {
+    return _state.board.hasUnassigned;
   },
 };
 
@@ -332,6 +341,8 @@ export const mutations = {
     _state.board.loadingStageIds = [];
     _state.board.currency = payload.currency || 'BRL';
     _state.board.weightedForecast = Number(payload.weighted_forecast || 0);
+    _state.board.assignees = payload.assignees || [];
+    _state.board.hasUnassigned = Boolean(payload.has_unassigned);
   },
 
   [types.APPEND_STAGE_DEALS](_state, { stageId, deals }) {

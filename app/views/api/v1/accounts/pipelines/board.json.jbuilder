@@ -5,6 +5,12 @@ end
 
 json.currency @currency
 json.weighted_forecast @weighted_forecast
+json.has_unassigned @has_unassigned
+
+json.assignees @assignees do |user|
+  json.id user.id
+  json.name user.name
+end
 
 json.stages @stages do |stage|
   json.id stage.id

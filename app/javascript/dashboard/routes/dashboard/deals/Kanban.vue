@@ -74,7 +74,8 @@
                 v-if="showFilters"
                 v-model="filters"
                 :stages="stages"
-                :agents="agents"
+                :agents="boardAssignees"
+                :show-unassigned="boardHasUnassigned"
                 :labels="allLabels"
                 :custom-fields="availableCustomFields"
                 :has-active-filters="activeFilterCount > 0"
@@ -682,7 +683,8 @@ export default {
       isStageLoading: 'deals/isStageLoading',
       dealsUIFlags: 'deals/getUIFlags',
       allLabels: 'labels/getLabels',
-      agents: 'agents/getAgents',
+      boardAssignees: 'deals/getBoardAssignees',
+      boardHasUnassigned: 'deals/getBoardHasUnassigned',
       dealAttributes: 'attributes/getDealAttributes',
     }),
     pipelineId() {
@@ -815,7 +817,6 @@ export default {
       loadMoreForStage: 'deals/loadMoreForStage',
       moveDeal: 'deals/move',
       fetchLabels: 'labels/get',
-      fetchAgents: 'agents/get',
       fetchAttributes: 'attributes/get',
       deleteDeal: 'deals/delete',
       updateDeal: 'deals/update',
@@ -829,7 +830,6 @@ export default {
         this.fetchPipelines(),
         this.fetchLabels(),
         this.fetchAttributes(),
-        this.fetchAgents(),
       ]);
       await this.fetchBoardData();
     },

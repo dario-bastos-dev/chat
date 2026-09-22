@@ -7,6 +7,7 @@ defineProps({
   labels: { type: Array, default: () => [] },
   customFields: { type: Array, default: () => [] },
   hasActiveFilters: { type: Boolean, default: false },
+  showUnassigned: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['clear']);
@@ -95,7 +96,9 @@ const INPUT_CLASS =
       >
         <option :value="null">{{ $t('CRM.FILTERS.ALL_ASSIGNEES') }}</option>
         <!-- Espelha Deals::Finder::UNASSIGNED no backend. -->
-        <option value="none">{{ $t('CRM.FILTERS.UNASSIGNED') }}</option>
+        <option v-if="showUnassigned" value="none">
+          {{ $t('CRM.FILTERS.UNASSIGNED') }}
+        </option>
         <option v-for="agent in agents" :key="agent.id" :value="agent.id">
           {{ agent.name }}
         </option>

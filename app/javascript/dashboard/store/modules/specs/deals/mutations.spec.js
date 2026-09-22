@@ -192,4 +192,32 @@ describe('#mutations', () => {
       expect([target.total_count, target.total_value]).toEqual([3, 150]);
     });
   });
+
+  describe('SET_DEAL_BOARD', () => {
+    const emptyBoard = () => ({
+      board: { stages: [], loadingStageIds: [], assignees: [] },
+    });
+
+    it('keeps the assignees the server says are visible on this pipeline', () => {
+      const state = emptyBoard();
+
+      mutations[types.SET_DEAL_BOARD](state, {
+        stages: [],
+        assignees: [{ id: 4, name: 'Ana' }],
+        has_unassigned: true,
+      });
+
+      expect(state.board.assignees).toEqual([{ id: 4, name: 'Ana' }]);
+      expect(state.board.hasUnassigned).toBe(true);
+    });
+
+    it('treats a board without assignee data as having none', () => {
+      const state = emptyBoard();
+
+      mutations[types.SET_DEAL_BOARD](state, { stages: [] });
+
+      expect(state.board.assignees).toEqual([]);
+      expect(state.board.hasUnassigned).toBe(false);
+    });
+  });
 });

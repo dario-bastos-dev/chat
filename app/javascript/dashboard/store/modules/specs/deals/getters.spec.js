@@ -76,4 +76,14 @@ describe('#getters', () => {
     expect(getters.isStageLoading(state)(2)).toBe(true);
     expect(getters.isStageLoading(state)(1)).toBe(false);
   });
+
+  it('getBoardAssignees returns the assignee options of the board', () => {
+    const state = { board: { assignees: [{ id: 4, name: 'Ana' }] } };
+    expect(getters.getBoardAssignees(state)).toEqual([{ id: 4, name: 'Ana' }]);
+  });
+
+  it('getBoardHasUnassigned tells whether unassigned deals are visible', () => {
+    const state = { board: { hasUnassigned: true } };
+    expect(getters.getBoardHasUnassigned(state)).toBe(true);
+  });
 });
