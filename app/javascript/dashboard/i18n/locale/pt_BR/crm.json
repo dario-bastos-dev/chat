@@ -197,6 +197,12 @@
       "LOAD_ERROR": "Não foi possível carregar os relatórios do CRM.",
       "RETRY": "Tentar novamente"
     },
+    "SORT": {
+      "TOOLTIP": "Ordenar negócios",
+      "ORDER_BY": "Ordenar por",
+      "CREATED_AT_DESC": "Mais recentes primeiro",
+      "CREATED_AT_ASC": "Mais antigos primeiro"
+    },
     "FILTERS": {
       "TITLE": "Filtros do Kanban",
       "CLEAR": "Limpar Filtros",
@@ -210,7 +216,15 @@
       "ALL_TAGS": "Todas as Tags",
       "CUSTOM_FIELD": "Campo Personalizado",
       "NO_FIELD": "Nenhum campo",
-      "VALUE_PLACEHOLDER": "Valor..."
+      "VALUE_PLACEHOLDER": "Valor...",
+      "BY_ASSIGNEE": "Responsável",
+      "ALL_ASSIGNEES": "Todos os responsáveis",
+      "UNASSIGNED": "Sem responsável",
+      "BY_STATUS": "Status",
+      "ALL_STATUSES": "Todos os status",
+      "CREATED_AT": "Criado em",
+      "CREATED_FROM": "De",
+      "CREATED_TO": "Até"
     },
     "BULK": {
       "ACTIONS": "Ações",

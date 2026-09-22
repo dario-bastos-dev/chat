@@ -29,7 +29,7 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
     @deals_by_stage = @stages.index_with do |stage|
       scope.where(stage_id: stage.id)
            .includes(:contact, :assignee, :stage, :pipeline)
-           .ordered_by_position
+           .sorted_by(params[:sort])
            .limit(deals_per_stage)
     end
   end
@@ -106,7 +106,7 @@ class Api::V1::Accounts::PipelinesController < Api::V1::Accounts::BaseController
 
   def board_filters
     params.permit(:stage_id, :status, :assignee_id, :q, :label, :custom_field_key, :custom_field_value,
-                  :min_value, :max_value)
+                  :min_value, :max_value, :created_from, :created_to)
           .to_h.symbolize_keys
           .merge(pipeline_id: @pipeline.id)
   end

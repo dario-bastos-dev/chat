@@ -253,6 +253,12 @@
       "QUEUED": "Import started. You will be notified when it finishes.",
       "HELP": "Expected columns: title (required), value, stage, contact_name, contact_email, contact_phone, assignee_email."
     },
+    "SORT": {
+      "TOOLTIP": "Sort deals",
+      "ORDER_BY": "Order by",
+      "CREATED_AT_DESC": "Newest first",
+      "CREATED_AT_ASC": "Oldest first"
+    },
     "FILTERS": {
       "TITLE": "Kanban filters",
       "CLEAR": "Clear filters",
@@ -266,7 +272,15 @@
       "ALL_TAGS": "All tags",
       "CUSTOM_FIELD": "Custom field",
       "NO_FIELD": "No field",
-      "VALUE_PLACEHOLDER": "Value..."
+      "VALUE_PLACEHOLDER": "Value...",
+      "BY_ASSIGNEE": "Assignee",
+      "ALL_ASSIGNEES": "All assignees",
+      "UNASSIGNED": "Unassigned",
+      "BY_STATUS": "Status",
+      "ALL_STATUSES": "All statuses",
+      "CREATED_AT": "Created on",
+      "CREATED_FROM": "From",
+      "CREATED_TO": "To"
     }
   }
 }

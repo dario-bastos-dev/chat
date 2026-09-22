@@ -14,6 +14,8 @@ class Deals::Finder
   def perform
     filtered = @scope
     filtered = by_exact_columns(filtered)
+    filtered = by_assignee(filtered)
+    filtered = by_created_at(filtered)
     filtered = by_search(filtered)
     filtered = by_label(filtered)
     filtered = by_custom_field(filtered)
@@ -23,7 +25,9 @@ class Deals::Finder
 
   private
 
-  EXACT_FILTERS = %i[pipeline_id stage_id status assignee_id contact_id inbox_id].freeze
+  EXACT_FILTERS = %i[pipeline_id stage_id status contact_id inbox_id].freeze
+  # Valor de `assignee_id` para os negocios sem responsavel.
+  UNASSIGNED = 'none'
 
   def by_exact_columns(scope)
     EXACT_FILTERS.each_with_object({}) do |key, filters|
@@ -44,6 +48,31 @@ class Deals::Finder
     return scope if @params[:label].blank?
 
     scope.tagged_with(@params[:label], on: :labels)
+  end
+
+  def by_assignee(scope)
+    return scope if @params[:assignee_id].blank?
+    return scope.where(assignee_id: nil) if @params[:assignee_id].to_s == UNASSIGNED
+
+    scope.where(assignee_id: @params[:assignee_id])
+  end
+
+  # O front manda os limites ja convertidos para o fuso de quem filtra (inicio e
+  # fim do dia local), entao aqui e so comparar.
+  def by_created_at(scope)
+    from = parse_time(@params[:created_from])
+    to = parse_time(@params[:created_to])
+    scope = scope.where(deals: { created_at: from.. }) if from
+    scope = scope.where(deals: { created_at: ..to }) if to
+    scope
+  end
+
+  def parse_time(value)
+    return if value.blank?
+
+    Time.zone.parse(value.to_s)
+  rescue ArgumentError
+    nil
   end
 
   def by_value_range(scope)

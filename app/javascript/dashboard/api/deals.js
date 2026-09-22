@@ -21,6 +21,9 @@ class DealsAPI extends ApiClient {
       customFieldValue: 'custom_field_value',
       minValue: 'min_value',
       maxValue: 'max_value',
+      createdFrom: 'created_from',
+      createdTo: 'created_to',
+      sort: 'sort',
     };
 
     const queryParams = new URLSearchParams();
@@ -62,9 +65,12 @@ class DealsAPI extends ApiClient {
 
   // Agendamento em massa: o backend escolhe a conversa de destino de cada
   // negocio e deduplica por contato, entao a acao e uma requisicao so.
-  scheduleMessages({ dealIds, title, content, scheduledAt }) {
+  // `sort` segue a ordem do board: decide qual negocio fica com o contato
+  // quando dois selecionados sao da mesma pessoa.
+  scheduleMessages({ dealIds, sort, title, content, scheduledAt }) {
     return axios.post(`${this.url}/schedule_messages`, {
       deal_ids: dealIds,
+      sort,
       title,
       content,
       scheduled_at: scheduledAt,

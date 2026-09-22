@@ -6,7 +6,7 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
   def index
     @deals = Deals::Finder.new(scope: policy_scope(Deal), params: filter_params).perform
                           .includes(:contact, :assignee, :stage, :pipeline)
-                          .ordered_by_position
+                          .sorted_by(params[:sort])
                           .page(params[:page])
                           .per(per_page)
   end
@@ -75,7 +75,7 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
     deals = policy_scope(Deal)
             .where(id: Array(params[:deal_ids]))
             .includes(conversation_deals: { conversation: { inbox: :channel } })
-            .ordered_by_position
+            .sorted_by(params[:sort])
 
     render json: Deals::MessageScheduler.new(
       account: Current.account,
@@ -138,7 +138,8 @@ class Api::V1::Accounts::DealsController < Api::V1::Accounts::BaseController
 
   def filter_params
     params.permit(:pipeline_id, :stage_id, :status, :assignee_id, :contact_id, :inbox_id,
-                  :q, :label, :custom_field_key, :custom_field_value, :min_value, :max_value)
+                  :q, :label, :custom_field_key, :custom_field_value, :min_value, :max_value,
+                  :created_from, :created_to)
           .to_h.symbolize_keys
   end
 

@@ -77,7 +77,16 @@ class Deal < ApplicationRecord
   scope :by_pipeline, ->(pipeline_id) { where(pipeline_id: pipeline_id) }
   scope :by_stage, ->(stage_id) { where(stage_id: stage_id) }
   scope :by_assignee, ->(assignee_id) { where(assignee_id: assignee_id) }
-  scope :ordered_by_position, -> { order(position: :asc) }
+  # Ordem dos cards dentro de cada etapa do Kanban. O `id` desempata: sem ele,
+  # negocios criados no mesmo instante (import, automacao) podiam trocar de lugar
+  # entre as paginas do "carregar mais" e aparecer duplicados ou sumir.
+  SORT_ORDERS = {
+    'created_at_desc' => { created_at: :desc, id: :desc },
+    'created_at_asc' => { created_at: :asc, id: :asc }
+  }.freeze
+  DEFAULT_SORT = 'created_at_desc'
+
+  scope :sorted_by, ->(key) { order(SORT_ORDERS.fetch(key.to_s) { SORT_ORDERS[DEFAULT_SORT] }) }
 
   # Le a coluna de cache direto, como Conversation#cached_label_list_array.
   # `label_list` do acts_as_taggable_on consulta `taggings` a cada chamada, via

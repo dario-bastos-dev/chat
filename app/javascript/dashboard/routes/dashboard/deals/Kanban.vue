@@ -72,7 +72,7 @@
             >
               <div
                 v-if="showFilters"
-                class="absolute left-0 right-0 top-full mt-2 z-50 bg-n-solid-2 border border-n-weak rounded-xl shadow-xl p-4 flex flex-col gap-4 text-left"
+                class="absolute left-0 right-0 top-full mt-2 z-50 bg-n-solid-2 border border-n-weak rounded-xl shadow-xl p-4 flex flex-col gap-4 text-left max-h-[70vh] overflow-y-auto"
               >
                 <!-- Dropdown Header -->
                 <div class="flex items-center justify-between border-b border-n-weak pb-2">
@@ -96,6 +96,59 @@
                     <option :value="null">{{ $t('CRM.FILTERS.ALL_STAGES') }}</option>
                     <option v-for="stage in stages" :key="stage.id" :value="stage.id">
                       {{ stage.name }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Filter by Assignee -->
+                <div class="flex flex-col gap-1.5">
+                  <label
+                    class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider"
+                  >
+                    {{ $t('CRM.FILTERS.BY_ASSIGNEE') }}
+                  </label>
+                  <select
+                    v-model="filterAssigneeId"
+                    class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
+                  >
+                    <option :value="null">
+                      {{ $t('CRM.FILTERS.ALL_ASSIGNEES') }}
+                    </option>
+                    <option value="none">
+                      {{ $t('CRM.FILTERS.UNASSIGNED') }}
+                    </option>
+                    <option
+                      v-for="agent in agents"
+                      :key="agent.id"
+                      :value="agent.id"
+                    >
+                      {{ agent.name }}
+                    </option>
+                  </select>
+                </div>
+
+                <!-- Filter by Status -->
+                <div class="flex flex-col gap-1.5">
+                  <label
+                    class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider"
+                  >
+                    {{ $t('CRM.FILTERS.BY_STATUS') }}
+                  </label>
+                  <select
+                    v-model="filterStatus"
+                    class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
+                  >
+                    <option :value="null">
+                      {{ $t('CRM.FILTERS.ALL_STATUSES') }}
+                    </option>
+                    <option value="open">
+                      {{ $t('CRM.DEALS.STATUS_OPEN') }}
+                    </option>
+                    <option value="won">
+                      {{ $t('CRM.DEALS.STATUS_WON') }}
+                    </option>
+                    <option value="lost">
+                      {{ $t('CRM.DEALS.STATUS_LOST') }}
                     </option>
                   </select>
                 </div>
@@ -133,6 +186,33 @@
                       min="0"
                       :placeholder="$t('CRM.DEALS.FILTER_MAX')"
                       class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
+                    />
+                  </div>
+                </div>
+
+                <!-- Filter by Creation Date -->
+                <div class="flex flex-col gap-1.5">
+                  <label
+                    class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider"
+                  >
+                    {{ $t('CRM.FILTERS.CREATED_AT') }}
+                  </label>
+                  <div class="flex gap-2">
+                    <input
+                      v-model="filterCreatedFrom"
+                      type="date"
+                      :max="filterCreatedTo || undefined"
+                      :aria-label="$t('CRM.FILTERS.CREATED_FROM')"
+                      :title="$t('CRM.FILTERS.CREATED_FROM')"
+                      class="flex-1 min-w-0 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
+                    />
+                    <input
+                      v-model="filterCreatedTo"
+                      type="date"
+                      :min="filterCreatedFrom || undefined"
+                      :aria-label="$t('CRM.FILTERS.CREATED_TO')"
+                      :title="$t('CRM.FILTERS.CREATED_TO')"
+                      class="flex-1 min-w-0 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
                     />
                   </div>
                 </div>
@@ -180,6 +260,8 @@
               {{ activeFilterCount }}
             </span>
           </button>
+
+          <KanbanSortMenu v-model="sortBy" />
         </div>
 
         <!-- Clear Filters Link (outside input) -->
@@ -410,6 +492,7 @@
         <draggable
           v-model="stage.deals"
           :group="{ name: 'deals' }"
+          :sort="false"
           item-key="id"
           :data-stage-id="stage.id"
           class="flex-1 p-2 space-y-2 overflow-y-auto"
@@ -679,6 +762,8 @@ import draggable from 'vuedraggable';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import DealForm from './components/DealForm.vue';
 import BulkLabelsModal from './components/BulkLabelsModal.vue';
+import KanbanSortMenu from './components/KanbanSortMenu.vue';
+import { useUISettings } from 'dashboard/composables/useUISettings';
 import BulkAttributesModal from './components/BulkAttributesModal.vue';
 import BulkScheduleModal from './components/BulkScheduleModal.vue';
 import DealDrawer from './components/DealDrawer.vue';
@@ -698,11 +783,16 @@ export default {
     draggable,
     DealForm,
     BulkLabelsModal,
+    KanbanSortMenu,
     BulkAttributesModal,
     BulkScheduleModal,
     DealDrawer,
     KanbanSkeleton,
     Avatar,
+  },
+  setup() {
+    const { uiSettings, updateUISettings } = useUISettings();
+    return { uiSettings, updateUISettings };
   },
   data() {
     return {
@@ -719,6 +809,10 @@ export default {
       filterCustomFieldValue: '',
       filterMinValue: null,
       filterMaxValue: null,
+      filterAssigneeId: null,
+      filterStatus: null,
+      filterCreatedFrom: '',
+      filterCreatedTo: '',
       selectedDealIds: [],
       showBulkActionsDropdown: false,
       showBulkMoveModal: false,
@@ -746,6 +840,7 @@ export default {
       isStageLoading: 'deals/isStageLoading',
       dealsUIFlags: 'deals/getUIFlags',
       allLabels: 'labels/getLabels',
+      agents: 'agents/getAgents',
       dealAttributes: 'attributes/getDealAttributes',
     }),
     pipelineId() {
@@ -786,13 +881,26 @@ export default {
         this.selectedDealIds.includes(deal.id)
       );
     },
+    // Nao conta como filtro ativo nem e zerado pelo "Limpar": e uma preferencia
+    // fixa de visualizacao, como a ordenacao da lista de conversas.
+    sortBy: {
+      get() {
+        return this.uiSettings?.deals_kanban_sort_by || 'created_at_desc';
+      },
+      set(value) {
+        this.updateUISettings({ deals_kanban_sort_by: value });
+      },
+    },
     activeFilterCount() {
-      let count = 0;
-      if (this.filterStageId) count++;
-      if (this.filterTag) count++;
-      if (this.filterCustomFieldKey && this.filterCustomFieldValue) count++;
-      if (this.filterMinValue || this.filterMaxValue) count++;
-      return count;
+      return [
+        this.filterStageId,
+        this.filterTag,
+        this.filterCustomFieldKey && this.filterCustomFieldValue,
+        this.filterMinValue || this.filterMaxValue,
+        this.filterAssigneeId,
+        this.filterStatus,
+        this.filterCreatedFrom || this.filterCreatedTo,
+      ].filter(Boolean).length;
     },
     boardFilters() {
       return {
@@ -803,7 +911,22 @@ export default {
         custom_field_value: this.filterCustomFieldValue || undefined,
         min_value: this.filterMinValue || undefined,
         max_value: this.filterMaxValue || undefined,
+        assignee_id: this.filterAssigneeId || undefined,
+        status: this.filterStatus || undefined,
+        created_from: this.createdFromBoundary,
+        created_to: this.createdToBoundary,
+        sort: this.sortBy,
       };
+    },
+    // O input de data entrega o dia sem fuso; os limites viram instantes no fuso
+    // de quem filtra, para "criado em 10/09" valer o dia 10 local e nao o de UTC.
+    createdFromBoundary() {
+      if (!this.filterCreatedFrom) return undefined;
+      return new Date(`${this.filterCreatedFrom}T00:00:00`).toISOString();
+    },
+    createdToBoundary() {
+      if (!this.filterCreatedTo) return undefined;
+      return new Date(`${this.filterCreatedTo}T23:59:59.999`).toISOString();
     },
     isAllFilteredDealsSelected() {
       if (this.loadedDeals.length === 0) return false;
@@ -850,6 +973,7 @@ export default {
       loadMoreForStage: 'deals/loadMoreForStage',
       moveDeal: 'deals/move',
       fetchLabels: 'labels/get',
+      fetchAgents: 'agents/get',
       fetchAttributes: 'attributes/get',
       deleteDeal: 'deals/delete',
       updateDeal: 'deals/update',
@@ -863,6 +987,7 @@ export default {
         this.fetchPipelines(),
         this.fetchLabels(),
         this.fetchAttributes(),
+        this.fetchAgents(),
       ]);
       await this.fetchBoardData();
     },
@@ -893,6 +1018,11 @@ export default {
             customFieldValue: this.filterCustomFieldValue || undefined,
             minValue: this.filterMinValue || undefined,
             maxValue: this.filterMaxValue || undefined,
+            assigneeId: this.filterAssigneeId || undefined,
+            status: this.filterStatus || undefined,
+            createdFrom: this.createdFromBoundary,
+            createdTo: this.createdToBoundary,
+            sort: this.sortBy,
           },
         });
       } catch (error) {
@@ -977,6 +1107,10 @@ export default {
       this.filterCustomFieldValue = '';
       this.filterMinValue = null;
       this.filterMaxValue = null;
+      this.filterAssigneeId = null;
+      this.filterStatus = null;
+      this.filterCreatedFrom = '';
+      this.filterCreatedTo = '';
       this.selectedDealIds = [];
     },
     async onDragEnd(event) {
@@ -1100,6 +1234,7 @@ export default {
       try {
         const result = await this.scheduleDealMessages({
           dealIds: this.selectedDealIds,
+          sort: this.sortBy,
           title,
           content,
           scheduledAt: new Date(scheduledAt).toISOString(),
