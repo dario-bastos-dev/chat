@@ -948,12 +948,15 @@ export default {
     },
     async onDragEnd(event) {
       const dealId = Number(event.item.getAttribute('data-deal-id'));
+      const fromStageId = Number(event.from.getAttribute('data-stage-id'));
       const newStageId = Number(event.to.getAttribute('data-stage-id'));
-      if (!dealId || !newStageId) return;
+      // Solto de volta na propria etapa: nada mudou, nao ha o que salvar.
+      if (!dealId || !newStageId || fromStageId === newStageId) return;
 
       try {
         await this.moveDeal({
           id: dealId,
+          fromStageId,
           stageId: newStageId,
           sort: this.sortBy,
         });

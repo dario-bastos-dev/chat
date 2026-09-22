@@ -99,6 +99,7 @@ describe('#mutations', () => {
 
       mutations[types.MOVE_DEAL_ON_BOARD](state, {
         dealId: 1,
+        fromStageId: 10,
         toStageId: 20,
         sort: 'created_at_desc',
       });
@@ -113,6 +114,7 @@ describe('#mutations', () => {
 
       mutations[types.MOVE_DEAL_ON_BOARD](state, {
         dealId: 1,
+        fromStageId: 10,
         toStageId: 20,
         sort: 'created_at_asc',
       });
@@ -131,6 +133,7 @@ describe('#mutations', () => {
 
       mutations[types.MOVE_DEAL_ON_BOARD](state, {
         dealId: 1,
+        fromStageId: 10,
         toStageId: 20,
         sort: 'created_at_desc',
       });
@@ -140,11 +143,46 @@ describe('#mutations', () => {
       ]);
     });
 
+    // Reproduz o bug: o draggable ja pos o card no destino, e a mutation o
+    // descontava e recontava na propria coluna de destino.
+    it('moves the counters when the drag already placed the card in the target', () => {
+      const state = buildBoard();
+      const [dragged] = state.board.stages[0].deals.splice(0, 1);
+      state.board.stages[1].deals.unshift(dragged);
+
+      mutations[types.MOVE_DEAL_ON_BOARD](state, {
+        dealId: 1,
+        fromStageId: 10,
+        toStageId: 20,
+        sort: 'created_at_desc',
+      });
+
+      const [source, target] = state.board.stages;
+      expect([source.total_count, source.total_value]).toEqual([0, 0]);
+      expect([target.total_count, target.total_value]).toEqual([3, 150]);
+    });
+
+    it('keeps the counters when the card is dropped back into its own stage', () => {
+      const state = buildBoard();
+
+      mutations[types.MOVE_DEAL_ON_BOARD](state, {
+        dealId: 2,
+        fromStageId: 20,
+        toStageId: 20,
+        sort: 'created_at_desc',
+      });
+
+      const target = state.board.stages[1];
+      expect(target.deals.map(deal => deal.id)).toEqual([2, 3]);
+      expect([target.total_count, target.total_value]).toEqual([2, 50]);
+    });
+
     it('moves the count and the value from one stage to the other', () => {
       const state = buildBoard();
 
       mutations[types.MOVE_DEAL_ON_BOARD](state, {
         dealId: 1,
+        fromStageId: 10,
         toStageId: 20,
         sort: 'created_at_desc',
       });

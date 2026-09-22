@@ -102,7 +102,7 @@ describe('#actions', () => {
       DealsAPI.move.mockResolvedValue({ data: deal });
       await actions.move(
         { commit, getters },
-        { id: 1, stageId: 2, sort: 'created_at_desc' }
+        { id: 1, fromStageId: 1, stageId: 2, sort: 'created_at_desc' }
       );
       expect(commit).toHaveBeenCalledWith(types.SET_DEALS_UI_FLAG, {
         isMoving: true,
@@ -119,10 +119,11 @@ describe('#actions', () => {
       DealsAPI.move.mockResolvedValue({ data: { id: 1, stage_id: 2 } });
       await actions.move(
         { commit, getters },
-        { id: 1, stageId: 2, sort: 'created_at_asc' }
+        { id: 1, fromStageId: 1, stageId: 2, sort: 'created_at_asc' }
       );
       expect(commit).toHaveBeenCalledWith(types.MOVE_DEAL_ON_BOARD, {
         dealId: 1,
+        fromStageId: 1,
         toStageId: 2,
         sort: 'created_at_asc',
       });
@@ -134,7 +135,7 @@ describe('#actions', () => {
       DealsAPI.move.mockResolvedValue({ data: { id: 1, stage_id: 2 } });
       await actions.move(
         { commit, getters },
-        { id: 1, stageId: 2, sort: 'created_at_desc' }
+        { id: 1, fromStageId: 1, stageId: 2, sort: 'created_at_desc' }
       );
       expect(DealsAPI.move).toHaveBeenCalledWith(1, 2);
     });

@@ -210,7 +210,10 @@ export const actions = {
 
   // A ordem da coluna vem da data, entao o card e reposicionado pela ordenacao
   // do board e nao pelo indice em que foi solto.
-  move: async function moveDeal({ commit, getters }, { id, stageId, sort }) {
+  move: async function moveDeal(
+    { commit, getters },
+    { id, fromStageId, stageId, sort }
+  ) {
     commit(types.SET_DEALS_UI_FLAG, { isMoving: true });
 
     // Optimistic Update: atualiza localmente no Vuex para evitar o efeito "ioiô" no Kanban
@@ -223,7 +226,12 @@ export const actions = {
       };
       commit(types.EDIT_DEAL, optimisticDeal);
     }
-    commit(types.MOVE_DEAL_ON_BOARD, { dealId: id, toStageId: stageId, sort });
+    commit(types.MOVE_DEAL_ON_BOARD, {
+      dealId: id,
+      fromStageId,
+      toStageId: stageId,
+      sort,
+    });
 
     try {
       const response = await DealsAPI.move(id, stageId);
@@ -341,22 +349,30 @@ export const mutations = {
 
   // Move o card entre colunas na hora, ajustando os totais das duas pontas,
   // para o Kanban nao piscar esperando a resposta da API.
-  [types.MOVE_DEAL_ON_BOARD](_state, { dealId, toStageId, sort }) {
-    let moved = null;
+  // O draggable do Kanban ja pos o card no array de destino quando esta
+  // mutation roda, entao a etapa de origem vem do evento do drag: deduzi-la de
+  // onde o card esta faria a coluna de destino descontar e recontar o proprio
+  // card, e a de origem nunca perderia.
+  [types.MOVE_DEAL_ON_BOARD](_state, { dealId, fromStageId, toStageId, sort }) {
+    const source = _state.board.stages.find(stage => stage.id === fromStageId);
+    const target = _state.board.stages.find(stage => stage.id === toStageId);
+    if (!target) return;
 
+    let moved = null;
     _state.board.stages.forEach(stage => {
       const index = stage.deals.findIndex(deal => deal.id === dealId);
       if (index === -1) return;
-
       [moved] = stage.deals.splice(index, 1);
-      stage.total_count = Math.max((stage.total_count || 1) - 1, 0);
-      stage.total_value = Number(stage.total_value || 0) - Number(moved.value || 0);
     });
-
     if (!moved) return;
 
-    const target = _state.board.stages.find(stage => stage.id === toStageId);
-    if (!target) return;
+    const value = Number(moved.value || 0);
+    if (source && source !== target) {
+      source.total_count = Math.max((source.total_count || 1) - 1, 0);
+      source.total_value = Number(source.total_value || 0) - value;
+      target.total_count = (target.total_count || 0) + 1;
+      target.total_value = Number(target.total_value || 0) + value;
+    }
 
     const updated = {
       ...moved,
@@ -364,8 +380,6 @@ export const mutations = {
       stage: { ...moved.stage, id: toStageId },
     };
     target.deals = [...target.deals, updated].sort(compareDeals(sort));
-    target.total_count = (target.total_count || 0) + 1;
-    target.total_value = Number(target.total_value || 0) + Number(moved.value || 0);
   },
 
   [types.REMOVE_DEAL_FROM_BOARD](_state, dealId) {
