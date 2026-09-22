@@ -70,181 +70,16 @@
               leave-active-class="transition duration-100 ease-in"
               leave-to-class="opacity-0 translate-y-1"
             >
-              <div
+              <KanbanFiltersPanel
                 v-if="showFilters"
-                class="absolute left-0 right-0 top-full mt-2 z-50 bg-n-solid-2 border border-n-weak rounded-xl shadow-xl p-4 flex flex-col gap-4 text-left max-h-[70vh] overflow-y-auto"
-              >
-                <!-- Dropdown Header -->
-                <div class="flex items-center justify-between border-b border-n-weak pb-2">
-                  <span class="text-xs font-bold text-n-slate-12">{{ $t('CRM.FILTERS.TITLE') }}</span>
-                  <button
-                    v-if="activeFilterCount > 0"
-                    class="text-[11px] font-semibold text-n-ruby-9 hover:text-n-ruby-10 cursor-pointer"
-                    @click="clearAllFilters"
-                  >
-                    {{ $t('CRM.FILTERS.CLEAR') }}
-                  </button>
-                </div>
-
-                <!-- Filter by Stage -->
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">{{ $t('CRM.FILTERS.BY_STAGE') }}</label>
-                  <select
-                    v-model="filterStageId"
-                    class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
-                  >
-                    <option :value="null">{{ $t('CRM.FILTERS.ALL_STAGES') }}</option>
-                    <option v-for="stage in stages" :key="stage.id" :value="stage.id">
-                      {{ stage.name }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Filter by Assignee -->
-                <div class="flex flex-col gap-1.5">
-                  <label
-                    class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider"
-                  >
-                    {{ $t('CRM.FILTERS.BY_ASSIGNEE') }}
-                  </label>
-                  <select
-                    v-model="filterAssigneeId"
-                    class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
-                  >
-                    <option :value="null">
-                      {{ $t('CRM.FILTERS.ALL_ASSIGNEES') }}
-                    </option>
-                    <option value="none">
-                      {{ $t('CRM.FILTERS.UNASSIGNED') }}
-                    </option>
-                    <option
-                      v-for="agent in agents"
-                      :key="agent.id"
-                      :value="agent.id"
-                    >
-                      {{ agent.name }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Filter by Status -->
-                <div class="flex flex-col gap-1.5">
-                  <label
-                    class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider"
-                  >
-                    {{ $t('CRM.FILTERS.BY_STATUS') }}
-                  </label>
-                  <select
-                    v-model="filterStatus"
-                    class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
-                  >
-                    <option :value="null">
-                      {{ $t('CRM.FILTERS.ALL_STATUSES') }}
-                    </option>
-                    <option value="open">
-                      {{ $t('CRM.DEALS.STATUS_OPEN') }}
-                    </option>
-                    <option value="won">
-                      {{ $t('CRM.DEALS.STATUS_WON') }}
-                    </option>
-                    <option value="lost">
-                      {{ $t('CRM.DEALS.STATUS_LOST') }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Filter by Tags -->
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">{{ $t('CRM.FILTERS.BY_TAG') }}</label>
-                  <select
-                    v-model="filterTag"
-                    class="w-full px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
-                  >
-                    <option :value="null">{{ $t('CRM.FILTERS.ALL_TAGS') }}</option>
-                    <option v-for="tag in allLabels" :key="tag.id" :value="tag.title">
-                      {{ tag.title }}
-                    </option>
-                  </select>
-                </div>
-
-                <!-- Filter by Value Range -->
-                <div class="flex flex-col gap-1.5">
-                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">
-                    {{ $t('CRM.DEALS.FILTER_VALUE_RANGE') }}
-                  </label>
-                  <div class="flex gap-2">
-                    <input
-                      v-model.number="filterMinValue"
-                      type="number"
-                      min="0"
-                      :placeholder="$t('CRM.DEALS.FILTER_MIN')"
-                      class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
-                    />
-                    <input
-                      v-model.number="filterMaxValue"
-                      type="number"
-                      min="0"
-                      :placeholder="$t('CRM.DEALS.FILTER_MAX')"
-                      class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
-                    />
-                  </div>
-                </div>
-
-                <!-- Filter by Creation Date -->
-                <div class="flex flex-col gap-1.5">
-                  <label
-                    class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider"
-                  >
-                    {{ $t('CRM.FILTERS.CREATED_AT') }}
-                  </label>
-                  <div class="flex gap-2">
-                    <input
-                      v-model="filterCreatedFrom"
-                      type="date"
-                      :max="filterCreatedTo || undefined"
-                      :aria-label="$t('CRM.FILTERS.CREATED_FROM')"
-                      :title="$t('CRM.FILTERS.CREATED_FROM')"
-                      class="flex-1 min-w-0 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
-                    />
-                    <input
-                      v-model="filterCreatedTo"
-                      type="date"
-                      :min="filterCreatedFrom || undefined"
-                      :aria-label="$t('CRM.FILTERS.CREATED_TO')"
-                      :title="$t('CRM.FILTERS.CREATED_TO')"
-                      class="flex-1 min-w-0 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
-                    />
-                  </div>
-                </div>
-
-                <!-- Filter by Custom Fields -->
-                <div class="flex flex-col gap-1.5" v-if="availableCustomFields.length > 0">
-                  <label class="text-[10px] font-bold text-n-slate-11 uppercase tracking-wider">{{ $t('CRM.FILTERS.CUSTOM_FIELD') }}</label>
-                  <div class="flex gap-2">
-                    <select
-                      v-model="filterCustomFieldKey"
-                      class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
-                      @change="filterCustomFieldValue = ''"
-                    >
-                      <option :value="null">{{ $t('CRM.FILTERS.NO_FIELD') }}</option>
-                      <option
-                        v-for="field in availableCustomFields"
-                        :key="field.key"
-                        :value="field.key"
-                      >
-                        {{ field.name }}
-                      </option>
-                    </select>
-                    <input
-                      v-if="filterCustomFieldKey"
-                      v-model="filterCustomFieldValue"
-                      type="text"
-                      :placeholder="$t('CRM.FILTERS.VALUE_PLACEHOLDER')"
-                      class="flex-1 px-3 py-1.5 text-xs bg-n-alpha-1 border border-n-weak rounded-lg text-n-slate-12 placeholder-n-slate-11 focus:border-n-brand focus:ring-1 focus:ring-n-brand transition-colors duration-150 h-8"
-                    />
-                  </div>
-                </div>
-              </div>
+                v-model="filters"
+                :stages="stages"
+                :agents="agents"
+                :labels="allLabels"
+                :custom-fields="availableCustomFields"
+                :has-active-filters="activeFilterCount > 0"
+                @clear="clearAllFilters"
+              />
             </transition>
           </div>
 
@@ -763,6 +598,7 @@ import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import DealForm from './components/DealForm.vue';
 import BulkLabelsModal from './components/BulkLabelsModal.vue';
 import KanbanSortMenu from './components/KanbanSortMenu.vue';
+import KanbanFiltersPanel from './components/KanbanFiltersPanel.vue';
 import { DEFAULT_DEAL_SORT } from 'dashboard/helper/dealSort';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import BulkAttributesModal from './components/BulkAttributesModal.vue';
@@ -778,6 +614,19 @@ import {
 import { emitter } from 'shared/helpers/mitt';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 
+const emptyFilters = () => ({
+  stageId: null,
+  assigneeId: null,
+  status: null,
+  tag: null,
+  minValue: null,
+  maxValue: null,
+  createdFrom: '',
+  createdTo: '',
+  customFieldKey: null,
+  customFieldValue: '',
+});
+
 export default {
   name: 'DealsKanban',
   components: {
@@ -785,6 +634,7 @@ export default {
     DealForm,
     BulkLabelsModal,
     KanbanSortMenu,
+    KanbanFiltersPanel,
     BulkAttributesModal,
     BulkScheduleModal,
     DealDrawer,
@@ -804,16 +654,7 @@ export default {
       selectedStageId: null,
       searchQuery: '',
       showFilters: false,
-      filterStageId: null,
-      filterTag: null,
-      filterCustomFieldKey: null,
-      filterCustomFieldValue: '',
-      filterMinValue: null,
-      filterMaxValue: null,
-      filterAssigneeId: null,
-      filterStatus: null,
-      filterCreatedFrom: '',
-      filterCreatedTo: '',
+      filters: emptyFilters(),
       selectedDealIds: [],
       showBulkActionsDropdown: false,
       showBulkMoveModal: false,
@@ -894,26 +735,26 @@ export default {
     },
     activeFilterCount() {
       return [
-        this.filterStageId,
-        this.filterTag,
-        this.filterCustomFieldKey && this.filterCustomFieldValue,
-        this.filterMinValue || this.filterMaxValue,
-        this.filterAssigneeId,
-        this.filterStatus,
-        this.filterCreatedFrom || this.filterCreatedTo,
+        this.filters.stageId,
+        this.filters.tag,
+        this.filters.customFieldKey && this.filters.customFieldValue,
+        this.filters.minValue || this.filters.maxValue,
+        this.filters.assigneeId,
+        this.filters.status,
+        this.filters.createdFrom || this.filters.createdTo,
       ].filter(Boolean).length;
     },
     boardFilters() {
       return {
         q: this.searchQuery || undefined,
-        stage_id: this.filterStageId || undefined,
-        label: this.filterTag || undefined,
-        custom_field_key: this.filterCustomFieldKey || undefined,
-        custom_field_value: this.filterCustomFieldValue || undefined,
-        min_value: this.filterMinValue || undefined,
-        max_value: this.filterMaxValue || undefined,
-        assignee_id: this.filterAssigneeId || undefined,
-        status: this.filterStatus || undefined,
+        stage_id: this.filters.stageId || undefined,
+        label: this.filters.tag || undefined,
+        custom_field_key: this.filters.customFieldKey || undefined,
+        custom_field_value: this.filters.customFieldValue || undefined,
+        min_value: this.filters.minValue || undefined,
+        max_value: this.filters.maxValue || undefined,
+        assignee_id: this.filters.assigneeId || undefined,
+        status: this.filters.status || undefined,
         created_from: this.createdFromBoundary,
         created_to: this.createdToBoundary,
         sort: this.sortBy,
@@ -922,12 +763,12 @@ export default {
     // O input de data entrega o dia sem fuso; os limites viram instantes no fuso
     // de quem filtra, para "criado em 10/09" valer o dia 10 local e nao o de UTC.
     createdFromBoundary() {
-      if (!this.filterCreatedFrom) return undefined;
-      return new Date(`${this.filterCreatedFrom}T00:00:00`).toISOString();
+      if (!this.filters.createdFrom) return undefined;
+      return new Date(`${this.filters.createdFrom}T00:00:00`).toISOString();
     },
     createdToBoundary() {
-      if (!this.filterCreatedTo) return undefined;
-      return new Date(`${this.filterCreatedTo}T23:59:59.999`).toISOString();
+      if (!this.filters.createdTo) return undefined;
+      return new Date(`${this.filters.createdTo}T23:59:59.999`).toISOString();
     },
     isAllFilteredDealsSelected() {
       if (this.loadedDeals.length === 0) return false;
@@ -1014,13 +855,13 @@ export default {
           filters: {
             pipelineId: this.pipelineId,
             q: this.searchQuery || undefined,
-            label: this.filterTag || undefined,
-            customFieldKey: this.filterCustomFieldKey || undefined,
-            customFieldValue: this.filterCustomFieldValue || undefined,
-            minValue: this.filterMinValue || undefined,
-            maxValue: this.filterMaxValue || undefined,
-            assigneeId: this.filterAssigneeId || undefined,
-            status: this.filterStatus || undefined,
+            label: this.filters.tag || undefined,
+            customFieldKey: this.filters.customFieldKey || undefined,
+            customFieldValue: this.filters.customFieldValue || undefined,
+            minValue: this.filters.minValue || undefined,
+            maxValue: this.filters.maxValue || undefined,
+            assigneeId: this.filters.assigneeId || undefined,
+            status: this.filters.status || undefined,
             createdFrom: this.createdFromBoundary,
             createdTo: this.createdToBoundary,
             sort: this.sortBy,
@@ -1102,16 +943,7 @@ export default {
     },
     clearAllFilters() {
       this.searchQuery = '';
-      this.filterStageId = null;
-      this.filterTag = null;
-      this.filterCustomFieldKey = null;
-      this.filterCustomFieldValue = '';
-      this.filterMinValue = null;
-      this.filterMaxValue = null;
-      this.filterAssigneeId = null;
-      this.filterStatus = null;
-      this.filterCreatedFrom = '';
-      this.filterCreatedTo = '';
+      this.filters = emptyFilters();
       this.selectedDealIds = [];
     },
     async onDragEnd(event) {
