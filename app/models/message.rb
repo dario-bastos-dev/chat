@@ -360,7 +360,7 @@ class Message < ApplicationRecord
 
     active_sequences.find_each do |conv_seq|
       conv_seq.update!(
-        current_step: 0,
+        current_step: conv_seq.message_sequence.steps.order(:position).first,
         last_step_executed_at: Time.current
       )
     end
