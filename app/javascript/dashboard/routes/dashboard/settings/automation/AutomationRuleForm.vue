@@ -15,6 +15,7 @@ import { DURATION_UNITS } from 'dashboard/components-next/input/constants';
 import {
   AUTOMATION_RULE_EVENTS,
   AUTOMATION_ACTION_TYPES,
+  CRM_CONDITION_KEYS,
   DEFAULT_DELAY_MINUTES,
 } from './constants';
 import AutomationRunTypeSelector from './components/AutomationRunTypeSelector.vue';
@@ -154,9 +155,11 @@ const getTranslatedAttributes = (type, event) => {
   return getAttributes(type, event).map(attribute => {
     const skipTranslation =
       attribute.customAttributeType ||
-      ['contact_custom_attribute', 'conversation_custom_attribute', 'deal_custom_attribute'].includes(
-        attribute.key
-      );
+      [
+        'contact_custom_attribute',
+        'conversation_custom_attribute',
+        'deal_custom_attribute',
+      ].includes(attribute.key);
     return {
       ...attribute,
       name: skipTranslation
@@ -175,17 +178,11 @@ const filterTypes = computed(() => {
   let attributes = getTranslatedAttributes(props.automationTypes, event);
 
   if (!isCloudFeatureEnabled('crm')) {
-    const CRM_CONDITIONS = new Set([
-      'has_active_deal',
-      'deal_stage_id',
-      'deal_labels',
-    ]);
-    attributes = attributes.filter(attr => {
-      if (CRM_CONDITIONS.has(attr.key) || attr.customAttributeType === 'deal_attribute') {
-        return false;
-      }
-      return true;
-    });
+    attributes = attributes.filter(
+      attr =>
+        !CRM_CONDITION_KEYS.includes(attr.key) &&
+        attr.customAttributeType !== 'deal_attribute'
+    );
   }
 
   return attributes.map(attr => {

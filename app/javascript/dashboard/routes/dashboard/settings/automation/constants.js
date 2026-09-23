@@ -27,6 +27,8 @@ const CRM_CONDITIONS = [
   },
 ];
 
+export const CRM_CONDITION_KEYS = CRM_CONDITIONS.map(({ key }) => key);
+
 const CRM_ACTIONS = [
   {
     key: 'move_deal_stage',
