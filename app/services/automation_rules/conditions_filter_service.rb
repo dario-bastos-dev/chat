@@ -248,15 +248,18 @@ class AutomationRules::ConditionsFilterService < FilterService
     case attr_key
     when 'has_active_deal'
       has_deal = active_deal.present?
-      val = values.first.to_s
-      if filter_operator == 'equal_to'
-        val == 'true' ? has_deal : !has_deal
-      elsif filter_operator == 'is_present'
+      expected = values.first.to_s == 'true'
+      case filter_operator
+      when 'equal_to'
+        has_deal == expected
+      when 'not_equal_to'
+        has_deal != expected
+      when 'is_present'
         has_deal
-      elsif filter_operator == 'is_not_present'
+      when 'is_not_present'
         !has_deal
       else
-        has_deal
+        false
       end
     when 'deal_stage_id'
       return false if active_deal.blank?

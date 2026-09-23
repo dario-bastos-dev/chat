@@ -304,5 +304,39 @@ RSpec.describe AutomationRules::ConditionsFilterService do
         expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(false)
       end
     end
+
+    context 'when conditions based on has_active_deal' do
+      context 'with equal_to true' do
+        before do
+          rule.conditions = [{ 'values': ['true'], 'attribute_key': 'has_active_deal', 'query_operator': nil, 'filter_operator': 'equal_to' }]
+          rule.save
+        end
+
+        it 'returns true when the contact has an open deal' do
+          create(:deal, account: account, contact: conversation.contact)
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'returns false when the contact has no open deal' do
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(false)
+        end
+      end
+
+      context 'with not_equal_to true' do
+        before do
+          rule.conditions = [{ 'values': ['true'], 'attribute_key': 'has_active_deal', 'query_operator': nil, 'filter_operator': 'not_equal_to' }]
+          rule.save
+        end
+
+        it 'returns false when the contact has an open deal' do
+          create(:deal, account: account, contact: conversation.contact)
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(false)
+        end
+
+        it 'returns true when the contact has no open deal' do
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+      end
+    end
   end
 end
