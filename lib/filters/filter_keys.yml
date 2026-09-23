@@ -87,6 +87,7 @@ conversations:
       - "equal_to"
       - "not_equal_to"
       - "contains"
+      - "does_not_contain"
       - "is_present"
       - "is_not_present"
   browser_language:

@@ -126,6 +126,10 @@ export const OPERATOR_TYPES_7 = [
     label: 'Contains',
   },
   {
+    value: 'does_not_contain',
+    label: 'Does not contain',
+  },
+  {
     value: 'is_present',
     label: 'Is present',
   },

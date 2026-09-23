@@ -306,6 +306,22 @@ describe Conversations::FilterService do
         expect(result[:count][:all_count]).to be 1
       end
 
+      it 'filter conversations without any of the given tags' do
+        user_2_assigned_conversation.update_labels('support')
+        params[:payload] = [
+          {
+            attribute_key: 'labels',
+            filter_operator: 'does_not_contain',
+            values: %w[support billing],
+            query_operator: nil
+          }.with_indifferent_access
+        ]
+        result = filter_service.new(params, user_1, account).perform
+        conversation_ids = result[:conversations].map(&:id)
+        expect(conversation_ids).not_to include(user_2_assigned_conversation.id)
+        expect(conversation_ids).to include(en_conversation_1.id, en_conversation_2.id)
+      end
+
       it 'applies the planner hint to permission scoping only for selective label filters' do
         hinted_sql = lambda do |payload|
           params[:payload] = payload.map(&:with_indifferent_access)

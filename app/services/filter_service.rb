@@ -146,7 +146,7 @@ class FilterService
     case query_hash[:filter_operator]
     when 'equal_to', 'contains'
       "EXISTS (#{tag_model_relation_query} #{tag_query}) #{query_operator}"
-    when 'not_equal_to'
+    when 'not_equal_to', 'does_not_contain'
       "NOT EXISTS (#{tag_model_relation_query} #{tag_query}) #{query_operator}"
     when 'is_present'
       "EXISTS (#{tag_model_relation_query}) #{query_operator}"

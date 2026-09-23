@@ -248,6 +248,38 @@ RSpec.describe AutomationRules::ConditionsFilterService do
         end
       end
 
+      context 'when filter_operator is does_not_contain' do
+        before do
+          conversation.update_labels(%w[bug feature])
+        end
+
+        it 'will return true when none of the selected labels is present' do
+          rule.update!(conditions: [{ 'values': %w[billing urgent], 'attribute_key': 'labels', 'query_operator': nil,
+                                      'filter_operator': 'does_not_contain' }])
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'will return false when any of the selected labels is present' do
+          rule.update!(conditions: [{ 'values': %w[billing feature], 'attribute_key': 'labels', 'query_operator': nil,
+                                      'filter_operator': 'does_not_contain' }])
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(false)
+        end
+
+        it 'will return true when the conversation has no labels' do
+          conversation.update_labels([])
+          rule.update!(conditions: [{ 'values': ['bug'], 'attribute_key': 'labels', 'query_operator': nil, 'filter_operator': 'does_not_contain' }])
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+
+        it 'will return true when combined with contains and only the required label is present' do
+          rule.update!(conditions: [
+                         { 'values': ['bug'], 'attribute_key': 'labels', 'query_operator': 'AND', 'filter_operator': 'contains' },
+                         { 'values': ['billing'], 'attribute_key': 'labels', 'query_operator': nil, 'filter_operator': 'does_not_contain' }
+                       ])
+          expect(described_class.new(rule, conversation, { changed_attributes: {} }).perform).to be(true)
+        end
+      end
+
       context 'when filter_operator is is_present' do
         before do
           rule.conditions = [

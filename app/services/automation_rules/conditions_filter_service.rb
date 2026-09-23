@@ -178,7 +178,7 @@ class AutomationRules::ConditionsFilterService < FilterService
       @filter_values[value_placeholder] = query_hash['values'].first
       sql_operator = query_hash['filter_operator'] == 'equal_to' ? '=' : '!='
       " tags.name #{sql_operator} :#{value_placeholder} #{query_operator} "
-    when 'contains'
+    when 'contains', 'does_not_contain'
       label_contains_query_string(query_hash, current_index, query_operator)
     when 'is_present'
       " tags.id IS NOT NULL #{query_operator} "
@@ -190,13 +190,15 @@ class AutomationRules::ConditionsFilterService < FilterService
   end
 
   # EXISTS olha todas as etiquetas da conversa, nao so a linha do JOIN com `tags`,
-  # entao varias condicoes "contem" combinadas com AND funcionam.
+  # entao varias condicoes "contem" combinadas com AND funcionam. "Nao contem" e o
+  # NOT EXISTS da mesma consulta: passa quando nenhuma das etiquetas esta na conversa.
   def label_contains_query_string(query_hash, current_index, query_operator)
     return " 1=0 #{query_operator} " if query_hash['values'].blank?
 
     value_placeholder = "value_#{current_index}"
     @filter_values[value_placeholder] = query_hash['values']
-    ' EXISTS (SELECT 1 FROM taggings label_taggings INNER JOIN tags label_tags ON label_tags.id = label_taggings.tag_id ' \
+    negation = 'NOT' if query_hash['filter_operator'] == 'does_not_contain'
+    " #{negation} EXISTS (SELECT 1 FROM taggings label_taggings INNER JOIN tags label_tags ON label_tags.id = label_taggings.tag_id " \
       "WHERE label_taggings.taggable_id = conversations.id AND label_taggings.taggable_type = 'Conversation' " \
       "AND label_tags.name IN (:#{value_placeholder})) #{query_operator} "
   end
