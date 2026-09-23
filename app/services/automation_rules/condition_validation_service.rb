@@ -1,8 +1,6 @@
 class AutomationRules::ConditionValidationService
   ATTRIBUTE_MODEL = 'conversation_attribute'.freeze
-  # Deal conditions live outside filter_keys.yml: ConditionsFilterService#evaluate_crm_condition
-  # checks them in Ruby against the deal, and these are the operators it understands.
-  CRM_CONDITION_KEYS = %w[has_active_deal deal_stage_id deal_labels].freeze
+  # The operators ConditionsFilterService#evaluate_crm_condition understands for deal conditions.
   CRM_CONDITION_OPERATORS = %w[equal_to not_equal_to is_present is_not_present].freeze
 
   def initialize(rule)
@@ -38,7 +36,7 @@ class AutomationRules::ConditionValidationService
 
   def valid_condition?(condition)
     key = condition['attribute_key']
-    return CRM_CONDITION_OPERATORS.include?(condition['filter_operator']) if CRM_CONDITION_KEYS.include?(key)
+    return CRM_CONDITION_OPERATORS.include?(condition['filter_operator']) if AutomationRule::DEAL_CONDITION_ATTRIBUTES.include?(key)
 
     conversation_filter = @conversation_filters[key]
     contact_filter = @contact_filters[key]
