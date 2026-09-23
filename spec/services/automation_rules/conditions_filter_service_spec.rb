@@ -343,12 +343,12 @@ RSpec.describe AutomationRules::ConditionsFilterService do
       subject(:matches) { described_class.new(rule, conversation, { deal: deal, changed_attributes: {} }).perform }
 
       let(:deal) { create(:deal, account: account, contact: conversation.contact) }
-      let(:other_stage) { create(:stage, pipeline: deal.pipeline) }
+      let(:other_stage) { create(:stage, pipeline: deal.pipeline, position: deal.stage.position + 1) }
       let(:filter_operator) { 'equal_to' }
       let(:values) { [deal.stage_id] }
 
       before do
-        rule.update(conditions: [{ 'values': values, 'attribute_key': 'deal_stage_id', 'query_operator': nil, 'filter_operator': filter_operator }])
+        rule.update!(conditions: [{ 'values': values, 'attribute_key': 'deal_stage_id', 'query_operator': nil, 'filter_operator': filter_operator }])
       end
 
       it 'returns true when the deal is in the rule stage' do
@@ -366,13 +366,14 @@ RSpec.describe AutomationRules::ConditionsFilterService do
         it 'returns false' do
           expect(matches).to be(false)
         end
+      end
 
-        context 'with not_equal_to' do
-          let(:filter_operator) { 'not_equal_to' }
+      context 'when the rule excludes another stage' do
+        let(:values) { [other_stage.id] }
+        let(:filter_operator) { 'not_equal_to' }
 
-          it 'returns true' do
-            expect(matches).to be(true)
-          end
+        it 'returns true' do
+          expect(matches).to be(true)
         end
       end
     end
@@ -386,7 +387,7 @@ RSpec.describe AutomationRules::ConditionsFilterService do
 
       before do
         deal.update_labels(%w[hot-lead])
-        rule.update(conditions: [{ 'values': values, 'attribute_key': 'deal_labels', 'query_operator': nil, 'filter_operator': filter_operator }])
+        rule.update!(conditions: [{ 'values': values, 'attribute_key': 'deal_labels', 'query_operator': nil, 'filter_operator': filter_operator }])
       end
 
       it 'returns true when the deal has one of the rule labels' do
@@ -409,6 +410,42 @@ RSpec.describe AutomationRules::ConditionsFilterService do
           deal.update_labels([])
           expect(matches).to be(true)
         end
+      end
+    end
+
+    # The form saves the last condition with a nil query_operator, so conditions evaluated in Ruby
+    # must not append a dangling AND to the SQL when they come last.
+    context 'when a condition evaluated in Ruby comes last' do
+      let(:deal) { create(:deal, account: account, contact: conversation.contact) }
+
+      it 'matches a deal condition after a standard condition' do
+        rule.update!(conditions: [
+                       { 'values': ['open'], 'attribute_key': 'status', 'query_operator': 'AND', 'filter_operator': 'equal_to' },
+                       { 'values': [deal.stage_id], 'attribute_key': 'deal_stage_id', 'query_operator': nil, 'filter_operator': 'equal_to' }
+                     ])
+        expect(described_class.new(rule, conversation, { deal: deal, changed_attributes: {} }).perform).to be(true)
+      end
+
+      it 'keeps the AND between a deal condition and a standard condition that fails' do
+        rule.update!(conditions: [
+                       { 'values': [deal.stage_id], 'attribute_key': 'deal_stage_id', 'query_operator': 'AND', 'filter_operator': 'equal_to' },
+                       { 'values': ['resolved'], 'attribute_key': 'status', 'query_operator': nil, 'filter_operator': 'equal_to' }
+                     ])
+        expect(described_class.new(rule, conversation, { deal: deal, changed_attributes: {} }).perform).to be(false)
+      end
+
+      it 'matches is_first_message' do
+        rule.update!(conditions: [{ 'values': ['true'], 'attribute_key': 'is_first_message', 'query_operator': nil, 'filter_operator': 'equal_to' }])
+        expect(described_class.new(rule, conversation, { message: message, changed_attributes: {} }).perform).to be(true)
+      end
+
+      it 'matches a deal custom attribute' do
+        create(:custom_attribute_definition, account: account, attribute_key: 'origem', attribute_model: 'deal_attribute')
+        deal.update!(custom_attributes: { 'origem' => 'site' })
+        condition = { 'values': ['site'], 'attribute_key': 'origem', 'query_operator': nil, 'filter_operator': 'equal_to',
+                      'custom_attribute_type': 'deal_attribute' }
+        rule.update!(conditions: [condition])
+        expect(described_class.new(rule, conversation, { deal: deal, changed_attributes: {} }).perform).to be(true)
       end
     end
   end

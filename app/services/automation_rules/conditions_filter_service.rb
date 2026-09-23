@@ -68,16 +68,13 @@ class AutomationRules::ConditionsFilterService < FilterService
 
     if AutomationRule::DEAL_CONDITION_ATTRIBUTES.include?(query_hash['attribute_key'])
       result = evaluate_crm_condition(query_hash)
-      query_operator = query_hash['query_operator'] || 'AND'
-      @query_string += " #{result ? '1=1' : '1=0'} #{query_operator} "
+      @query_string += " #{result ? '1=1' : '1=0'} #{query_hash['query_operator']} "
     elsif query_hash['attribute_key'] == 'is_first_message'
       result = evaluate_is_first_message_condition(query_hash)
-      query_operator = query_hash['query_operator'] || 'AND'
-      @query_string += " #{result ? '1=1' : '1=0'} #{query_operator} "
+      @query_string += " #{result ? '1=1' : '1=0'} #{query_hash['query_operator']} "
     elsif definition&.attribute_model == 'deal_attribute'
       result = evaluate_deal_custom_attribute(query_hash, definition)
-      query_operator = query_hash['query_operator'] || 'AND'
-      @query_string += " #{result ? '1=1' : '1=0'} #{query_operator} "
+      @query_string += " #{result ? '1=1' : '1=0'} #{query_hash['query_operator']} "
     elsif conversation_filter
       @query_string += conversation_query_string('conversations', conversation_filter, query_hash.with_indifferent_access, current_index)
     elsif contact_filter
