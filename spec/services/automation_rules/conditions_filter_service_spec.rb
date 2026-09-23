@@ -338,5 +338,78 @@ RSpec.describe AutomationRules::ConditionsFilterService do
         end
       end
     end
+
+    context 'when conditions based on deal_stage_id' do
+      subject(:matches) { described_class.new(rule, conversation, { deal: deal, changed_attributes: {} }).perform }
+
+      let(:deal) { create(:deal, account: account, contact: conversation.contact) }
+      let(:other_stage) { create(:stage, pipeline: deal.pipeline) }
+      let(:filter_operator) { 'equal_to' }
+      let(:values) { [deal.stage_id] }
+
+      before do
+        rule.update(conditions: [{ 'values': values, 'attribute_key': 'deal_stage_id', 'query_operator': nil, 'filter_operator': filter_operator }])
+      end
+
+      it 'returns true when the deal is in the rule stage' do
+        expect(matches).to be(true)
+      end
+
+      it 'checks the deal from the event instead of another open deal of the contact' do
+        create(:deal, account: account, contact: conversation.contact, pipeline: deal.pipeline, stage: other_stage)
+        expect(matches).to be(true)
+      end
+
+      context 'when the rule points to another stage' do
+        let(:values) { [other_stage.id] }
+
+        it 'returns false' do
+          expect(matches).to be(false)
+        end
+
+        context 'with not_equal_to' do
+          let(:filter_operator) { 'not_equal_to' }
+
+          it 'returns true' do
+            expect(matches).to be(true)
+          end
+        end
+      end
+    end
+
+    context 'when conditions based on deal_labels' do
+      subject(:matches) { described_class.new(rule, conversation, { deal: deal, changed_attributes: {} }).perform }
+
+      let(:deal) { create(:deal, account: account, contact: conversation.contact) }
+      let(:filter_operator) { 'equal_to' }
+      let(:values) { %w[hot-lead vip] }
+
+      before do
+        deal.update_labels(%w[hot-lead])
+        rule.update(conditions: [{ 'values': values, 'attribute_key': 'deal_labels', 'query_operator': nil, 'filter_operator': filter_operator }])
+      end
+
+      it 'returns true when the deal has one of the rule labels' do
+        expect(matches).to be(true)
+      end
+
+      context 'with not_equal_to' do
+        let(:filter_operator) { 'not_equal_to' }
+
+        it 'returns false when the deal has one of the rule labels' do
+          expect(matches).to be(false)
+        end
+      end
+
+      context 'with is_not_present' do
+        let(:filter_operator) { 'is_not_present' }
+        let(:values) { [] }
+
+        it 'returns true when the deal has no labels' do
+          deal.update_labels([])
+          expect(matches).to be(true)
+        end
+      end
+    end
   end
 end
