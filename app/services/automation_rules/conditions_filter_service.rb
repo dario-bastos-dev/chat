@@ -66,7 +66,7 @@ class AutomationRules::ConditionsFilterService < FilterService
     message_filter = @message_filters[query_hash['attribute_key']]
     definition = custom_attr_definition(query_hash['attribute_key'])
 
-    if %w[has_active_deal deal_stage_id deal_labels].include?(query_hash['attribute_key'])
+    if AutomationRules::ConditionValidationService::CRM_CONDITION_KEYS.include?(query_hash['attribute_key'])
       result = evaluate_crm_condition(query_hash)
       query_operator = query_hash['query_operator'] || 'AND'
       @query_string += " #{result ? '1=1' : '1=0'} #{query_operator} "

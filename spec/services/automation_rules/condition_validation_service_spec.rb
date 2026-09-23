@@ -113,5 +113,33 @@ RSpec.describe AutomationRules::ConditionValidationService do
         expect(described_class.new(rule).perform).to be(false)
       end
     end
+
+    context 'with deal conditions' do
+      before do
+        rule.conditions = [
+          { 'values': ['true'], 'attribute_key': 'has_active_deal', 'query_operator': 'AND', 'filter_operator': 'equal_to' },
+          { 'values': ['12'], 'attribute_key': 'deal_stage_id', 'query_operator': 'AND', 'filter_operator': 'not_equal_to' },
+          { 'values': [], 'attribute_key': 'deal_labels', 'query_operator': nil, 'filter_operator': 'is_present' }
+        ]
+        rule.save
+      end
+
+      it 'returns true' do
+        expect(described_class.new(rule).perform).to be(true)
+      end
+    end
+
+    context 'with a deal condition using an unsupported operator' do
+      before do
+        rule.conditions = [
+          { 'values': ['12'], 'attribute_key': 'deal_stage_id', 'query_operator': nil, 'filter_operator': 'contains' }
+        ]
+        rule.save
+      end
+
+      it 'returns false' do
+        expect(described_class.new(rule).perform).to be(false)
+      end
+    end
   end
 end
