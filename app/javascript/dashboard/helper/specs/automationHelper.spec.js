@@ -158,6 +158,25 @@ describe('getActionOptions', () => {
       })
     ).toEqual(agents);
   });
+
+  it('offers the conversation assignee before the agents for assign_deal_agent', () => {
+    const agents = [{ id: 1, name: 'Agent 1' }];
+
+    expect(
+      helpers.getActionOptions({
+        agents,
+        type: 'assign_deal_agent',
+        addNoneToListFn: list => [{ id: 'nil', name: 'None' }, ...(list || [])],
+        t: key => key,
+      })
+    ).toEqual([
+      {
+        id: 'conversation_assignee',
+        name: 'AUTOMATION.ACTION.DEAL_ASSIGNEE_SAME_AS_CONVERSATION',
+      },
+      { id: 1, name: 'Agent 1' },
+    ]);
+  });
 });
 
 describe('getConditionOptions', () => {

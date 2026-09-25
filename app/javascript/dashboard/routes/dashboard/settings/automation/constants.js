@@ -39,6 +39,10 @@ const CRM_ACTIONS = [
     name: 'SYNC_DEAL_ASSIGNEE',
   },
   {
+    key: 'assign_deal_agent',
+    name: 'ASSIGN_DEAL_AGENT',
+  },
+  {
     key: 'change_deal_status',
     name: 'CHANGE_DEAL_STATUS',
   },
@@ -959,6 +963,11 @@ export const AUTOMATION_ACTION_TYPES = [
     key: 'sync_deal_assignee',
     label: 'SYNC_DEAL_ASSIGNEE',
     inputType: 'deal_assignee_sync',
+  },
+  {
+    key: 'assign_deal_agent',
+    label: 'ASSIGN_DEAL_AGENT',
+    inputType: 'search_select',
   },
   {
     key: 'change_deal_status',

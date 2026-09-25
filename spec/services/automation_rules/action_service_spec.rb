@@ -311,5 +311,44 @@ RSpec.describe AutomationRules::ActionService do
         expect(conversation.reload.assignee).to eq(agent)
       end
     end
+
+    describe '#perform with assign_deal_agent action' do
+      let(:deal_owner) { create(:user, account: account) }
+      let!(:deal) { create(:deal, account: account, contact: conversation.contact, assignee: deal_owner) }
+      let(:action_param) { agent.id }
+
+      before do
+        rule.update!(actions: [{ action_name: 'assign_deal_agent', action_params: [action_param] }])
+      end
+
+      it 'assigns the chosen agent to the open deal' do
+        described_class.new(rule, account, conversation).perform
+        expect(deal.reload.assignee).to eq(agent)
+      end
+
+      context 'when set to the conversation assignee' do
+        let(:action_param) { 'conversation_assignee' }
+
+        it 'copies the conversation assignee' do
+          conversation.update!(assignee: agent)
+          described_class.new(rule, account, conversation).perform
+          expect(deal.reload.assignee).to eq(agent)
+        end
+
+        it 'keeps the deal assignee when the conversation has no assignee' do
+          described_class.new(rule, account, conversation).perform
+          expect(deal.reload.assignee).to eq(deal_owner)
+        end
+      end
+
+      context 'when the user belongs to another account' do
+        let(:action_param) { create(:user).id }
+
+        it 'keeps the deal assignee' do
+          described_class.new(rule, account, conversation).perform
+          expect(deal.reload.assignee).to eq(deal_owner)
+        end
+      end
+    end
   end
 end

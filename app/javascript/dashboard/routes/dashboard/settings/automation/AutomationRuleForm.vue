@@ -245,6 +245,7 @@ const CRM_ACTIONS = new Set([
   'move_deal_stage',
   'update_deal_info',
   'sync_deal_assignee',
+  'assign_deal_agent',
   'change_deal_status',
   'add_deal_label',
   'remove_deal_label',

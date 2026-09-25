@@ -105,6 +105,7 @@
       "SYNC_ASSIGNEE_DEAL_TO_CONV": "Sincronizar responsável do negócio para a conversa",
       "DEAL_ASSIGNEE_AUTO": "Atribuição automática",
       "DEAL_ASSIGNEE_FROM_CONVERSATION": "Responsável da conversa",
+      "DEAL_ASSIGNEE_SAME_AS_CONVERSATION": "Mesmo da conversa",
       "STATUS_WON": "Ganho",
       "STATUS_LOST": "Perdido",
       "MESSAGE_MODE": {
@@ -193,6 +194,7 @@
       "UPDATE_DEAL_INFO": "Atualizar Informações do Negócio",
       "MOVE_DEAL_STAGE": "Mover Negócio de Etapa",
       "SYNC_DEAL_ASSIGNEE": "Sincronizar Responsável",
+      "ASSIGN_DEAL_AGENT": "Alterar Responsável do Negócio",
       "CHANGE_DEAL_STATUS": "Marcar como Ganho/Perdido",
       "ADD_DEAL_LABEL": "Adicionar Etiqueta do Negócio",
       "REMOVE_DEAL_LABEL": "Remover Etiqueta do Negócio"

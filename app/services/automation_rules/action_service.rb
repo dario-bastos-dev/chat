@@ -274,6 +274,23 @@ class AutomationRules::ActionService < ActionService
     end
   end
 
+  # A conversa sem responsavel deixa o negocio como esta: "mesmo da conversa" nao
+  # deve tirar o dono do negocio so porque a conversa ainda nao foi atribuida.
+  def assign_deal_agent(params)
+    deal = @conversation.deals.where(status: 'open').first
+    deal ||= @account.deals.where(contact_id: @conversation.contact_id, status: 'open').first
+    return unless deal
+
+    assignee_id = if params[0].to_s == CONVERSATION_ASSIGNEE
+                    @conversation.assignee_id
+                  else
+                    @account.users.find_by(id: params[0])&.id
+                  end
+    return if assignee_id.blank? || assignee_id == deal.assignee_id
+
+    Deals::Updater.new(deal: deal, params: { assignee_id: assignee_id }).perform
+  end
+
   def change_deal_status(params)
     status_val = params[0]
     return unless %w[won lost].include?(status_val)

@@ -152,6 +152,7 @@
       "SYNC_ASSIGNEE_DEAL_TO_CONV": "Sync Deal assignee to Conversation",
       "DEAL_ASSIGNEE_AUTO": "Automatic assignment",
       "DEAL_ASSIGNEE_FROM_CONVERSATION": "Conversation assignee",
+      "DEAL_ASSIGNEE_SAME_AS_CONVERSATION": "Same as conversation",
       "STATUS_WON": "Won",
       "STATUS_LOST": "Lost",
       "MESSAGE_MODE": {
@@ -244,6 +245,7 @@
       "UPDATE_DEAL_INFO": "Update Deal Info",
       "MOVE_DEAL_STAGE": "Move Deal Stage",
       "SYNC_DEAL_ASSIGNEE": "Sync Assignee",
+      "ASSIGN_DEAL_AGENT": "Change Deal Assignee",
       "CHANGE_DEAL_STATUS": "Change Deal Status",
       "ADD_DEAL_LABEL": "Add Deal Label",
       "REMOVE_DEAL_LABEL": "Remove Deal Label"

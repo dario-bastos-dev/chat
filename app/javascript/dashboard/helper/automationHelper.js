@@ -129,6 +129,16 @@ export const getActionOptions = ({
       { id: 'conversation_to_deal', name: t ? t('AUTOMATION.ACTION.SYNC_ASSIGNEE_CONV_TO_DEAL') : 'Sync Conversation assignee to Deal' },
       { id: 'deal_to_conversation', name: t ? t('AUTOMATION.ACTION.SYNC_ASSIGNEE_DEAL_TO_CONV') : 'Sync Deal assignee to Conversation' },
     ],
+    // Sem a opcao "Nenhum": a acao troca o responsavel do negocio, nao o remove.
+    assign_deal_agent: [
+      {
+        id: 'conversation_assignee',
+        name: t
+          ? t('AUTOMATION.ACTION.DEAL_ASSIGNEE_SAME_AS_CONVERSATION')
+          : 'Same as conversation',
+      },
+      ...(agents || []),
+    ],
     change_deal_status: [
       { id: 'won', name: t ? t('AUTOMATION.ACTION.STATUS_WON') : 'Won' },
       { id: 'lost', name: t ? t('AUTOMATION.ACTION.STATUS_LOST') : 'Lost' },
