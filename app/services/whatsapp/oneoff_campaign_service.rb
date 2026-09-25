@@ -85,6 +85,8 @@ class Whatsapp::OneoffCampaignService
         process_conversation(conversation)
         already_processed << conversation.id
         campaign.update_column(:processed_deliveries, already_processed)
+        # update_column skips the callback that broadcasts campaign.updated, so the card's counter would freeze
+        Dispatcher.dispatch(Events::Types::CAMPAIGN_UPDATED, Time.zone.now, campaign: campaign)
         sent_count += 1
 
         remaining_count = already_processed.empty? ? scope.count : scope.where.not(id: already_processed).count
@@ -106,6 +108,8 @@ class Whatsapp::OneoffCampaignService
         process_contact(contact)
         already_processed << contact.id
         campaign.update_column(:processed_deliveries, already_processed)
+        # update_column skips the callback that broadcasts campaign.updated, so the card's counter would freeze
+        Dispatcher.dispatch(Events::Types::CAMPAIGN_UPDATED, Time.zone.now, campaign: campaign)
         sent_count += 1
 
         remaining_count = already_processed.empty? ? scope.count : scope.where.not(id: already_processed).count

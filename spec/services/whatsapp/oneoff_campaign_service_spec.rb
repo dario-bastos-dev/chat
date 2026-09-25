@@ -38,6 +38,9 @@ describe Whatsapp::OneoffCampaignService do
     before do
       # Enable WhatsApp campaigns feature flag for all tests
       account.enable_features!(:whatsapp_campaign)
+      # Campaign#set_display_id reloads the record after commit, and the create broadcast then caches
+      # its own Account copy with the flag off; drop it so the service reads the account as saved.
+      campaign.reload
     end
 
     context 'when campaign validation fails' do
@@ -93,6 +96,22 @@ describe Whatsapp::OneoffCampaignService do
         described_class.new(campaign: campaign).perform
 
         expect(campaign.reload.completed?).to be true
+      end
+
+      it 'broadcasts the delivery progress while the campaign is processing' do
+        contact = create(:contact, :with_phone_number, account: account)
+        contact.update_labels([label1.title])
+        broadcasted_progress = []
+        allow(Dispatcher).to receive(:dispatch).and_wrap_original do |original, event_name, timestamp, data, *rest|
+          if event_name == Events::Types::CAMPAIGN_UPDATED && data[:campaign].processing?
+            broadcasted_progress << data[:campaign].processed_deliveries.dup
+          end
+          original.call(event_name, timestamp, data, *rest)
+        end
+
+        described_class.new(campaign: campaign).perform
+
+        expect(broadcasted_progress).to include([contact.id])
       end
 
       it 'processes contacts with matching labels' do
