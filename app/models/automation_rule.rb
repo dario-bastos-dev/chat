@@ -51,14 +51,16 @@ class AutomationRule < ApplicationRecord
 
   def conditions_attributes
     %w[content email country_code status message_type browser_language assignee_id team_id referer city company inbox_id
-       mail_subject phone_number priority conversation_language labels is_first_message deal_custom_attribute] + DEAL_CONDITION_ATTRIBUTES
+       mail_subject phone_number priority conversation_language labels private_note is_first_message
+       deal_custom_attribute] + DEAL_CONDITION_ATTRIBUTES
   end
 
   def actions_attributes
-    %w[send_message add_label remove_label send_email_to_team assign_team assign_agent send_webhook_event mute_conversation
-       send_attachment change_status resolve_conversation open_conversation pending_conversation snooze_conversation change_priority
-       send_email_transcript add_private_note create_deal update_deal_info move_deal_stage sync_deal_assignee assign_deal_agent
-       change_deal_status add_deal_label remove_deal_label].freeze
+    %w[send_message add_label remove_label send_email_to_team assign_team assign_agent remove_assigned_agent
+       remove_assigned_team send_webhook_event mute_conversation send_attachment change_status resolve_conversation
+       open_conversation pending_conversation snooze_conversation change_priority send_email_transcript add_private_note
+       create_deal update_deal_info move_deal_stage sync_deal_assignee assign_deal_agent change_deal_status add_deal_label
+       remove_deal_label].freeze
   end
 
   def file_base_data
