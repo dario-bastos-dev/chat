@@ -405,6 +405,37 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
     end
   end
 
+  describe 'a group that several inboxes of the account belong to' do
+    # Every member receives the same message with the same id, so each connected number delivers it.
+    let(:inboxes) do
+      Array.new(4) do
+        create(:channel_whatsapp, provider: 'evolution_go',
+                                  provider_config: { 'instance_token' => 't', 'instance_id' => 'i', 'groups_enabled' => true },
+                                  sync_templates: false, validate_provider_config: false,
+                                  provider_instance_callbacks: false).inbox
+      end
+    end
+    let(:params) do
+      { 'event' => 'Message',
+        'data' => { 'Info' => info.merge('ID' => "wamid-shared-#{SecureRandom.hex(4)}", 'IsGroup' => true,
+                                         'Chat' => '120363429656097671@g.us'),
+                    'Message' => message_body,
+                    'groupData' => { 'Name' => 'Teste' } } }
+    end
+
+    it 'keeps the whole conversation in every inbox instead of splitting it between them' do
+      inboxes.each { |each_inbox| described_class.new(inbox: each_inbox, params: params).perform }
+
+      expect(inboxes.map { |each_inbox| each_inbox.messages.count }).to eq([1, 1, 1, 1])
+    end
+
+    it 'still drops a redelivery of the same message to the same inbox' do
+      2.times { described_class.new(inbox: inboxes.first, params: params).perform }
+
+      expect(inboxes.first.messages.count).to eq(1)
+    end
+  end
+
   describe 'group conversations' do
     let(:group_jid) { '120363111122223333@g.us' }
     # Unique id per example: the dedup lock lives in a pooled MockRedis that is not reset between

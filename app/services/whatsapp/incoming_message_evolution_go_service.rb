@@ -67,7 +67,9 @@ class Whatsapp::IncomingMessageEvolutionGoService
   def process_with_dedup_lock
     return process_message if message_id.blank?
 
-    dedup_lock = Whatsapp::MessageDedupLock.new(message_id)
+    # Scoped to the inbox: a group message reaches every connected number that belongs to the group,
+    # all with the same WhatsApp id, and each of those inboxes has to keep its own copy.
+    dedup_lock = Whatsapp::MessageDedupLock.new("#{inbox.id}:#{message_id}")
     return Rails.logger.info("[EVOLUTION_GO MSG] Duplicate prevented for #{message_id}") unless dedup_lock.acquire!
 
     begin
