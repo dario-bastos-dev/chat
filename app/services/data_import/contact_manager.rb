@@ -1,4 +1,6 @@
 class DataImport::ContactManager
+  SOCIAL_PROFILE_KEYS = %w[facebook github instagram telegram tiktok linkedin twitter].freeze
+
   def initialize(account)
     @account = account
     @existing_labels = @account.labels.pluck(:title).to_set
@@ -64,8 +66,22 @@ class DataImport::ContactManager
     contact.additional_attributes ||= {}
     contact.additional_attributes[:company_name] = params[:company_name] if params[:company_name].present?
     contact.additional_attributes[:city] = params[:city] if params[:city].present?
+    assign_social_profiles(params, contact)
     assign_labels(params, contact)
-    contact.assign_attributes(custom_attributes: contact.custom_attributes.merge(params.except(:identifier, :email, :name, :phone_number, :labels, :tags)))
+    excluded_keys = [:identifier, :email, :name, :phone_number, :labels, :tags, *SOCIAL_PROFILE_KEYS]
+    contact.assign_attributes(custom_attributes: contact.custom_attributes.merge(params.except(*excluded_keys)))
+  end
+
+  def assign_social_profiles(params, contact)
+    social_profiles = SOCIAL_PROFILE_KEYS.each_with_object({}) do |key, hash|
+      hash[key] = params[key] if params[key].present?
+    end
+    return if social_profiles.blank?
+
+    # String key on purpose: the column comes back from the database with string keys, so reading it
+    # with a symbol finds nothing and the merge would drop every network the contact already had.
+    existing = contact.additional_attributes['social_profiles'] || {}
+    contact.additional_attributes['social_profiles'] = existing.merge(social_profiles)
   end
 
   def assign_labels(params, contact)
