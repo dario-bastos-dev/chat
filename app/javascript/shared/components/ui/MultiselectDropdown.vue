@@ -1,13 +1,15 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { OnClickOutside } from '@vueuse/components';
-import { useToggle } from '@vueuse/core';
+import { useElementSize, useToggle } from '@vueuse/core';
+import { useDropdownPosition } from 'dashboard/composables/useDropdownPosition';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import EmojiIcon from 'dashboard/components-next/emoji-icon-picker/EmojiIcon.vue';
 import MultiselectDropdownItems from 'shared/components/ui/MultiselectDropdownItems.vue';
+import TeleportWithDirection from 'dashboard/components-next/TeleportWithDirection.vue';
 
 const props = defineProps({
   options: {
@@ -47,6 +49,21 @@ const props = defineProps({
 const emit = defineEmits(['select']);
 const [showSearchDropdown, toggleDropdown] = useToggle(false);
 
+// The panel is teleported to body so it isn't clipped by scrollable ancestors
+const triggerRef = ref(null);
+const dropdownRef = ref(null);
+const { width: triggerWidth } = useElementSize(triggerRef);
+const { fixedPosition } = useDropdownPosition(
+  triggerRef,
+  dropdownRef,
+  showSearchDropdown,
+  { align: 'start' }
+);
+const dropdownStyle = computed(() => ({
+  ...fixedPosition.value.style,
+  width: `${triggerWidth.value}px`,
+}));
+
 const onCloseDropdown = () => toggleDropdown(false);
 const onClickSelectItem = value => {
   emit('select', value);
@@ -78,8 +95,11 @@ const selectedThumbnail = computed(
 </script>
 
 <template>
-  <OnClickOutside @trigger="onCloseDropdown">
-    <div class="relative w-full mb-2" @keyup.esc="onCloseDropdown">
+  <OnClickOutside
+    :options="{ ignore: ['[data-multiselect-dropdown-panel]'] }"
+    @trigger="onCloseDropdown"
+  >
+    <div ref="triggerRef" class="w-full mb-2" @keyup.esc="onCloseDropdown">
       <Button
         slate
         outline
@@ -138,32 +158,34 @@ const selectedThumbnail = computed(
           class="size-5 text-n-slate-11"
         />
       </Button>
-      <div
-        :class="{
-          'block visible': showSearchDropdown,
-          'hidden invisible': !showSearchDropdown,
-        }"
-        class="box-border top-[2.625rem] w-full border rounded-lg bg-n-alpha-3 backdrop-blur-[100px] absolute shadow-lg border-n-strong dark:border-n-strong p-2 z-[9999]"
-      >
-        <div class="flex items-center justify-between mb-1">
-          <h4
-            class="m-0 overflow-hidden text-sm text-n-slate-11 whitespace-nowrap text-ellipsis"
-          >
-            {{ multiselectorTitle }}
-          </h4>
-          <Button ghost slate xs icon="i-lucide-x" @click="onCloseDropdown" />
+      <TeleportWithDirection v-if="showSearchDropdown" to="body">
+        <div
+          ref="dropdownRef"
+          data-multiselect-dropdown-panel
+          :class="fixedPosition.class"
+          :style="dropdownStyle"
+          class="box-border overflow-y-auto border rounded-lg bg-n-alpha-3 backdrop-blur-[100px] shadow-lg border-n-strong dark:border-n-strong p-2"
+          @keyup.esc="onCloseDropdown"
+        >
+          <div class="flex items-center justify-between mb-1">
+            <h4
+              class="m-0 overflow-hidden text-sm text-n-slate-11 whitespace-nowrap text-ellipsis"
+            >
+              {{ multiselectorTitle }}
+            </h4>
+            <Button ghost slate xs icon="i-lucide-x" @click="onCloseDropdown" />
+          </div>
+          <MultiselectDropdownItems
+            :options="options"
+            :selected-items="[selectedItem]"
+            :has-thumbnail="hasThumbnail"
+            :input-placeholder="inputPlaceholder"
+            :no-search-result="noSearchResult"
+            :show-emoji-icon="showEmojiIcon"
+            @select="onClickSelectItem"
+          />
         </div>
-        <MultiselectDropdownItems
-          v-if="showSearchDropdown"
-          :options="options"
-          :selected-items="[selectedItem]"
-          :has-thumbnail="hasThumbnail"
-          :input-placeholder="inputPlaceholder"
-          :no-search-result="noSearchResult"
-          :show-emoji-icon="showEmojiIcon"
-          @select="onClickSelectItem"
-        />
-      </div>
+      </TeleportWithDirection>
     </div>
   </OnClickOutside>
 </template>
