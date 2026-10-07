@@ -160,7 +160,7 @@ Rails.application.routes.draw do
               resources :labels, only: [:create, :index]
               resource :participants, only: [:show, :create, :update, :destroy]
               resource :direct_uploads, only: [:create]
-              resources :draft_messages, only: [:show, :update, :destroy]
+              resource :draft_messages, only: [:show, :update, :destroy]
               resources :scheduled_messages, only: [:index, :create, :update, :destroy]
               resources :conversation_sequences, only: [:index, :create, :destroy]
             end
