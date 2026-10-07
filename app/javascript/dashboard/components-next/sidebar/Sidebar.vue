@@ -424,6 +424,14 @@ const menuItems = computed(() => {
           to: accountScopedRoute('home'),
         },
         {
+          name: 'Unattended',
+          activeOn: ['conversation_through_unattended'],
+          label: t('SIDEBAR.UNATTENDED_CONVERSATIONS'),
+          icon: 'i-lucide-clock-alert',
+          badgeCount: conversationSidebarCounts.value.unattendedCount,
+          to: accountScopedRoute('conversation_unattended'),
+        },
+        {
           name: 'Mentions',
           label: t('SIDEBAR.MENTIONED_CONVERSATIONS'),
           icon: 'i-lucide-at-sign',
@@ -438,14 +446,6 @@ const menuItems = computed(() => {
           badgeCount: conversationSidebarCounts.value.participatingCount,
           activeOn: ['conversation_through_participating'],
           to: accountScopedRoute('conversation_participating'),
-        },
-        {
-          name: 'Unattended',
-          activeOn: ['conversation_through_unattended'],
-          label: t('SIDEBAR.UNATTENDED_CONVERSATIONS'),
-          icon: 'i-lucide-clock-alert',
-          badgeCount: conversationSidebarCounts.value.unattendedCount,
-          to: accountScopedRoute('conversation_unattended'),
         },
         {
           name: 'Folders',
