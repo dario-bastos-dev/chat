@@ -6,9 +6,9 @@ class Conversations::UnreadCounts::FilterQueryCounter < Conversations::FilterSer
     PG::InvalidTextRepresentation
     PG::NumericValueOutOfRange
   ].freeze
-  DAYS_BEFORE_FILTER_OPERATOR = 'days_before'.freeze
   MALFORMED_QUERY_ERRORS = [NoMethodError, TypeError].freeze
   NUMERIC_ATTRIBUTE_KEYS = %w[assignee_id inbox_id].freeze
+  RELATIVE_DATE_FILTER_OPERATORS = %w[days_before hours_before].freeze
   TEXT_DATA_TYPES = %w[labels link text text_case_insensitive].freeze
   TEXT_FILTER_OPERATORS = %w[contains does_not_contain].freeze
   TYPED_DATA_TYPES = %w[boolean date number numeric].freeze
@@ -122,7 +122,7 @@ class Conversations::UnreadCounts::FilterQueryCounter < Conversations::FilterSer
     when 'boolean'
       BOOLEAN_VALUES.include?(value.to_s.downcase)
     when 'date'
-      return Integer(value.to_s, exception: false).present? if filter_operator == DAYS_BEFORE_FILTER_OPERATOR
+      return Integer(value.to_s, exception: false).present? if RELATIVE_DATE_FILTER_OPERATORS.include?(filter_operator)
 
       Date.iso8601(value.to_s).present?
     when 'numeric'

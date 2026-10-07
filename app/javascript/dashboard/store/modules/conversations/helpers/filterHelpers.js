@@ -252,6 +252,16 @@ const matchesCondition = (conversationValue, filter) => {
     case 'is_less_than':
       return compareDates(conversationValue, filterValue, (a, b) => a < b);
 
+    case 'hours_before': {
+      const conversationDate = coerceToDate(conversationValue);
+      const hours = Number(
+        Array.isArray(filterValue) ? filterValue[0] : filterValue
+      );
+      if (conversationDate === null || !hours) return false;
+
+      return conversationDate.getTime() < Date.now() - hours * 60 * 60 * 1000;
+    }
+
     case 'days_before': {
       if (isNullish) {
         return false;

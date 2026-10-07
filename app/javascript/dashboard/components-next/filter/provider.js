@@ -71,10 +71,11 @@ export function useConversationFilterContext() {
     getOperatorTypes,
   } = useOperators();
 
-  // Conversation date columns also accept "equal to", matching the whole day.
+  // Conversation date columns also accept "equal to" (whole day) and "hours before".
   const conversationDateOperators = computed(() => [
     operators.value.equal_to,
     ...dateOperators.value,
+    operators.value.hours_before,
   ]);
 
   const searchContacts = createContactSearcher();

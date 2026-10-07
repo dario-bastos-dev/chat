@@ -12,6 +12,7 @@ import { useI18n } from 'vue-i18n';
  * @property {string} IS_GREATER_THAN - Greater than comparison
  * @property {string} IS_LESS_THAN - Less than comparison
  * @property {string} DAYS_BEFORE - Days before check
+ * @property {string} HOURS_BEFORE - Hours before check
  * @property {string} STARTS_WITH - Starts with check
  */
 
@@ -34,6 +35,7 @@ const FILTER_OPS = {
   IS_GREATER_THAN: 'is_greater_than',
   IS_LESS_THAN: 'is_less_than',
   DAYS_BEFORE: 'days_before',
+  HOURS_BEFORE: 'hours_before',
   STARTS_WITH: 'starts_with',
 };
 
@@ -41,6 +43,7 @@ const NO_INPUT_OPTS = [FILTER_OPS.IS_PRESENT, FILTER_OPS.IS_NOT_PRESENT];
 
 const OPS_INPUT_OVERRIDE = {
   [FILTER_OPS.DAYS_BEFORE]: 'plainText',
+  [FILTER_OPS.HOURS_BEFORE]: 'plainText',
 };
 
 /**
@@ -56,6 +59,7 @@ const filterOperatorIcon = {
   [FILTER_OPS.IS_GREATER_THAN]: 'i-ph-greater-than-bold',
   [FILTER_OPS.IS_LESS_THAN]: 'i-ph-less-than-bold',
   [FILTER_OPS.DAYS_BEFORE]: 'i-ph-calendar-minus-bold',
+  [FILTER_OPS.HOURS_BEFORE]: 'i-ph-clock-counter-clockwise-bold',
   [FILTER_OPS.STARTS_WITH]: 'i-ph-caret-line-right-bold',
 };
 

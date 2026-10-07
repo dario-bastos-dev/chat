@@ -56,7 +56,7 @@ export const validateSingleFilter = filter => {
   }
 
   if (
-    filter.filter_operator === 'days_before' &&
+    ['days_before', 'hours_before'].includes(filter.filter_operator) &&
     (parseInt(filter.values, 10) <= 0 || parseInt(filter.values, 10) >= 999)
   ) {
     return VALUE_MUST_BE_BETWEEN_1_AND_998;

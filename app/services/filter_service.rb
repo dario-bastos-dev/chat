@@ -41,6 +41,8 @@ class FilterService
       lt_gt_filter_query(query_hash, current_index)
     when 'days_before'
       days_before_filter_query(query_hash, current_index)
+    when 'hours_before'
+      hours_before_filter_query(query_hash, current_index)
     else
       @filter_values["value_#{current_index}"] = filter_values(query_hash).to_s
       "= :value_#{current_index}"
@@ -122,6 +124,15 @@ class FilterService
     )
 
     lt_gt_filter_query(updated_query_hash, current_index)
+  end
+
+  def hours_before_filter_query(query_hash, current_index)
+    hours = Integer(query_hash['values'][0].to_s, 10, exception: false)
+    # Same 1..998 bound as days_before, enforced by the UI validation too
+    raise CustomExceptions::CustomFilter::InvalidValue.new(attribute_name: query_hash['attribute_key']) unless hours&.between?(1, 998)
+
+    @filter_values["value_#{current_index}"] = Time.current - hours.hours
+    "< :value_#{current_index}"
   end
 
   # Standard date attributes are timestamps, so "equal to" matches the whole day
