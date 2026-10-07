@@ -24,6 +24,19 @@ describe('customViewsHelper', () => {
       ).toEqual('plain_text');
     });
 
+    it('should return plain_text if key is created_at or last_activity_at and operator is hours_before', () => {
+      const filterTypes = [
+        { attributeKey: 'created_at', inputType: 'date' },
+        { attributeKey: 'last_activity_at', inputType: 'date' },
+      ];
+      expect(getInputType('created_at', 'hours_before', filterTypes)).toEqual(
+        'plain_text'
+      );
+      expect(
+        getInputType('last_activity_at', 'hours_before', filterTypes)
+      ).toEqual('plain_text');
+    });
+
     it('should return inputType if key is not created_at or last_activity_at', () => {
       const filterTypes = [
         { attributeKey: 'created_at', inputType: 'date' },

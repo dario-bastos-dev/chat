@@ -1177,6 +1177,121 @@ describe('filterHelpers', () => {
       expect(matchesFilters(conversation, filters)).toBe(true);
     });
 
+    // Standard date attributes. Dates are built in the local timezone so the
+    // assertions hold wherever the suite runs.
+    describe('date operators on standard date attributes', () => {
+      const toUnix = date => Math.floor(date.getTime() / 1000);
+      const dateFilter = (attributeKey, filterOperator, values) => [
+        {
+          attribute_key: attributeKey,
+          filter_operator: filterOperator,
+          values,
+          query_operator: null,
+        },
+      ];
+
+      describe('equal_to', () => {
+        it('matches timestamps anywhere within the filtered local day', () => {
+          const startOfDay = {
+            created_at: toUnix(new Date(2024, 0, 15, 0, 5)),
+          };
+          const endOfDay = {
+            created_at: toUnix(new Date(2024, 0, 15, 23, 50)),
+          };
+
+          expect(
+            matchesFilters(
+              startOfDay,
+              dateFilter('created_at', 'equal_to', ['2024-01-15'])
+            )
+          ).toBe(true);
+          expect(
+            matchesFilters(
+              endOfDay,
+              dateFilter('created_at', 'equal_to', '2024-01-15')
+            )
+          ).toBe(true);
+        });
+
+        it('does not match the neighbouring days', () => {
+          const conversation = {
+            last_activity_at: toUnix(new Date(2024, 0, 16, 0, 1)),
+          };
+
+          expect(
+            matchesFilters(
+              conversation,
+              dateFilter('last_activity_at', 'equal_to', ['2024-01-15'])
+            )
+          ).toBe(false);
+          expect(
+            matchesFilters(
+              conversation,
+              dateFilter('last_activity_at', 'equal_to', ['2024-01-17'])
+            )
+          ).toBe(false);
+        });
+
+        it('does not match when the conversation has no date', () => {
+          expect(
+            matchesFilters(
+              {},
+              dateFilter('created_at', 'equal_to', ['2024-01-15'])
+            )
+          ).toBe(false);
+        });
+      });
+
+      describe('hours_before', () => {
+        beforeEach(() => {
+          vi.useFakeTimers();
+          vi.setSystemTime(new Date(2024, 0, 15, 12, 0));
+        });
+
+        afterEach(() => {
+          vi.useRealTimers();
+        });
+
+        it('matches dates older than the given number of hours', () => {
+          const conversation = {
+            last_activity_at: toUnix(new Date(2024, 0, 15, 7, 0)),
+          };
+
+          expect(
+            matchesFilters(
+              conversation,
+              dateFilter('last_activity_at', 'hours_before', ['3'])
+            )
+          ).toBe(true);
+          expect(
+            matchesFilters(
+              conversation,
+              dateFilter('last_activity_at', 'hours_before', '6')
+            )
+          ).toBe(false);
+        });
+
+        it('does not match invalid hour values', () => {
+          const conversation = {
+            created_at: toUnix(new Date(2024, 0, 14, 12, 0)),
+          };
+
+          expect(
+            matchesFilters(
+              conversation,
+              dateFilter('created_at', 'hours_before', ['abc'])
+            )
+          ).toBe(false);
+          expect(
+            matchesFilters(
+              conversation,
+              dateFilter('created_at', 'hours_before', [0])
+            )
+          ).toBe(false);
+        });
+      });
+    });
+
     // Combination tests
     it('should match conversation with combination of different attribute types', () => {
       const conversation = {
