@@ -147,6 +147,7 @@ Rails.application.routes.draw do
               post :filter
               post :export
               get :unread_counts, to: 'conversations/unread_counts#index'
+              get :sidebar_counts, to: 'conversations/sidebar_counts#index'
             end
             scope module: :conversations do
               resources :messages, only: [:index, :create, :destroy, :update] do

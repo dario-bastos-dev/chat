@@ -76,9 +76,10 @@ class ActionCableConnector extends BaseActionCableConnector {
     };
   }
 
-  // eslint-disable-next-line class-methods-use-this
   onReconnect = () => {
     emitter.emit(BUS_EVENTS.WEBSOCKET_RECONNECT);
+    // Events missed while disconnected would leave the sidebar counts stale.
+    this.app.$store.dispatch('conversationSidebarCounts/get');
   };
 
   // eslint-disable-next-line class-methods-use-this
@@ -292,6 +293,7 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   onConversationMentioned = data => {
     this.app.$store.dispatch('addMentions', data);
+    this.app.$store.dispatch('conversationSidebarCounts/refresh');
     this.scheduleMentionUnreadCountsFetch();
   };
 

@@ -25,20 +25,14 @@ const fetchMetaData = async (commit, params) => {
   }
 };
 
-const debouncedFetchMetaData = debounce(fetchMetaData, 1000, false, 5000);
-const longDebouncedFetchMetaData = debounce(fetchMetaData, 7500, false, 20000);
-const superLongDebouncedFetchMetaData = debounce(
-  fetchMetaData,
-  15000,
-  false,
-  30000
-);
+// Shared with other conversation counters that refetch on realtime events.
+export const createMetaDebouncers = fetchFn => ({
+  default: debounce(fetchFn, 1000, false, 5000),
+  long: debounce(fetchFn, 7500, false, 20000),
+  superLong: debounce(fetchFn, 15000, false, 30000),
+});
 
-const metaDebouncers = {
-  default: debouncedFetchMetaData,
-  long: longDebouncedFetchMetaData,
-  superLong: superLongDebouncedFetchMetaData,
-};
+const metaDebouncers = createMetaDebouncers(fetchMetaData);
 
 // allCount is 0 until a meta request succeeds; under load it stays 0, so treat
 // the unknown case as a large account and poll slowest instead of fastest.

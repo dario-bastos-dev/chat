@@ -46,6 +46,25 @@ describe('ActionCableConnector - Copilot Tests', () => {
     vi.clearAllTimers();
     vi.useRealTimers();
   });
+
+  describe('conversation sidebar counts', () => {
+    it('refetches sidebar counts when the websocket reconnects', () => {
+      actionCable.onReconnect();
+
+      expect(mockDispatch).toHaveBeenCalledWith(
+        'conversationSidebarCounts/get'
+      );
+    });
+
+    it('refreshes sidebar counts when the user is mentioned', () => {
+      actionCable.onConversationMentioned({ id: 1 });
+
+      expect(mockDispatch).toHaveBeenCalledWith(
+        'conversationSidebarCounts/refresh'
+      );
+    });
+  });
+
   describe('copilot event handlers', () => {
     it('should register the copilot.message.created event handler', () => {
       expect(Object.keys(actionCable.events)).toContain(
