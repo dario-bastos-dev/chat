@@ -202,14 +202,19 @@ describe('useAutomation', () => {
     automationTypes.conversation_updated = { conditions: [] };
     automationTypes.conversation_opened = { conditions: [] };
     automationTypes.conversation_resolved = { conditions: [] };
+    automationTypes.deal_created = { conditions: [] };
+    automationTypes.deal_stage_changed = { conditions: [] };
+    automationTypes.deal_won = { conditions: [] };
+    automationTypes.deal_lost = { conditions: [] };
 
     automationHelper.generateCustomAttributeTypes.mockReturnValue([]);
     automationHelper.generateCustomAttributes.mockReturnValue([]);
 
     manifestCustomAttributes();
 
+    // conversation, contact and deal attributes
     expect(automationHelper.generateCustomAttributeTypes).toHaveBeenCalledTimes(
-      2
+      3
     );
     expect(automationHelper.generateCustomAttributes).toHaveBeenCalledTimes(1);
     Object.values(automationTypes).forEach(type => {
