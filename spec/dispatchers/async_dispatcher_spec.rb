@@ -13,4 +13,10 @@ describe AsyncDispatcher do
       dispatcher.dispatch(event_name, timestamp, event_data)
     end
   end
+
+  describe '#listeners' do
+    it 'includes the unread counts listener' do
+      expect(dispatcher.listeners).to include(Conversations::UnreadCounts::Listener.instance)
+    end
+  end
 end

@@ -55,7 +55,16 @@ RSpec.describe CacheKeys do
       end
     end
 
+    it 'clears the unread count store for the account' do
+      allow(Conversations::UnreadCounts::Store).to receive(:clear_account!)
+
+      test_model.reset_cache_keys
+
+      expect(Conversations::UnreadCounts::Store).to have_received(:clear_account!).with(1)
+    end
+
     it 'dispatches a cache update event' do
+      allow(Conversations::UnreadCounts::Store).to receive(:clear_account!)
       test_model.reset_cache_keys
 
       expect(Rails.configuration.dispatcher).to have_received(:dispatch).with(

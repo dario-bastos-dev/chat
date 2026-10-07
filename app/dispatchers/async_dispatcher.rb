@@ -19,6 +19,7 @@ class AsyncDispatcher < BaseDispatcher
       MessageSequenceListener.instance,
       NotificationListener.instance,
       ParticipationListener.instance,
+      Conversations::UnreadCounts::Listener.instance,
       ReportingEventListener.instance,
       WebhookListener.instance,
       WhatsappMessageListener.instance

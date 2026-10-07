@@ -146,6 +146,8 @@ class Conversation < ApplicationRecord
   after_create_commit :notify_conversation_creation, unless: :history_sync?
   after_create_commit :load_attributes_created_by_db_triggers
   after_create_commit :attach_always_active_sequences
+  before_destroy :set_unread_count_deletion_data
+  after_destroy_commit :notify_conversation_deletion
 
   delegate :auto_resolve_after, to: :account
 
@@ -383,6 +385,25 @@ class Conversation < ApplicationRecord
 
   def notify_conversation_creation
     dispatcher_dispatch(CONVERSATION_CREATED)
+  end
+
+  def notify_conversation_deletion
+    return if @unread_count_deletion_data.blank?
+
+    Rails.configuration.dispatcher.dispatch(CONVERSATION_DELETED, Time.zone.now, conversation_data: @unread_count_deletion_data)
+  end
+
+  # The record is gone by the time the deletion is dispatched, so the unread count
+  # listener gets the attributes it needs to drop the conversation from the caches.
+  def set_unread_count_deletion_data
+    @unread_count_deletion_data = {
+      id: id,
+      account_id: account_id,
+      inbox_id: inbox_id,
+      assignee_id: assignee_id,
+      team_id: team_id,
+      cached_label_list: cached_label_list
+    }
   end
 
   def notify_conversation_updation
