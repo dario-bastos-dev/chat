@@ -47,7 +47,6 @@
  * 3. Nested properties in custom_attributes (conversation_type, etc.)
  */
 import { coerceToDate } from '@chatwoot/utils';
-import { format } from 'date-fns';
 import jsonLogic from 'json-logic-js';
 
 const DATE_ATTRIBUTE_KEYS = ['created_at', 'last_activity_at'];
@@ -174,24 +173,61 @@ const contains = (filterValue, conversationValue) => {
 };
 
 /**
- * Compares two date values using a comparison function
+ * Returns the single value of a filter
+ * @param {*} filterValue - In saved views the value comes wrapped in an array,
+ *   in the conversation list it is a plain value
+ * @returns {*} - The value itself
+ */
+const firstFilterValue = filterValue =>
+  Array.isArray(filterValue) ? filterValue[0] : filterValue;
+
+/**
+ * Returns the local calendar day of a date-only filter value (YYYY-MM-DD).
+ * coerceToDate reads these values as UTC midnight, which is still the previous
+ * day for agents west of UTC.
+ * @param {*} filterValue - The filter value, possibly wrapped in an array
+ * @returns {{start: Date, end: Date}|null} - Start of the day and of the next day
+ */
+const getFilterDay = filterValue => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(
+    String(firstFilterValue(filterValue) ?? '')
+  );
+  if (!match) return null;
+
+  const [year, month, day] = match.slice(1).map(Number);
+  return {
+    start: new Date(year, month - 1, day),
+    end: new Date(year, month - 1, day + 1),
+  };
+};
+
+/**
+ * Compares a conversation date with a filter date
  * @param {*} conversationValue - The conversation value to compare
  * @param {*} filterValue - The filter value to compare against
- * @param {Function} compareFn - The comparison function to apply
+ * @param {'is_greater_than'|'is_less_than'} operator - The comparison to apply
  * @returns {Boolean} - Returns true if the comparison succeeds, false otherwise
  */
-const compareDates = (conversationValue, filterValue, compareFn) => {
+const compareDates = (conversationValue, filterValue, operator) => {
   const conversationDate = coerceToDate(conversationValue);
+  if (conversationDate === null) return false;
 
-  // In saved views, the filterValue might be returned as an Array
-  // In conversation list, when filtering, the filterValue will be returned as a string
-  const valueToCompare = Array.isArray(filterValue)
-    ? filterValue[0]
-    : filterValue;
-  const filterDate = coerceToDate(valueToCompare);
+  const isGreaterThan = operator === 'is_greater_than';
 
-  if (conversationDate === null || filterDate === null) return false;
-  return compareFn(conversationDate, filterDate);
+  // Date-only values follow the backend: "greater than D" starts after day D
+  // and "less than D" ends before day D.
+  const filterDay = getFilterDay(filterValue);
+  if (filterDay) {
+    return isGreaterThan
+      ? conversationDate >= filterDay.end
+      : conversationDate < filterDay.start;
+  }
+
+  const filterDate = coerceToDate(firstFilterValue(filterValue));
+  if (filterDate === null) return false;
+  return isGreaterThan
+    ? conversationDate > filterDate
+    : conversationDate < filterDate;
 };
 
 /**
@@ -202,10 +238,14 @@ const compareDates = (conversationValue, filterValue, compareFn) => {
  */
 const isSameDay = (conversationValue, filterValue) => {
   const conversationDate = coerceToDate(conversationValue);
-  const filterDay = Array.isArray(filterValue) ? filterValue[0] : filterValue;
+  const filterDay = getFilterDay(
+    String(firstFilterValue(filterValue) ?? '').slice(0, 10)
+  );
 
-  if (conversationDate === null || typeof filterDay !== 'string') return false;
-  return format(conversationDate, 'yyyy-MM-dd') === filterDay.slice(0, 10);
+  if (conversationDate === null || !filterDay) return false;
+  return (
+    conversationDate >= filterDay.start && conversationDate < filterDay.end
+  );
 };
 
 /**
@@ -247,30 +287,27 @@ const matchesCondition = (conversationValue, filter) => {
       return isNullish;
 
     case 'is_greater_than':
-      return compareDates(conversationValue, filterValue, (a, b) => a > b);
-
     case 'is_less_than':
-      return compareDates(conversationValue, filterValue, (a, b) => a < b);
+      return compareDates(conversationValue, filterValue, filterOperator);
 
     case 'hours_before': {
       const conversationDate = coerceToDate(conversationValue);
-      const hours = Number(
-        Array.isArray(filterValue) ? filterValue[0] : filterValue
-      );
+      const hours = Number(firstFilterValue(filterValue));
       if (conversationDate === null || !hours) return false;
 
       return conversationDate.getTime() < Date.now() - hours * 60 * 60 * 1000;
     }
 
     case 'days_before': {
-      if (isNullish) {
-        return false;
-      }
+      // Mirrors the backend: before the start of the day N days ago
+      const conversationDate = coerceToDate(conversationValue);
+      const days = Number(firstFilterValue(filterValue));
+      if (conversationDate === null || !days) return false;
 
-      const today = new Date();
-      const daysInMilliseconds = filterValue * 24 * 60 * 60 * 1000;
-      const targetDate = new Date(today.getTime() - daysInMilliseconds);
-      return conversationValue < targetDate.getTime();
+      const cutoff = new Date();
+      cutoff.setHours(0, 0, 0, 0);
+      cutoff.setDate(cutoff.getDate() - days);
+      return conversationDate < cutoff;
     }
 
     default:

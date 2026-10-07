@@ -1242,6 +1242,60 @@ describe('filterHelpers', () => {
         });
       });
 
+      describe('is_greater_than and is_less_than with a date-only value', () => {
+        // Mirrors the backend: "greater than D" starts after day D and
+        // "less than D" ends before day D, both in the local calendar.
+        it('matches only dates after the filtered day for is_greater_than', () => {
+          const sameDay = { created_at: toUnix(new Date(2024, 0, 15, 20, 0)) };
+          const nextDay = { created_at: toUnix(new Date(2024, 0, 16, 0, 30)) };
+          const filters = dateFilter('created_at', 'is_greater_than', [
+            '2024-01-15',
+          ]);
+
+          expect(matchesFilters(sameDay, filters)).toBe(false);
+          expect(matchesFilters(nextDay, filters)).toBe(true);
+        });
+
+        it('matches only dates before the filtered day for is_less_than', () => {
+          const previousDay = {
+            created_at: toUnix(new Date(2024, 0, 14, 23, 50)),
+          };
+          const sameDay = { created_at: toUnix(new Date(2024, 0, 15, 0, 10)) };
+          const filters = dateFilter(
+            'created_at',
+            'is_less_than',
+            '2024-01-15'
+          );
+
+          expect(matchesFilters(previousDay, filters)).toBe(true);
+          expect(matchesFilters(sameDay, filters)).toBe(false);
+        });
+      });
+
+      describe('days_before', () => {
+        beforeEach(() => {
+          vi.useFakeTimers();
+          vi.setSystemTime(new Date(2024, 0, 15, 12, 0));
+        });
+
+        afterEach(() => {
+          vi.useRealTimers();
+        });
+
+        it('matches dates before the start of the day N days ago', () => {
+          const older = {
+            last_activity_at: toUnix(new Date(2024, 0, 12, 23, 0)),
+          };
+          const recent = {
+            last_activity_at: toUnix(new Date(2024, 0, 14, 9, 0)),
+          };
+          const filters = dateFilter('last_activity_at', 'days_before', ['2']);
+
+          expect(matchesFilters(older, filters)).toBe(true);
+          expect(matchesFilters(recent, filters)).toBe(false);
+        });
+      });
+
       describe('hours_before', () => {
         beforeEach(() => {
           vi.useFakeTimers();
