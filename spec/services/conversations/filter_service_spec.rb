@@ -565,7 +565,7 @@ describe Conversations::FilterService do
         expect(result[:conversations].length).to eq expected_count
       end
 
-      it 'binds created_at comparison values as dates' do
+      it 'binds created_at comparison values as the end of the day in the account timezone' do
         date_value = '2024-01-01'
         params[:payload] = [
           {
@@ -581,8 +581,8 @@ describe Conversations::FilterService do
         filters = service.instance_variable_get(:@filters)['conversations']
         condition_query = service.send(:build_condition_query, filters, params[:payload].first, 0)
 
-        expect(condition_query).to include('(conversations.created_at)::date > :value_0')
-        expect(service.instance_variable_get(:@filter_values)['value_0']).to eq(Date.iso8601(date_value))
+        expect(condition_query).to include('conversations.created_at > :value_0')
+        expect(service.instance_variable_get(:@filter_values)['value_0']).to eq(Time.utc(2024, 1, 1).end_of_day)
       end
 
       it 'rejects invalid created_at comparison values' do
