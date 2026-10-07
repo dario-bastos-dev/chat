@@ -55,11 +55,12 @@ export const validateSingleFilter = filter => {
     return VALUE_REQUIRED;
   }
 
-  if (
-    ['days_before', 'hours_before'].includes(filter.filter_operator) &&
-    (parseInt(filter.values, 10) <= 0 || parseInt(filter.values, 10) >= 999)
-  ) {
-    return VALUE_MUST_BE_BETWEEN_1_AND_998;
+  if (['days_before', 'hours_before'].includes(filter.filter_operator)) {
+    // Mirrors the backend, which only accepts whole numbers from 1 to 998
+    const value = Number(filter.values);
+    if (!Number.isInteger(value) || value < 1 || value > 998) {
+      return VALUE_MUST_BE_BETWEEN_1_AND_998;
+    }
   }
 
   return null;

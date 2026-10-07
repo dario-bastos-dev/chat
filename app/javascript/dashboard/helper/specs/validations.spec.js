@@ -19,7 +19,10 @@ describe('validateSingleFilter', () => {
 
       expect(validate('0')).toBe(VALUE_MUST_BE_BETWEEN_1_AND_998);
       expect(validate('999')).toBe(VALUE_MUST_BE_BETWEEN_1_AND_998);
+      expect(validate('abc')).toBe(VALUE_MUST_BE_BETWEEN_1_AND_998);
+      expect(validate('1.5')).toBe(VALUE_MUST_BE_BETWEEN_1_AND_998);
       expect(validate('24')).toBeNull();
+      expect(validate(['24'])).toBeNull();
     }
   );
 });
