@@ -21,6 +21,10 @@ module Redis::Alfred
       $alfred.with { |conn| conn.get(key) }
     end
 
+    def with(&)
+      $alfred.with(&)
+    end
+
     def delete(key)
       $alfred.with { |conn| conn.del(key) }
     end
@@ -50,6 +54,11 @@ module Redis::Alfred
     # set expiry on a key in seconds
     def expire(key, seconds)
       $alfred.with { |conn| conn.expire(key, seconds) }
+    end
+
+    # get expiry of a key in seconds
+    def ttl(key)
+      $alfred.with { |conn| conn.ttl(key) }
     end
 
     # scan keys matching a pattern
@@ -92,6 +101,10 @@ module Redis::Alfred
       $alfred.with { |conn| conn.lrem(key, count, value) }
     end
 
+    def pipelined(&)
+      $alfred.with { |conn| conn.pipelined(&) }
+    end
+
     # hash operations
 
     # add a key value to redis hash
@@ -114,13 +127,9 @@ module Redis::Alfred
     # add score and value for a key
     # Modern Redis syntax: zadd(key, [[score, member], ...])
     def zadd(key, score, value = nil)
-      if value.nil? && score.is_a?(Array)
-        # New syntax: score is actually an array of [score, member] pairs
-        $alfred.with { |conn| conn.zadd(key, score) }
-      else
-        # Support old syntax for backward compatibility
-        $alfred.with { |conn| conn.zadd(key, [[score, value]]) }
-      end
+      # New syntax: score is an array of [score, member] pairs; old syntax: discrete score/value
+      pairs = value.nil? && score.is_a?(Array) ? score : [[score, value]]
+      $alfred.with { |conn| conn.zadd(key, pairs) }
     end
 
     # get score of a value for key
