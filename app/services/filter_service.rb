@@ -3,6 +3,7 @@ require 'json'
 class FilterService
   include Filters::FilterHelper
   include Filters::CustomAttributeFilterHelper
+  include Filters::DateFilterHelper
   include CustomExceptions::CustomFilter
 
   ATTRIBUTE_MODEL = 'conversation_attribute'.freeze
@@ -22,14 +23,9 @@ class FilterService
   def perform; end
 
   def filter_operation(query_hash, current_index)
-    if query_hash[:filter_operator] == 'equal_to' && standard_attribute_data_type(query_hash[:attribute_key]) == 'date'
-      return same_day_filter_query(query_hash, current_index)
-    end
-
     case query_hash[:filter_operator]
     when 'equal_to', 'not_equal_to'
-      @filter_values["value_#{current_index}"] = filter_values(query_hash)
-      equals_to_filter_string(query_hash[:filter_operator], current_index)
+      equality_filter_query(query_hash, current_index)
     when 'contains', 'does_not_contain'
       @filter_values["value_#{current_index}"] = values_for_ilike(query_hash)
       ilike_filter_string(query_hash[:filter_operator], current_index)
@@ -39,10 +35,8 @@ class FilterService
       @filter_values["value_#{current_index}"] = 'IS NULL'
     when 'is_greater_than', 'is_less_than'
       lt_gt_filter_query(query_hash, current_index)
-    when 'days_before'
-      days_before_filter_query(query_hash, current_index)
-    when 'hours_before'
-      hours_before_filter_query(query_hash, current_index)
+    when 'days_before', 'hours_before'
+      relative_date_filter_query(query_hash, current_index)
     else
       @filter_values["value_#{current_index}"] = filter_values(query_hash).to_s
       "= :value_#{current_index}"
@@ -124,25 +118,6 @@ class FilterService
     )
 
     lt_gt_filter_query(updated_query_hash, current_index)
-  end
-
-  def hours_before_filter_query(query_hash, current_index)
-    hours = Integer(query_hash['values'][0].to_s, 10, exception: false)
-    # Same 1..998 bound as days_before, enforced by the UI validation too
-    raise CustomExceptions::CustomFilter::InvalidValue.new(attribute_name: query_hash['attribute_key']) unless hours&.between?(1, 998)
-
-    @filter_values["value_#{current_index}"] = Time.current - hours.hours
-    "< :value_#{current_index}"
-  end
-
-  # Standard date attributes are timestamps, so "equal to" matches the whole day
-  # in the account's reporting timezone, mirroring the lt/gt day boundaries.
-  def same_day_filter_query(query_hash, current_index)
-    date = coerce_lt_gt_value(query_hash['values'][0], 'date', query_hash[:attribute_key])
-    @filter_values["value_#{current_index}"] = date_to_utc_boundary(date, 'is_less_than')
-    @filter_values["value_#{current_index}_end"] = date_to_utc_boundary(date, 'is_greater_than')
-
-    "BETWEEN :value_#{current_index} AND :value_#{current_index}_end"
   end
 
   # Computes mine/unassigned/all counts in one scan of the filtered set instead of
