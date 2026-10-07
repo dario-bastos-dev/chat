@@ -63,12 +63,19 @@ export function useConversationFilterContext() {
   const campaigns = useMapGetter('campaigns/getAllCampaigns');
 
   const {
+    operators,
     equalityOperators,
     presenceOperators,
     containmentOperators,
     dateOperators,
     getOperatorTypes,
   } = useOperators();
+
+  // Conversation date columns also accept "equal to", matching the whole day.
+  const conversationDateOperators = computed(() => [
+    operators.value.equal_to,
+    ...dateOperators.value,
+  ]);
 
   const searchContacts = createContactSearcher();
 
@@ -288,7 +295,7 @@ export function useConversationFilterContext() {
       label: t('FILTER.ATTRIBUTES.CREATED_AT'),
       inputType: 'date',
       dataType: 'text',
-      filterOperators: dateOperators.value,
+      filterOperators: conversationDateOperators.value,
       attributeModel: 'standard',
     },
     {
@@ -298,7 +305,7 @@ export function useConversationFilterContext() {
       label: t('FILTER.ATTRIBUTES.LAST_ACTIVITY'),
       inputType: 'date',
       dataType: 'text',
-      filterOperators: dateOperators.value,
+      filterOperators: conversationDateOperators.value,
       attributeModel: 'standard',
     },
     ...customFilterTypes.value,

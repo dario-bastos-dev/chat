@@ -22,6 +22,10 @@ class FilterService
   def perform; end
 
   def filter_operation(query_hash, current_index)
+    if query_hash[:filter_operator] == 'equal_to' && standard_attribute_data_type(query_hash[:attribute_key]) == 'date'
+      return same_day_filter_query(query_hash, current_index)
+    end
+
     case query_hash[:filter_operator]
     when 'equal_to', 'not_equal_to'
       @filter_values["value_#{current_index}"] = filter_values(query_hash)
@@ -118,6 +122,16 @@ class FilterService
     )
 
     lt_gt_filter_query(updated_query_hash, current_index)
+  end
+
+  # Standard date attributes are timestamps, so "equal to" matches the whole day
+  # in the account's reporting timezone, mirroring the lt/gt day boundaries.
+  def same_day_filter_query(query_hash, current_index)
+    date = coerce_lt_gt_value(query_hash['values'][0], 'date', query_hash[:attribute_key])
+    @filter_values["value_#{current_index}"] = date_to_utc_boundary(date, 'is_less_than')
+    @filter_values["value_#{current_index}_end"] = date_to_utc_boundary(date, 'is_greater_than')
+
+    "BETWEEN :value_#{current_index} AND :value_#{current_index}_end"
   end
 
   # Computes mine/unassigned/all counts in one scan of the filtered set instead of

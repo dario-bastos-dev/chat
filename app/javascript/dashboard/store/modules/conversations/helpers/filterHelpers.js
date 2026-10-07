@@ -47,7 +47,10 @@
  * 3. Nested properties in custom_attributes (conversation_type, etc.)
  */
 import { coerceToDate } from '@chatwoot/utils';
+import { format } from 'date-fns';
 import jsonLogic from 'json-logic-js';
+
+const DATE_ATTRIBUTE_KEYS = ['created_at', 'last_activity_at'];
 
 /**
  * Gets a value from a conversation based on the attribute key
@@ -192,6 +195,20 @@ const compareDates = (conversationValue, filterValue, compareFn) => {
 };
 
 /**
+ * Checks if a conversation timestamp falls on the filtered day
+ * @param {*} conversationValue - The conversation timestamp
+ * @param {*} filterValue - The filter date (YYYY-MM-DD), possibly wrapped in an array
+ * @returns {Boolean} - Returns true if both point to the same local day
+ */
+const isSameDay = (conversationValue, filterValue) => {
+  const conversationDate = coerceToDate(conversationValue);
+  const filterDay = Array.isArray(filterValue) ? filterValue[0] : filterValue;
+
+  if (conversationDate === null || typeof filterDay !== 'string') return false;
+  return format(conversationDate, 'yyyy-MM-dd') === filterDay.slice(0, 10);
+};
+
+/**
  * Checks if a value matches a filter condition
  * @param {*} conversationValue - The value to check
  * @param {Object} filter - The filter condition
@@ -209,6 +226,9 @@ const matchesCondition = (conversationValue, filter) => {
 
   switch (filterOperator) {
     case 'equal_to':
+      if (DATE_ATTRIBUTE_KEYS.includes(filter.attribute_key)) {
+        return isSameDay(conversationValue, filterValue);
+      }
       return equalTo(filterValue, conversationValue);
 
     case 'not_equal_to':
