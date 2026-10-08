@@ -6,6 +6,7 @@
 #
 #  id                            :integer          not null, primary key
 #  allow_messages_after_resolved :boolean          default(TRUE)
+#  auto_add_assignee_as_participant :boolean        default(TRUE), not null
 #  auto_assignment_config        :jsonb
 #  business_name                 :string
 #  channel_type                  :string

@@ -1009,6 +1009,8 @@
       "INBOX_UPDATE_TITLE": "Configurações da Caixa de Entrada",
       "INBOX_UPDATE_SUB_TEXT": "Atualize suas configurações de caixa de entrada",
       "AUTO_ASSIGNMENT_SUB_TEXT": "Ativar ou desativar a atribuição automática de novas conversas aos usuários adicionados a essa caixa de entrada.",
+      "AUTO_ADD_ASSIGNEE_AS_PARTICIPANT": "Adicionar responsável como participante",
+      "AUTO_ADD_ASSIGNEE_AS_PARTICIPANT_SUB_TEXT": "Quando ativado, o agente atribuído passa a ser participante e continua acompanhando a conversa mesmo depois de ser reatribuída.",
       "HMAC_VERIFICATION": "Validação de Identidade do Usuário",
       "HMAC_DESCRIPTION": "Para validar a identidade do usuário, você pode passar um `identifier_hash` para cada usuário. Você pode gerar um hash HMAC sha256 usando o `identifier` com a chave mostrada aqui.",
       "HMAC_LINK_TO_DOCS": "Você pode ler mais aqui.",

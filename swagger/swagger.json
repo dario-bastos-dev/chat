@@ -10627,6 +10627,10 @@
             "type": "boolean",
             "description": "The flag which shows whether Auto Assignment is enabled or not"
           },
+          "auto_add_assignee_as_participant": {
+            "type": "boolean",
+            "description": "The flag which shows whether the conversation assignee is added as a participant automatically"
+          },
           "web_widget_script": {
             "type": "string",
             "description": "Script used to load the website widget"
@@ -12789,6 +12793,11 @@
             "description": "Enable Auto Assignment.",
             "example": true
           },
+          "auto_add_assignee_as_participant": {
+            "type": "boolean",
+            "description": "Add the conversation assignee as a participant automatically.",
+            "example": true
+          },
           "working_hours_enabled": {
             "type": "boolean",
             "description": "Enable working hours.",
@@ -12957,6 +12966,11 @@
           "enable_auto_assignment": {
             "type": "boolean",
             "description": "Enable Auto Assignment.",
+            "example": true
+          },
+          "auto_add_assignee_as_participant": {
+            "type": "boolean",
+            "description": "Add the conversation assignee as a participant automatically.",
             "example": true
           },
           "working_hours_enabled": {

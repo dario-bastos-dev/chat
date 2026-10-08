@@ -21,6 +21,12 @@ describe ParticipationListener do
       expect(conversation.conversation_participants.map(&:user_id)).to include(agent.id)
     end
 
+    it 'does not add the assignee as a participant when the inbox has it disabled' do
+      inbox.update!(auto_add_assignee_as_participant: false)
+      listener.assignee_changed(event)
+      expect(conversation.conversation_participants.map(&:user_id)).not_to include(agent.id)
+    end
+
     it 'does not fail if the conversation participant already exists' do
       conversation.conversation_participants.create!(user: agent)
       expect { listener.assignee_changed(event) }.not_to raise_error
