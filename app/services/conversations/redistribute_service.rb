@@ -35,6 +35,10 @@ class Conversations::RedistributeService
 
     keys.each { |key| @agent_by_key[key] = agent_id }
     @load[agent_id] += 1
+  # Deixar o erro derrubar o job faria o Sidekiq repetir tudo e tirar as conversas ja
+  # redistribuidas de quem acabou de recebe-las; so a conversa que falhou fica para tras.
+  rescue StandardError => e
+    ChatwootExceptionTracker.new(e, account: @account).capture_exception
   end
 
   def candidate_ids_for(conversation)

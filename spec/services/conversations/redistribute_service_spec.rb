@@ -158,6 +158,23 @@ RSpec.describe Conversations::RedistributeService do
       expect(assignees.first).not_to be_in([leaving.id, agent_b.id])
     end
 
+    # Uma falha que derrubasse o job faria o Sidekiq repetir a redistribuicao inteira,
+    # tirando as conversas ja redistribuidas de quem acabou de recebe-las.
+    it 'rolls back and reports only the conversation that fails, and keeps going' do
+      broken = link(create(:deal, account: account, pipeline: pipeline, stage: stage, contact: contact, assignee: leaving), conversation)
+      broken.update_column(:value, -1)
+      healthy = create(:conversation, account: account, inbox: inbox, contact: other_contact, assignee: leaving)
+      tracker = instance_double(ChatwootExceptionTracker, capture_exception: true)
+      allow(ChatwootExceptionTracker).to receive(:new).and_return(tracker)
+
+      expect { perform([conversation, healthy], team: team, include_deals: true) }.not_to raise_error
+
+      expect(conversation.reload.assignee_id).to eq(leaving.id)
+      expect(broken.reload.assignee_id).to eq(leaving.id)
+      expect(healthy.reload.assignee_id).to be_in([agent_b.id, agent_c.id])
+      expect(ChatwootExceptionTracker).to have_received(:new).with(an_instance_of(ActiveRecord::RecordInvalid), account: account)
+    end
+
     it 'keeps deals where they are when the option is off' do
       deal = link(create(:deal, account: account, pipeline: pipeline, stage: stage, contact: contact, assignee: leaving), conversation)
 
