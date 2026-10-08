@@ -270,4 +270,56 @@ RSpec.describe 'Api::V1::Accounts::BulkActionsController', type: :request do
       end
     end
   end
+
+  describe 'POST /api/v1/accounts/{account.id}/bulk_actions (redistribute)' do
+    let(:administrator) { create(:user, account: account, role: :administrator) }
+    let(:agent) { create(:user, account: account, role: :agent) }
+    let(:redistributed) { create(:conversation, account: account, assignee: agent_1, team: team_1) }
+    let(:deal) { create(:deal, account: account, contact: redistributed.contact, assignee: agent_1) }
+
+    before do
+      create(:team_member, team: team_1, user: agent_1)
+      create(:team_member, team: team_1, user: agent_2)
+      create(:inbox_member, inbox: redistributed.inbox, user: agent_1)
+      create(:inbox_member, inbox: redistributed.inbox, user: agent_2)
+      ConversationDeal.find_or_create_by!(conversation: redistributed, deal: deal)
+    end
+
+    def redistribute(user, action_attributes)
+      post "/api/v1/accounts/#{account.id}/bulk_actions",
+           headers: user.create_new_auth_token,
+           params: { type: 'Conversation', ids: [redistributed.display_id], action_name: 'redistribute', action_attributes: action_attributes },
+           as: :json
+    end
+
+    it 'moves the conversation and its deal to the same team member' do
+      perform_enqueued_jobs(only: BulkActionsJob) { redistribute(administrator, team_id: team_1.id, include_deals: true) }
+
+      expect(response).to have_http_status(:success)
+      expect(redistributed.reload.assignee_id).to eq(agent_2.id)
+      expect(deal.reload.assignee_id).to eq(agent_2.id)
+    end
+
+    it 'lets an agent redistribute conversations without deals' do
+      perform_enqueued_jobs(only: BulkActionsJob) { redistribute(agent, team_id: team_1.id, include_deals: false) }
+
+      expect(response).to have_http_status(:success)
+      expect(redistributed.reload.assignee_id).to eq(agent_2.id)
+      expect(deal.reload.assignee_id).to eq(agent_1.id)
+    end
+
+    it 'refuses to move deals for someone who cannot reassign them' do
+      expect { redistribute(agent, team_id: team_1.id, include_deals: true) }.not_to have_enqueued_job(BulkActionsJob)
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it 'returns not found for a team from another account' do
+      foreign_team = create(:team)
+
+      expect { redistribute(administrator, team_id: foreign_team.id) }.not_to have_enqueued_job(BulkActionsJob)
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
 end

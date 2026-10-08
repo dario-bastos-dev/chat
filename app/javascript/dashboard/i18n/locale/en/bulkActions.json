@@ -41,6 +41,17 @@
       "UNASSIGN_TEAM_CONFIRMATION_LABEL": "Are you sure you want to unassign {n} conversation? | Are you sure you want to unassign {n} conversations?",
       "ASSIGN_SUCCESFUL": "Teams assigned successfully.",
       "ASSIGN_FAILED": "Failed to assign team. Please try again."
+    },
+    "REDISTRIBUTE": {
+      "TOOLTIP": "Redistribute",
+      "ALL_AGENTS": "All inbox agents",
+      "ALL_CONFIRMATION_LABEL": "Redistribute {n} conversation among the inbox agents, removing it from its current assignee? | Redistribute {n} conversations among the inbox agents, removing them from their current assignees?",
+      "TEAM_CONFIRMATION_LABEL": "Redistribute {n} conversation among the members of {teamName}, removing it from its current assignee? | Redistribute {n} conversations among the members of {teamName}, removing them from their current assignees?",
+      "INCLUDE_DEALS": "Include linked deals",
+      "INCLUDE_DEALS_HELP": "Open deals of the previous assignee go to the same agent who receives the conversation.",
+      "CONFIRM": "Redistribute",
+      "SUCCESFUL": "Redistribution started. Conversations will be updated in a few moments.",
+      "FAILED": "Failed to redistribute conversations. Please try again."
     }
   }
 }

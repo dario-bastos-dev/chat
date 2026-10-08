@@ -590,6 +590,9 @@ pt_BR:
 
       Transcrição:
       %{format_messages}
+  deals:
+    activity:
+      redistributed: 'Negócio transferido para %{agent_name} junto com a conversa #%{conversation_id} na redistribuição.'
   agent_capacity_policy:
     inbox_already_assigned: 'A caixa de entrada já foi atribuída a esta política'
   portals:
