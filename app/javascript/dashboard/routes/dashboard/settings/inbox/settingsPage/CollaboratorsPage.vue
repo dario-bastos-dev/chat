@@ -33,6 +33,7 @@ const { isEnterprise } = useConfig();
 const selectedAgentIds = ref([]);
 const isAgentListUpdating = ref(false);
 const enableAutoAssignment = ref(false);
+const autoAddAssigneeAsParticipant = ref(true);
 const maxAssignmentLimit = ref(null);
 const assignmentPolicy = ref(null);
 const isLoadingPolicy = ref(false);
@@ -257,6 +258,22 @@ const handleToggleAutoAssignment = async val => {
     await store.dispatch('inboxes/updateInbox', payload);
     useAlert(t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
   } catch (error) {
+    enableAutoAssignment.value = !val;
+    useAlert(t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
+  }
+};
+
+const handleToggleAutoAddAssigneeAsParticipant = async val => {
+  autoAddAssigneeAsParticipant.value = val;
+  try {
+    await store.dispatch('inboxes/updateInbox', {
+      id: props.inbox.id,
+      formData: false,
+      auto_add_assignee_as_participant: val,
+    });
+    useAlert(t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
+  } catch (error) {
+    autoAddAssigneeAsParticipant.value = !val;
     useAlert(t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
   }
 };
@@ -343,6 +360,8 @@ const deleteAssignmentPolicy = async () => {
 
 const setDefaults = () => {
   enableAutoAssignment.value = props.inbox.enable_auto_assignment;
+  autoAddAssigneeAsParticipant.value =
+    props.inbox.auto_add_assignee_as_participant;
   maxAssignmentLimit.value =
     props.inbox.auto_assignment_config?.max_assignment_limit || null;
   fetchAttachedAgents();
@@ -666,6 +685,18 @@ onMounted(() => {
           </template>
         </template>
       </SettingsToggleSection>
+      <SettingsToggleSection
+        v-model="autoAddAssigneeAsParticipant"
+        :header="
+          $t('INBOX_MGMT.SETTINGS_POPUP.AUTO_ADD_ASSIGNEE_AS_PARTICIPANT')
+        "
+        :description="
+          $t(
+            'INBOX_MGMT.SETTINGS_POPUP.AUTO_ADD_ASSIGNEE_AS_PARTICIPANT_SUB_TEXT'
+          )
+        "
+        @update:model-value="handleToggleAutoAddAssigneeAsParticipant"
+      />
     </SettingsAccordion>
 
     <woot-modal

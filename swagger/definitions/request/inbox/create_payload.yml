@@ -28,6 +28,10 @@ properties:
     type: boolean
     description: Enable Auto Assignment
     example: true
+  auto_add_assignee_as_participant:
+    type: boolean
+    description: Add the conversation assignee as a participant automatically
+    example: true
   working_hours_enabled:
     type: boolean
     description: Enable working hours

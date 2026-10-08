@@ -2,6 +2,7 @@ class Api::V1::Accounts::BulkActionsController < Api::V1::Accounts::BaseControll
   def create
     case normalized_type
     when 'Conversation'
+      authorize_redistribution if redistribute_action?
       enqueue_conversation_job
       head :ok
     when 'Contact'
@@ -39,6 +40,16 @@ class Api::V1::Accounts::BulkActionsController < Api::V1::Accounts::BaseControll
     params[:action_name] == 'delete'
   end
 
+  def redistribute_action?
+    params[:action_name] == 'redistribute'
+  end
+
+  def authorize_redistribution
+    attributes = params[:action_attributes] || {}
+    @current_account.teams.find(attributes[:team_id]) if attributes[:team_id].present?
+    authorize(Deal, :assign?) if ActiveModel::Type::Boolean.new.cast(attributes[:include_deals])
+  end
+
   def check_authorization_for_contact_action
     authorize(Contact, :destroy?) if delete_contact_action?
   end
@@ -48,7 +59,8 @@ class Api::V1::Accounts::BulkActionsController < Api::V1::Accounts::BaseControll
     # and then remove this method in favor of a common params method.
     base = params.permit(
       :snoozed_until,
-      fields: [:status, :assignee_id, :team_id]
+      fields: [:status, :assignee_id, :team_id],
+      action_attributes: [:team_id, :include_deals]
     )
     append_common_bulk_attributes(base)
   end

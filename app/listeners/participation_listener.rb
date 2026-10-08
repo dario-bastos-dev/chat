@@ -4,6 +4,7 @@ class ParticipationListener < BaseListener
   def assignee_changed(event)
     conversation, _account = extract_conversation_and_account(event)
     return if conversation.assignee_id.blank?
+    return unless conversation.inbox.auto_add_assignee_as_participant?
 
     conversation.conversation_participants.find_or_create_by!(user_id: conversation.assignee_id)
   # We have observed race conditions triggering these errors

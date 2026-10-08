@@ -1049,6 +1049,8 @@
       "INBOX_UPDATE_TITLE": "Inbox Settings",
       "INBOX_UPDATE_SUB_TEXT": "Update your inbox settings",
       "AUTO_ASSIGNMENT_SUB_TEXT": "Enable or disable the automatic assignment of new conversations to the agents added to this inbox.",
+      "AUTO_ADD_ASSIGNEE_AS_PARTICIPANT": "Add assignee as participant",
+      "AUTO_ADD_ASSIGNEE_AS_PARTICIPANT_SUB_TEXT": "When enabled, the assigned agent becomes a participant and keeps following the conversation after it is reassigned.",
       "HMAC_VERIFICATION": "User Identity Validation",
       "HMAC_DESCRIPTION": "With this key you can generate a secret token that can be used to verify the identity of your users.",
       "HMAC_LINK_TO_DOCS": "You can read more here.",

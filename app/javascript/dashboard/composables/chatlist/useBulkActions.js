@@ -156,6 +156,24 @@ export function useBulkActions() {
     }
   }
 
+  async function onRedistributeConversations({ teamId, includeDeals }) {
+    try {
+      await store.dispatch('bulkActions/process', {
+        type: 'Conversation',
+        ids: selectedConversations.value,
+        action_name: 'redistribute',
+        action_attributes: {
+          team_id: teamId,
+          include_deals: includeDeals,
+        },
+      });
+      store.dispatch('bulkActions/clearSelectedConversationIds');
+      useAlert(t('BULK_ACTION.REDISTRIBUTE.SUCCESFUL'));
+    } catch (err) {
+      useAlert(t('BULK_ACTION.REDISTRIBUTE.FAILED'));
+    }
+  }
+
   async function onUpdateConversations(status, snoozedUntil) {
     if (selectedConversations.value.length === 0) return;
 
@@ -231,6 +249,7 @@ export function useBulkActions() {
     onAssignLabels,
     onRemoveLabels,
     onAssignTeamsForBulk,
+    onRedistributeConversations,
     onUpdateConversations,
   };
 }

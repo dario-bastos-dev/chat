@@ -11,7 +11,7 @@ class BulkActionsJob < ApplicationJob
     Current.user = user
     @params = params
     @records = records_to_updated(params[:ids])
-    bulk_update
+    params[:action_name] == 'redistribute' ? redistribute : bulk_update
   ensure
     Current.reset
   end
@@ -19,6 +19,16 @@ class BulkActionsJob < ApplicationJob
   def bulk_update
     bulk_remove_labels
     bulk_conversation_update
+  end
+
+  def redistribute
+    attributes = @params[:action_attributes] || {}
+    Conversations::RedistributeService.new(
+      account: @account,
+      conversations: records,
+      team: attributes[:team_id].present? ? @account.teams.find(attributes[:team_id]) : nil,
+      include_deals: ActiveModel::Type::Boolean.new.cast(attributes[:include_deals]) || false
+    ).perform
   end
 
   def bulk_conversation_update
