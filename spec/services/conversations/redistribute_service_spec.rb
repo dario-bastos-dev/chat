@@ -47,6 +47,16 @@ RSpec.describe Conversations::RedistributeService do
     expect(conversation.reload.assignee_id).to be_in([agent_b.id, agent_c.id])
   end
 
+  it 'never hands a conversation to anyone whose conversations are being redistributed' do
+    [agent_c, outsider].each { |busy| create_list(:conversation, 2, account: account, inbox: inbox, assignee: busy, status: :open) }
+    from_leaving = create(:conversation, account: account, inbox: inbox, assignee: leaving)
+    from_b = create(:conversation, account: account, inbox: inbox, assignee: agent_b)
+
+    perform([from_leaving, from_b])
+
+    expect([from_leaving.reload.assignee_id, from_b.reload.assignee_id]).to all(be_in([agent_c.id, outsider.id]))
+  end
+
   it 'only hands conversations to members of the chosen team and moves them into it' do
     other_team = create(:team, account: account)
     conversation = create(:conversation, account: account, inbox: inbox, team: other_team)
@@ -133,6 +143,19 @@ RSpec.describe Conversations::RedistributeService do
 
       expect(other_conversation.reload.assignee_id).to eq(conversation.reload.assignee_id)
       expect(deal.reload.assignee_id).to eq(conversation.assignee_id)
+    end
+
+    it 'keeps the deal with its conversations when the selection mixes assignees' do
+      [agent_c, outsider].each { |busy| create_list(:conversation, 2, account: account, inbox: inbox, assignee: busy, status: :open) }
+      teammate_conversation = create(:conversation, account: account, inbox: inbox, contact: contact, assignee: agent_b)
+      deal = link(create(:deal, account: account, pipeline: pipeline, stage: stage, contact: contact, assignee: leaving),
+                  conversation, teammate_conversation)
+
+      perform([conversation, teammate_conversation], include_deals: true)
+
+      assignees = [conversation.reload.assignee_id, teammate_conversation.reload.assignee_id, deal.reload.assignee_id]
+      expect(assignees.uniq.size).to eq(1)
+      expect(assignees.first).not_to be_in([leaving.id, agent_b.id])
     end
 
     it 'keeps deals where they are when the option is off' do

@@ -9,6 +9,9 @@ class Conversations::RedistributeService
 
   def perform
     @load = open_conversation_counts
+    # Quem tem conversa na selecao esta sendo esvaziado e nao pode receber nada. Isso tambem impede
+    # que um negocio ja movido nesta rodada seja movido de novo, pois o novo dono nunca e o antigo.
+    @donor_ids = @conversations.where.not(assignee_id: nil).distinct.pluck(:assignee_id)
     @conversations.includes(:inbox).order(:id).each { |conversation| redistribute(conversation) }
   end
 
@@ -37,7 +40,7 @@ class Conversations::RedistributeService
   def candidate_ids_for(conversation)
     ids = conversation.inbox.members.ids
     ids &= team_member_ids if @team
-    ids - [conversation.assignee_id]
+    ids - @donor_ids
   end
 
   def affinity_keys(conversation)
