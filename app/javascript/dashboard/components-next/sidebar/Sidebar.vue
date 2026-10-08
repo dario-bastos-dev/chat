@@ -5,6 +5,7 @@ import { useAccount } from 'dashboard/composables/useAccount';
 import { useConfig } from 'dashboard/composables/useConfig';
 import { useKbd } from 'dashboard/composables/utils/useKbd';
 import { useMapGetter } from 'dashboard/composables/store';
+import { useEmitter } from 'dashboard/composables/emitter';
 import { useStore } from 'vuex';
 import { useI18n } from 'vue-i18n';
 import { useSidebarKeyboardShortcuts } from './useSidebarKeyboardShortcuts';
@@ -213,8 +214,8 @@ useEventListener(document, 'touchend', onResizeEnd);
 
 const inboxes = useMapGetter('inboxes/getInboxes');
 const labels = useMapGetter('labels/getLabelsOnSidebar');
-const allUnreadCount = useMapGetter(
-  'conversationUnreadCounts/getAllUnreadCount'
+const conversationSidebarCounts = useMapGetter(
+  'conversationSidebarCounts/getCounts'
 );
 const getInboxUnreadCount = useMapGetter(
   'conversationUnreadCounts/getInboxUnreadCount'
@@ -224,15 +225,6 @@ const getLabelUnreadCount = useMapGetter(
 );
 const getTeamUnreadCount = useMapGetter(
   'conversationUnreadCounts/getTeamUnreadCount'
-);
-const mentionsUnreadCount = useMapGetter(
-  'conversationUnreadCounts/getMentionsUnreadCount'
-);
-const participatingUnreadCount = useMapGetter(
-  'conversationUnreadCounts/getParticipatingUnreadCount'
-);
-const unattendedUnreadCount = useMapGetter(
-  'conversationUnreadCounts/getUnattendedUnreadCount'
 );
 const getFolderUnreadCount = useMapGetter(
   'conversationUnreadCounts/getFolderUnreadCount'
@@ -264,6 +256,18 @@ watch([accountId, hasConversationUnreadCounts], fetchConversationUnreadCounts, {
 
 watch([accountId, currentUserId], fetchSidebarSortPreferences, {
   immediate: true,
+});
+
+watch(
+  accountId,
+  currentAccountId => {
+    if (currentAccountId) store.dispatch('conversationSidebarCounts/get');
+  },
+  { immediate: true }
+);
+
+useEmitter('fetch_conversation_stats', () => {
+  store.dispatch('conversationSidebarCounts/refresh');
 });
 
 const hasUnreadCountsForSection = section => {
@@ -415,17 +419,23 @@ const menuItems = computed(() => {
           name: 'All',
           label: t('SIDEBAR.ALL_CONVERSATIONS'),
           icon: 'i-lucide-inbox',
-          badgeCount: allUnreadCount.value,
+          badgeCount: conversationSidebarCounts.value.allCount,
           activeOn: ['inbox_conversation'],
           to: accountScopedRoute('home'),
+        },
+        {
+          name: 'Unattended',
+          activeOn: ['conversation_through_unattended'],
+          label: t('SIDEBAR.UNATTENDED_CONVERSATIONS'),
+          icon: 'i-lucide-clock-alert',
+          badgeCount: conversationSidebarCounts.value.unattendedCount,
+          to: accountScopedRoute('conversation_unattended'),
         },
         {
           name: 'Mentions',
           label: t('SIDEBAR.MENTIONED_CONVERSATIONS'),
           icon: 'i-lucide-at-sign',
-          badgeCount: hasFilteredUnreadCounts.value
-            ? mentionsUnreadCount.value
-            : 0,
+          badgeCount: conversationSidebarCounts.value.mentionsCount,
           activeOn: ['conversation_through_mentions'],
           to: accountScopedRoute('conversation_mentions'),
         },
@@ -433,21 +443,9 @@ const menuItems = computed(() => {
           name: 'Participating',
           label: t('SIDEBAR.PARTICIPATING_CONVERSATIONS'),
           icon: 'i-lucide-user-round-check',
-          badgeCount: hasFilteredUnreadCounts.value
-            ? participatingUnreadCount.value
-            : 0,
+          badgeCount: conversationSidebarCounts.value.participatingCount,
           activeOn: ['conversation_through_participating'],
           to: accountScopedRoute('conversation_participating'),
-        },
-        {
-          name: 'Unattended',
-          activeOn: ['conversation_through_unattended'],
-          label: t('SIDEBAR.UNATTENDED_CONVERSATIONS'),
-          icon: 'i-lucide-clock-alert',
-          badgeCount: hasFilteredUnreadCounts.value
-            ? unattendedUnreadCount.value
-            : 0,
-          to: accountScopedRoute('conversation_unattended'),
         },
         {
           name: 'Folders',

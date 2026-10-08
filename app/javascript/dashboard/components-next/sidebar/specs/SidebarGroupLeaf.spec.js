@@ -53,10 +53,10 @@ describe('SidebarGroupLeaf', () => {
   });
 
   it('caps large unread counts', () => {
-    const wrapper = mountLeaf({ badgeCount: 120 });
+    const wrapper = mountLeaf({ badgeCount: 1200 });
 
     expect(wrapper.find('[data-test-id="sidebar-unread-badge"]').text()).toBe(
-      '99+'
+      '999+'
     );
   });
 

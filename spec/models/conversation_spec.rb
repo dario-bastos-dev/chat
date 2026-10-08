@@ -1291,4 +1291,19 @@ RSpec.describe Conversation do
       expect(conversation.reload.status_changed_at).to be_within(1.second).of(original)
     end
   end
+
+  describe 'on destroy' do
+    it 'dispatches conversation.deleted with the data unread counts need to clean up' do
+      conversation = create(:conversation)
+      allow(Rails.configuration.dispatcher).to receive(:dispatch)
+
+      conversation.destroy!
+
+      expect(Rails.configuration.dispatcher).to have_received(:dispatch).with(
+        'conversation.deleted',
+        kind_of(Time),
+        conversation_data: hash_including(id: conversation.id, account_id: conversation.account_id, inbox_id: conversation.inbox_id)
+      )
+    end
+  end
 end

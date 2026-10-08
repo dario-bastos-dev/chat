@@ -114,6 +114,16 @@ describe('#actions', () => {
       expect(commit.mock.calls).toEqual([
         [types.SET_AGENT_BOT_UI_FLAG, { isSettingAgentBot: true }],
         [types.SET_AGENT_BOT_INBOX, { inboxId: 2, agentBotId: 3 }],
+        [
+          types.SET_AGENT_BOT_INBOX_CONFIG,
+          {
+            inboxId: 2,
+            initialConversationStatus: undefined,
+            eventNames: undefined,
+            conversationCustomAttributeKeys: undefined,
+            contactCustomAttributeKeys: undefined,
+          },
+        ],
         [types.SET_AGENT_BOT_UI_FLAG, { isSettingAgentBot: false }],
       ]);
     });

@@ -38,20 +38,15 @@ RSpec.describe CustomAttributeDefinition do
         expect(cad).not_to be_valid
       end
 
+      it 'rejects contact attributes that conflict with the company_name contact filter' do
+        cad = build(:custom_attribute_definition, account: account, attribute_model: 'contact_attribute', attribute_key: 'company_name')
+        expect(cad).not_to be_valid
+        expect(cad.errors[:attribute_key]).to be_present
+      end
+
       it 'rejects keys with parentheses' do
         cad = build(:custom_attribute_definition, account: account, attribute_key: 'key()')
         expect(cad).not_to be_valid
-      end
-
-      it 'allows company custom attributes' do
-        cad = build(:custom_attribute_definition, account: account, attribute_model: 'company_attribute')
-        expect(cad).to be_valid
-      end
-
-      it 'rejects company custom attributes that conflict with standard company fields' do
-        cad = build(:custom_attribute_definition, account: account, attribute_model: 'company_attribute', attribute_key: 'domain')
-        expect(cad).not_to be_valid
-        expect(cad.errors[:attribute_key]).to be_present
       end
     end
   end
@@ -66,6 +61,22 @@ RSpec.describe CustomAttributeDefinition do
       it 'strips leading and trailing whitespace from attribute_display_name' do
         cad = create(:custom_attribute_definition, account: account, attribute_display_name: '  Order Date  ')
         expect(cad.attribute_display_name).to eq('Order Date')
+      end
+    end
+
+    describe 'widget pre-chat custom fields sync' do
+      it 'syncs the pre-chat fields when a contact attribute changes or is deleted' do
+        cad = create(:custom_attribute_definition, account: account, attribute_model: 'contact_attribute')
+
+        expect { cad.update!(attribute_display_name: 'Updated') }.to have_enqueued_job(Inboxes::UpdateWidgetPreChatCustomFieldsJob)
+        expect { cad.destroy! }.to have_enqueued_job(Inboxes::SyncWidgetPreChatCustomFieldsJob)
+      end
+
+      it 'does not sync the pre-chat fields for deal attributes' do
+        cad = create(:custom_attribute_definition, account: account, attribute_model: 'deal_attribute')
+
+        expect { cad.update!(attribute_display_name: 'Updated') }.not_to have_enqueued_job(Inboxes::UpdateWidgetPreChatCustomFieldsJob)
+        expect { cad.destroy! }.not_to have_enqueued_job(Inboxes::SyncWidgetPreChatCustomFieldsJob)
       end
     end
 

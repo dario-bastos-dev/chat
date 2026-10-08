@@ -1,6 +1,6 @@
 export const getInputType = (key, operator, filterTypes) => {
   if (key === 'created_at' || key === 'last_activity_at')
-    if (operator === 'days_before') return 'plain_text';
+    if (['days_before', 'hours_before'].includes(operator)) return 'plain_text';
   const type = filterTypes.find(filter => filter.attributeKey === key);
   return type?.inputType;
 };

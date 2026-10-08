@@ -1,5 +1,31 @@
 import { describe, it, expect } from 'vitest';
-import { validateAutomation, getSendMessageButtonError } from '../validations';
+import {
+  validateAutomation,
+  getSendMessageButtonError,
+  validateSingleFilter,
+  VALUE_MUST_BE_BETWEEN_1_AND_998,
+} from '../validations';
+
+describe('validateSingleFilter', () => {
+  it.each(['days_before', 'hours_before'])(
+    'requires %s values between 1 and 998',
+    filterOperator => {
+      const validate = values =>
+        validateSingleFilter({
+          attribute_key: 'last_activity_at',
+          filter_operator: filterOperator,
+          values,
+        });
+
+      expect(validate('0')).toBe(VALUE_MUST_BE_BETWEEN_1_AND_998);
+      expect(validate('999')).toBe(VALUE_MUST_BE_BETWEEN_1_AND_998);
+      expect(validate('abc')).toBe(VALUE_MUST_BE_BETWEEN_1_AND_998);
+      expect(validate('1.5')).toBe(VALUE_MUST_BE_BETWEEN_1_AND_998);
+      expect(validate('24')).toBeNull();
+      expect(validate(['24'])).toBeNull();
+    }
+  );
+});
 
 describe('validateAutomation', () => {
   it('should return no errors for a valid automation', () => {

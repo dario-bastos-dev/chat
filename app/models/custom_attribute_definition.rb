@@ -25,16 +25,18 @@ class CustomAttributeDefinition < ApplicationRecord
   STANDARD_ATTRIBUTES = {
     :conversation => %w[status priority assignee_id inbox_id team_id display_id campaign_id labels browser_language country_code referer created_at
                         last_activity_at],
-    :contact => %w[name email phone_number identifier country_code city created_at last_activity_at referer blocked],
+    :contact => %w[name email phone_number identifier country_code city company_name created_at last_activity_at referer blocked],
     :deal => %w[title status stage_id pipeline_id assignee_id contact_id]
   }.freeze
 
   scope :with_attribute_model, ->(attribute_model) { attribute_model.presence && where(attribute_model: attribute_model) }
   validates :attribute_display_name, presence: true
+  before_validation :normalize_attribute_fields
 
   validates :attribute_key,
             presence: true,
-            uniqueness: { scope: [:account_id, :attribute_model] }
+            uniqueness: { scope: [:account_id, :attribute_model] },
+            format: { with: /\A[\p{L}\p{N}_.\-]+\z/, message: I18n.t('errors.custom_attribute_definition.attribute_key_format') }
 
   validates :attribute_display_type, presence: true
   validates :attribute_model, presence: true
@@ -44,12 +46,22 @@ class CustomAttributeDefinition < ApplicationRecord
   enum attribute_display_type: { text: 0, number: 1, currency: 2, percent: 3, link: 4, date: 5, list: 6, checkbox: 7 }
 
   belongs_to :account
-  after_update :update_widget_pre_chat_custom_fields, unless: :company_attribute?
-  after_destroy :sync_widget_pre_chat_custom_fields, unless: :company_attribute?
+  after_update :update_widget_pre_chat_custom_fields, if: :pre_chat_form_attribute?
+  after_destroy :sync_widget_pre_chat_custom_fields, if: :pre_chat_form_attribute?
   after_update_commit :invalidate_filtered_unread_count_filters_update, if: :conversation_attribute_before_or_after?
   after_destroy_commit :invalidate_filtered_unread_count_filters_destroy, if: :conversation_attribute?
 
   private
+
+  def normalize_attribute_fields
+    self.attribute_key = attribute_key.strip if attribute_key.present?
+    self.attribute_display_name = attribute_display_name.strip if attribute_display_name.present?
+  end
+
+  # Only contact and conversation attributes can be fields of the widget pre-chat form.
+  def pre_chat_form_attribute?
+    contact_attribute? || conversation_attribute?
+  end
 
   def sync_widget_pre_chat_custom_fields
     ::Inboxes::SyncWidgetPreChatCustomFieldsJob.perform_later(account, attribute_key)

@@ -32,6 +32,7 @@
       "is_greater_than": "Is greater than",
       "is_less_than": "Is lesser than",
       "days_before": "Is x days before",
+      "hours_before": "Is x hours before",
       "starts_with": "Starts with",
       "equalTo": "Equal to",
       "notEqualTo": "Not equal to",

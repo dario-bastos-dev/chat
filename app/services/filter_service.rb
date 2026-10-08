@@ -3,6 +3,7 @@ require 'json'
 class FilterService
   include Filters::FilterHelper
   include Filters::CustomAttributeFilterHelper
+  include Filters::DateFilterHelper
   include CustomExceptions::CustomFilter
 
   ATTRIBUTE_MODEL = 'conversation_attribute'.freeze
@@ -24,8 +25,7 @@ class FilterService
   def filter_operation(query_hash, current_index)
     case query_hash[:filter_operator]
     when 'equal_to', 'not_equal_to'
-      @filter_values["value_#{current_index}"] = filter_values(query_hash)
-      equals_to_filter_string(query_hash[:filter_operator], current_index)
+      equality_filter_query(query_hash, current_index)
     when 'contains', 'does_not_contain'
       @filter_values["value_#{current_index}"] = values_for_ilike(query_hash)
       ilike_filter_string(query_hash[:filter_operator], current_index)
@@ -35,8 +35,8 @@ class FilterService
       @filter_values["value_#{current_index}"] = 'IS NULL'
     when 'is_greater_than', 'is_less_than'
       lt_gt_filter_query(query_hash, current_index)
-    when 'days_before'
-      days_before_filter_query(query_hash, current_index)
+    when 'days_before', 'hours_before'
+      relative_date_filter_query(query_hash, current_index)
     else
       @filter_values["value_#{current_index}"] = filter_values(query_hash).to_s
       "= :value_#{current_index}"

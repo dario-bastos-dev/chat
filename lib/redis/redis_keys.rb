@@ -116,4 +116,5 @@ module Redis::RedisKeys
 
   # Account Onboarding Enrichment Status
   ACCOUNT_ONBOARDING_ENRICHMENT = 'ACCOUNT_ONBOARDING_ENRICHMENT::%<account_id>d'.freeze
+  HELP_CENTER_GENERATION = 'HELP_CENTER_GENERATION::%<id>s'.freeze
 end

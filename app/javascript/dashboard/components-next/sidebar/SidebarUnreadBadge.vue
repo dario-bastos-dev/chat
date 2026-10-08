@@ -11,7 +11,7 @@ const normalizedCount = computed(() => {
 });
 
 const displayCount = computed(() =>
-  normalizedCount.value > 99 ? '99+' : String(normalizedCount.value)
+  normalizedCount.value > 999 ? '999+' : String(normalizedCount.value)
 );
 </script>
 

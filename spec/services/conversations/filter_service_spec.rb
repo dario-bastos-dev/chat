@@ -565,7 +565,7 @@ describe Conversations::FilterService do
         expect(result[:conversations].length).to eq expected_count
       end
 
-      it 'binds created_at comparison values as dates' do
+      it 'binds created_at comparison values as the end of the day in the account timezone' do
         date_value = '2024-01-01'
         params[:payload] = [
           {
@@ -581,8 +581,8 @@ describe Conversations::FilterService do
         filters = service.instance_variable_get(:@filters)['conversations']
         condition_query = service.send(:build_condition_query, filters, params[:payload].first, 0)
 
-        expect(condition_query).to include('(conversations.created_at)::date > :value_0')
-        expect(service.instance_variable_get(:@filter_values)['value_0']).to eq(Date.iso8601(date_value))
+        expect(condition_query).to include('conversations.created_at > :value_0')
+        expect(service.instance_variable_get(:@filter_values)['value_0']).to eq(Time.utc(2024, 1, 1).end_of_day)
       end
 
       it 'rejects invalid created_at comparison values' do
@@ -723,6 +723,62 @@ describe Conversations::FilterService do
 
           result = filter_service.new(params, user_1, account).perform
           expect(result[:conversations].length).to eq expected_count
+        end
+      end
+
+      context 'with equal_to filter on a standard date attribute' do
+        before do
+          account.update!(reporting_timezone: 'America/Sao_Paulo')
+          # 00:05 and 23:50 of 2024-01-15 in São Paulo, then 00:01 of the next day
+          en_conversation_1.update!(created_at: Time.utc(2024, 1, 15, 3, 5))
+          en_conversation_2.update!(created_at: Time.utc(2024, 1, 16, 2, 50))
+          user_2_assigned_conversation.update!(created_at: Time.utc(2024, 1, 16, 3, 1))
+        end
+
+        it 'matches the whole day in the account reporting timezone' do
+          params[:payload] = [
+            { attribute_key: 'created_at', filter_operator: 'equal_to', values: ['2024-01-15'], query_operator: nil }.with_indifferent_access
+          ]
+
+          result = filter_service.new(params, user_1, account).perform
+          expect(result[:conversations].map(&:id)).to contain_exactly(en_conversation_1.id, en_conversation_2.id)
+        end
+
+        it 'raises InvalidValue for values that are not dates' do
+          params[:payload] = [
+            { attribute_key: 'created_at', filter_operator: 'equal_to', values: ['abc'], query_operator: nil }.with_indifferent_access
+          ]
+
+          expect { filter_service.new(params, user_1, account).perform }
+            .to raise_error(CustomExceptions::CustomFilter::InvalidValue)
+        end
+      end
+
+      context 'with hours_before filter' do
+        before do
+          en_conversation_1.update!(last_activity_at: 5.hours.ago)
+          en_conversation_2.update!(last_activity_at: 1.hour.ago)
+        end
+
+        it 'returns conversations whose date is older than the given hours' do
+          params[:payload] = [
+            { attribute_key: 'last_activity_at', filter_operator: 'hours_before', values: ['3'], query_operator: nil }.with_indifferent_access
+          ]
+
+          result = filter_service.new(params, user_1, account).perform
+          expect(result[:conversations].map(&:id)).to contain_exactly(en_conversation_1.id)
+        end
+
+        it 'raises InvalidValue for values outside 1..998 hours' do
+          [-1, 'abc', 0, 999].each do |invalid_value|
+            params[:payload] = [
+              { attribute_key: 'last_activity_at', filter_operator: 'hours_before', values: [invalid_value], query_operator: nil }
+                .with_indifferent_access
+            ]
+
+            expect { filter_service.new(params, user_1, account).perform }
+              .to raise_error(CustomExceptions::CustomFilter::InvalidValue)
+          end
         end
       end
     end

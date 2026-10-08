@@ -14,6 +14,27 @@ vi.mock('dashboard/composables/useImpersonation', () => ({
   }),
 }));
 
+const { mockCallsStore, mockArmOutboundRecorder } = vi.hoisted(() => ({
+  mockCallsStore: {
+    calls: [],
+    addCall: vi.fn(),
+    setCallActive: vi.fn(),
+    removeCall: vi.fn(),
+  },
+  mockArmOutboundRecorder: vi.fn(),
+}));
+
+vi.mock('dashboard/stores/calls', () => ({
+  useCallsStore: () => mockCallsStore,
+}));
+
+vi.mock('dashboard/composables/useWhatsappCallSession', () => ({
+  applyOutboundAnswer: vi.fn(),
+  armOutboundRecorder: mockArmOutboundRecorder,
+  handleWhatsappRemoteEnd: vi.fn(),
+  isLocalWhatsappCall: vi.fn(() => false),
+}));
+
 global.chatwootConfig = {
   websocketURL: 'wss://test.chatwoot.com',
 };
@@ -34,6 +55,7 @@ describe('ActionCableConnector - Copilot Tests', () => {
         dispatch: mockDispatch,
         getters: {
           getCurrentAccountId: 1,
+          'accounts/isFeatureEnabledonAccount': vi.fn(() => true),
         },
       },
     };
@@ -46,6 +68,88 @@ describe('ActionCableConnector - Copilot Tests', () => {
     vi.clearAllTimers();
     vi.useRealTimers();
   });
+
+  describe('event registry', () => {
+    it('has a handler function for every registered event', () => {
+      const eventsWithoutHandler = Object.entries(actionCable.events)
+        .filter(([, handler]) => typeof handler !== 'function')
+        .map(([eventName]) => eventName);
+
+      expect(eventsWithoutHandler).toEqual([]);
+    });
+  });
+
+  describe('whatsapp voice call events', () => {
+    const incomingCall = {
+      provider: 'whatsapp',
+      call_id: 'wacid-1',
+      id: 10,
+      conversation_id: 20,
+      inbox_id: 30,
+      sdp_offer: 'offer',
+      ice_servers: [],
+      caller: { name: 'Cliente' },
+    };
+
+    beforeEach(() => {
+      mockCallsStore.calls = [];
+    });
+
+    it('rings an incoming whatsapp call for an online agent', () => {
+      store.$store.getters.getCurrentUserAvailability = 'online';
+
+      actionCable.onVoiceCallIncoming(incomingCall);
+
+      expect(mockCallsStore.addCall).toHaveBeenCalledWith(
+        expect.objectContaining({
+          callSid: 'wacid-1',
+          callId: 10,
+          conversationId: 20,
+          inboxId: 30,
+          sdpOffer: 'offer',
+        })
+      );
+    });
+
+    it('does not ring when the agent is not online', () => {
+      store.$store.getters.getCurrentUserAvailability = 'busy';
+
+      actionCable.onVoiceCallIncoming(incomingCall);
+
+      expect(mockCallsStore.addCall).not.toHaveBeenCalled();
+    });
+
+    it('activates a known outbound call when the contact answers', () => {
+      mockCallsStore.calls = [{ callSid: 'wacid-1' }];
+
+      actionCable.onVoiceCallOutboundAccepted({
+        provider: 'whatsapp',
+        call_id: 'wacid-1',
+      });
+
+      expect(mockCallsStore.setCallActive).toHaveBeenCalledWith('wacid-1');
+      expect(mockArmOutboundRecorder).toHaveBeenCalled();
+    });
+  });
+
+  describe('conversation sidebar counts', () => {
+    it('refetches sidebar counts when the websocket reconnects', () => {
+      actionCable.onReconnect();
+
+      expect(mockDispatch).toHaveBeenCalledWith(
+        'conversationSidebarCounts/get'
+      );
+    });
+
+    it('refreshes sidebar counts when the user is mentioned', () => {
+      actionCable.onConversationMentioned({ id: 1 });
+
+      expect(mockDispatch).toHaveBeenCalledWith(
+        'conversationSidebarCounts/refresh'
+      );
+    });
+  });
+
   describe('copilot event handlers', () => {
     it('should register the copilot.message.created event handler', () => {
       expect(Object.keys(actionCable.events)).toContain(

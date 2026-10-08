@@ -56,6 +56,8 @@ class ActionCableConnector extends BaseActionCableConnector {
       'notification.updated': this.onNotificationUpdated,
       'conversation.read': this.onConversationRead,
       'conversation.updated': this.onConversationUpdated,
+      'conversation.unread_count_changed':
+        this.onConversationUnreadCountChanged,
       'account.cache_invalidated': this.onCacheInvalidate,
       'account.enrichment_completed': this.onEnrichmentCompleted,
       'copilot.message.created': this.onCopilotMessageCreated,
@@ -76,9 +78,10 @@ class ActionCableConnector extends BaseActionCableConnector {
     };
   }
 
-  // eslint-disable-next-line class-methods-use-this
   onReconnect = () => {
     emitter.emit(BUS_EVENTS.WEBSOCKET_RECONNECT);
+    // Events missed while disconnected would leave the sidebar counts stale.
+    this.app.$store.dispatch('conversationSidebarCounts/get');
   };
 
   // eslint-disable-next-line class-methods-use-this
@@ -292,6 +295,7 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   onConversationMentioned = data => {
     this.app.$store.dispatch('addMentions', data);
+    this.app.$store.dispatch('conversationSidebarCounts/refresh');
     this.scheduleMentionUnreadCountsFetch();
   };
 
@@ -380,6 +384,27 @@ class ActionCableConnector extends BaseActionCableConnector {
   // this call is queued through ActionCableBroadcastJob and can still be
   // delivered after this (synchronous) broadcast, which would otherwise
   // re-add the call as ringing once it finally arrives.
+  onVoiceCallIncoming = data => {
+    if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
+    // Defense in depth: the server already filters to online agent streams,
+    // but if anything ever broadcasts to a broader stream (e.g. account-wide),
+    // an agent who's set availability=offline/busy shouldn't ring.
+    const availability = this.app.$store.getters.getCurrentUserAvailability;
+    if (availability !== 'online') return;
+
+    useCallsStore().addCall({
+      callSid: data.call_id,
+      callId: data.id,
+      conversationId: data.conversation_id,
+      inboxId: data.inbox_id,
+      callDirection: VOICE_CALL_DIRECTION.INBOUND,
+      provider: VOICE_CALL_PROVIDERS.WHATSAPP,
+      sdpOffer: data.sdp_offer,
+      iceServers: data.ice_servers,
+      caller: data.caller,
+    });
+  };
+
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallAccepted = data => {
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
@@ -403,6 +428,17 @@ class ActionCableConnector extends BaseActionCableConnector {
     } catch (_) {
       /* noop */
     }
+  };
+
+  // Real pickup signal — Meta sends status=ACCEPTED on the call when the
+  // contact answers. Flip active (timer starts) and arm the recorder.
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallOutboundAccepted = data => {
+    if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
+    const store = useCallsStore();
+    if (!store.calls.some(c => c.callSid === data.call_id)) return;
+    store.setCallActive(data.call_id);
+    armOutboundRecorder();
   };
 
   onScheduledMessageDeleted = data => {
