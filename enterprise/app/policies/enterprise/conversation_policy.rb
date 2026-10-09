@@ -5,6 +5,7 @@ module Enterprise::ConversationPolicy
 
     permissions = custom_role_permissions
     return true if manage_all_conversations?(permissions)
+    return true if permits_team_manage?(permissions)
     return true if permits_unassigned_manage?(permissions)
 
     permits_participating?(permissions)
@@ -14,6 +15,13 @@ module Enterprise::ConversationPolicy
 
   def manage_all_conversations?(permissions)
     permissions.include?('conversation_manage')
+  end
+
+  # Mirrors Conversations::PermissionFilterService: own, unassigned and the user's teams' conversations.
+  def permits_team_manage?(permissions)
+    return false unless permissions.include?('conversation_team_manage')
+
+    unassigned_conversation? || assigned_to_user? || team_access?
   end
 
   def permits_unassigned_manage?(permissions)

@@ -35,6 +35,41 @@ RSpec.describe ConversationPolicy, type: :policy do
       end
     end
 
+    context 'when role grants conversation_team_manage' do
+      let(:custom_role) { create(:custom_role, account: account, permissions: ['conversation_team_manage']) }
+      let(:team) { create(:team, account: account) }
+      let(:other_agent) { create(:user, account: account, role: :agent) }
+
+      before do
+        agent_account_user.update!(role: :agent, custom_role: custom_role)
+        create(:team_member, team: team, user: agent)
+      end
+
+      it "allows access to the team's conversations assigned to someone else" do
+        conversation = create(:conversation, account: account, inbox: inbox, team: team, assignee: other_agent)
+
+        expect(subject).to permit(context, conversation)
+      end
+
+      it 'allows access to unassigned conversations' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: nil)
+
+        expect(subject).to permit(context, conversation)
+      end
+
+      it 'allows access to conversations assigned to the agent' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: agent)
+
+        expect(subject).to permit(context, conversation)
+      end
+
+      it "denies access to another agent's conversations outside the agent's teams" do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: other_agent)
+
+        expect(subject).not_to permit(context, conversation)
+      end
+    end
+
     context 'when role grants conversation_participating_manage' do
       let(:custom_role) { create(:custom_role, account: account, permissions: ['conversation_participating_manage']) }
 
