@@ -80,6 +80,16 @@ class Conversations::UnreadCounts::Store
       keys.zip(counts).to_h
     end
 
+    def members_for_keys(keys)
+      keys = keys.compact_blank.uniq
+      return {} if keys.blank?
+
+      members = Redis::Alfred.pipelined do |pipeline|
+        keys.each { |key| pipeline.smembers(key) }
+      end
+      keys.zip(members.map(&:to_set)).to_h
+    end
+
     def memberships_for_keys(keys, conversation_id)
       keys = keys.compact_blank
       return {} if keys.blank?

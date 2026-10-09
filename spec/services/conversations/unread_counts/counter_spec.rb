@@ -96,6 +96,27 @@ RSpec.describe Conversations::UnreadCounts::Counter do
     )
   end
 
+  it 'counts own, unassigned and team conversations once each for a team-scoped custom role' do
+    role = create(:custom_role, account: account, permissions: ['conversation_team_manage'])
+    agent.account_users.find_by(account: account).update!(custom_role: role)
+    other_agent = create(:user, account: account, role: :agent)
+
+    create_unread_conversation(account: account, inbox: visible_inbox, labels: [label.title], assignee: other_agent, team: visible_team)
+    create_unread_conversation(account: account, inbox: visible_inbox, labels: [label.title])
+    create_unread_conversation(account: account, inbox: visible_inbox, assignee: agent, team: visible_team)
+    create_unread_conversation(account: account, inbox: visible_inbox, labels: [label.title], team: visible_team)
+    create_unread_conversation(account: account, inbox: visible_inbox, labels: [label.title], assignee: other_agent)
+
+    result = described_class.new(account: account, user: agent).perform
+
+    expect(result).to eq(
+      all_count: 4,
+      inboxes: { visible_inbox.id.to_s => 4 },
+      labels: { label.id.to_s => 3 },
+      teams: { visible_team.id.to_s => 3 }
+    )
+  end
+
   it 'merges filtered counts when the filtered count feature is enabled' do
     account.enable_features!(:unread_count_for_filters)
     filtered_counter = instance_double(

@@ -1,7 +1,8 @@
-class Conversations::UnreadCounts::Counter
+class Conversations::UnreadCounts::Counter # rubocop:disable Metrics/ClassLength
   MANAGE_ALL_PERMISSION = 'conversation_manage'.freeze
   UNASSIGNED_PERMISSION = 'conversation_unassigned_manage'.freeze
   PARTICIPATING_PERMISSION = 'conversation_participating_manage'.freeze
+  TEAM_PERMISSION = 'conversation_team_manage'.freeze
   BUILD_LOCK_TTL = 15.minutes.to_i
   BUILD_WAIT_TIMEOUT = 30.seconds.to_i
   BUILD_WAIT_INTERVAL = 0.1.seconds
@@ -18,6 +19,7 @@ class Conversations::UnreadCounts::Counter
 
     ensure_base_cache!
     ensure_assignment_cache! if assignment_mode?
+    return with_filtered_counts(team_scoped_counts) if permission_mode == :team_unassigned_and_mine
 
     inbox_counts = unread_inbox_counts
 
@@ -30,6 +32,11 @@ class Conversations::UnreadCounts::Counter
   end
 
   private
+
+  def team_scoped_counts
+    ids = { inbox_ids: visible_inbox_ids, label_ids: sidebar_label_ids, team_ids: visible_team_ids }
+    ::Conversations::UnreadCounts::TeamScopedCounter.new(account: account, user: user, **ids).perform
+  end
 
   def with_filtered_counts(counts, build: true)
     return counts unless account.feature_enabled?(::Conversations::UnreadCounts::FilteredCounter::FEATURE_FLAG)
@@ -151,13 +158,15 @@ class Conversations::UnreadCounts::Counter
   end
 
   def assignment_mode?
-    %i[unassigned_and_mine mine].include?(permission_mode)
+    %i[team_unassigned_and_mine unassigned_and_mine mine].include?(permission_mode)
   end
 
   def permission_mode
     @permission_mode ||=
       if !custom_role_agent? || permissions.include?(MANAGE_ALL_PERMISSION)
         :base
+      elsif permissions.include?(TEAM_PERMISSION)
+        :team_unassigned_and_mine
       elsif permissions.include?(UNASSIGNED_PERMISSION)
         :unassigned_and_mine
       elsif permissions.include?(PARTICIPATING_PERMISSION)
