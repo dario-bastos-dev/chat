@@ -68,7 +68,7 @@ RSpec.describe Captain::Tools::Copilot::SearchConversationsService do
     end
 
     context 'when user has no relevant conversation permissions' do
-      let(:custom_role) { create(:custom_role, account: account, permissions: []) }
+      let(:custom_role) { create(:custom_role, account: account, permissions: ['contact_manage']) }
       let(:user) { create(:user, account: account) }
 
       before do

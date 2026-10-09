@@ -63,7 +63,7 @@ RSpec.describe Conversations::UnreadCounts::Counter do
   end
 
   it 'returns zero for custom roles without conversation permissions' do
-    account_user.update!(custom_role: create(:custom_role, account: account, permissions: []))
+    account_user.update!(custom_role: create(:custom_role, account: account, permissions: ['contact_manage']))
     create_unread_conversation(account: account, inbox: inbox, labels: [label.title], assignee: agent, team: team)
 
     result = described_class.new(account: account, user: agent).perform

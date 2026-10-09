@@ -43,7 +43,7 @@ RSpec.describe Captain::Tools::Copilot::SearchContactsService do
     context 'when user does not have contact_manage permission' do
       let(:user) { create(:user, account: account) }
       let(:assistant) { create(:captain_assistant, account: account) }
-      let(:custom_role) { create(:custom_role, account: account, permissions: []) }
+      let(:custom_role) { create(:custom_role, account: account, permissions: ['knowledge_base_manage']) }
 
       before do
         account_user = AccountUser.find_by(user: user, account: account)

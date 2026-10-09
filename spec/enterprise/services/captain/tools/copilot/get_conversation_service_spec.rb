@@ -82,7 +82,7 @@ RSpec.describe Captain::Tools::Copilot::GetConversationService do
     context 'when user has custom role without any conversation permissions' do
       let(:user) { create(:user, account: account) }
       let(:assistant) { create(:captain_assistant, account: account) }
-      let(:custom_role) { create(:custom_role, account: account, permissions: []) }
+      let(:custom_role) { create(:custom_role, account: account, permissions: ['contact_manage']) }
 
       before do
         account_user = AccountUser.find_by(user: user, account: account)

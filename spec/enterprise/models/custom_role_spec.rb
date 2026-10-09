@@ -8,6 +8,13 @@ RSpec.describe CustomRole, type: :model do
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
+
+    it 'requires at least one permission' do
+      custom_role = build(:custom_role, permissions: [])
+
+      expect(custom_role).not_to be_valid
+      expect(custom_role.errors[:permissions]).to be_present
+    end
   end
 
   describe 'filtered unread count invalidation' do

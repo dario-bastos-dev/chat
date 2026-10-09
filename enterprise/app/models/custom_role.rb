@@ -64,7 +64,7 @@ class CustomRole < ApplicationRecord
   ].freeze
 
   validates :name, presence: true
-  validates :permissions, inclusion: { in: PERMISSIONS }
+  validates :permissions, presence: true, inclusion: { in: PERMISSIONS }
 
   private
 
