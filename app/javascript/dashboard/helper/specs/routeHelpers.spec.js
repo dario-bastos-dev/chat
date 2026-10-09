@@ -49,6 +49,13 @@ describe('#defaultRedirectPage', () => {
     expect(defaultRedirectPage(to, permissions)).toBe('accounts/2/deals');
   });
 
+  it('should return pipeline settings for users with only the pipeline permission', () => {
+    const permissions = ['pipeline_manage', 'custom_role'];
+    expect(defaultRedirectPage(to, permissions)).toBe(
+      'accounts/2/settings/pipelines'
+    );
+  });
+
   it('should keep contacts ahead of deals for users with both permissions', () => {
     const permissions = ['contact_manage', 'deal_manage', 'custom_role'];
     expect(defaultRedirectPage(to, permissions)).toBe('accounts/2/contacts');

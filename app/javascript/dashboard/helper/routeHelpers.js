@@ -11,6 +11,7 @@ import {
   REPORTS_PERMISSIONS,
   PORTAL_PERMISSIONS,
   DEAL_PERMISSIONS,
+  PIPELINE_PERMISSIONS,
 } from 'dashboard/constants/permissions.js';
 
 export const routeIsAccessibleFor = (route, userPermissions = []) => {
@@ -30,6 +31,7 @@ export const defaultRedirectPage = (to, permissions) => {
     { permissions: [REPORTS_PERMISSIONS], path: 'reports/overview' },
     { permissions: [PORTAL_PERMISSIONS], path: 'portals' },
     { permissions: DEAL_PERMISSIONS, path: 'deals' },
+    { permissions: [PIPELINE_PERMISSIONS], path: 'settings/pipelines' },
   ];
 
   const route = permissionRoutes.find(({ permissions: routePermissions }) =>
