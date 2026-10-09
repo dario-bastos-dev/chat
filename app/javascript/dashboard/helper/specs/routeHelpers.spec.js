@@ -44,6 +44,16 @@ describe('#defaultRedirectPage', () => {
     expect(defaultRedirectPage(to, permissions)).toBe('accounts/2/portals');
   });
 
+  it('should return deals route for users with only deal permissions', () => {
+    const permissions = ['deal_own_manage', 'custom_role'];
+    expect(defaultRedirectPage(to, permissions)).toBe('accounts/2/deals');
+  });
+
+  it('should keep contacts ahead of deals for users with both permissions', () => {
+    const permissions = ['contact_manage', 'deal_manage', 'custom_role'];
+    expect(defaultRedirectPage(to, permissions)).toBe('accounts/2/contacts');
+  });
+
   it('should return dashboard route as default for users with custom roles', () => {
     const permissions = ['custom_role'];
     expect(defaultRedirectPage(to, permissions)).toBe('accounts/2/dashboard');
