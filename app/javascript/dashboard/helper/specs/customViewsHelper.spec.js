@@ -218,6 +218,27 @@ describe('customViewsHelper', () => {
   });
 
   describe('#generateValuesForEditCustomViews', () => {
+    it('shows the translated whatsapp chat type of a saved view, not its raw id', () => {
+      const filter = {
+        attribute_key: 'whatsapp_chat_type',
+        filter_operator: 'equal_to',
+        values: ['group'],
+      };
+      const params = {
+        filterTypes: advancedFilterTypes,
+        allCustomAttributes: [],
+        whatsappChatTypes: [
+          { id: 'group', name: 'Grupo' },
+          { id: 'individual', name: 'Individual' },
+        ],
+      };
+
+      expect(generateValuesForEditCustomViews(filter, params)).toEqual({
+        id: 'group',
+        name: 'Grupo',
+      });
+    });
+
     it('should return id and name if inboxType is multi_select or search_select', () => {
       const filter = {
         attribute_key: 'assignee_id',

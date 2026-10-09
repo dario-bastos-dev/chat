@@ -79,6 +79,16 @@ const filterTypes = [
     attributeModel: 'standard',
   },
   {
+    attributeKey: 'whatsapp_chat_type',
+    attributeI18nKey: 'WHATSAPP_CHAT_TYPE',
+    inputType: 'search_select',
+    dataType: 'text',
+    filterOperators: OPERATOR_TYPES_1.filter(
+      ({ value }) => value === 'equal_to'
+    ),
+    attributeModel: 'standard',
+  },
+  {
     attributeKey: 'browser_language',
     attributeI18nKey: 'BROWSER_LANGUAGE',
     inputType: 'search_select',

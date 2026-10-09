@@ -92,6 +92,7 @@ export const getValuesForFilter = (filter, params) => {
     labels,
     priority,
     contacts,
+    whatsappChatTypes,
   } = params;
   switch (attribute_key) {
     case 'status':
@@ -114,6 +115,8 @@ export const getValuesForFilter = (filter, params) => {
       return getValuesForLanguages(values, languages);
     case 'country_code':
       return getValuesForCountries(values, countries);
+    case 'whatsapp_chat_type':
+      return getValuesName(values, whatsappChatTypes, 'id', 'name');
     default:
       return { id: values[0], name: values[0] };
   }

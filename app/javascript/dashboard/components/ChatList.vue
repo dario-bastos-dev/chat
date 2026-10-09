@@ -41,6 +41,7 @@ import filterQueryGenerator from '../helper/filterQueryGenerator.js';
 import languages from 'dashboard/components/widgets/conversation/advancedFilterItems/languages';
 import countries from 'shared/constants/countries';
 import { generateValuesForEditCustomViews } from 'dashboard/helper/customViewsHelper';
+import { whatsappChatTypeOptions } from 'dashboard/components-next/filter/helper/filterHelper';
 import { conversationListPageURL } from '../helper/URLHelper';
 import {
   isOnMentionsView,
@@ -490,6 +491,7 @@ function setParamsForEditFolderModal() {
       { id: 'high', name: t('CONVERSATION.PRIORITY.OPTIONS.HIGH') },
       { id: 'urgent', name: t('CONVERSATION.PRIORITY.OPTIONS.URGENT') },
     ],
+    whatsappChatTypes: whatsappChatTypeOptions(t),
     filterTypes: advancedFilterTypes.value,
     allCustomAttributes: conversationCustomAttributes.value,
   };

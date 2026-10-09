@@ -19,6 +19,12 @@ export const CONVERSATION_ATTRIBUTES = {
   LAST_ACTIVITY_AT: 'last_activity_at',
 };
 
+// Shared by the advanced filter and by the modal that edits a saved view, so both show the same names.
+export const whatsappChatTypeOptions = t => [
+  { id: 'group', name: t('FILTER.WHATSAPP_CHAT_TYPE.GROUP') },
+  { id: 'individual', name: t('FILTER.WHATSAPP_CHAT_TYPE.INDIVIDUAL') },
+];
+
 export const CONTACT_ATTRIBUTES = {
   NAME: 'name',
   EMAIL: 'email',

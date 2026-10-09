@@ -7,6 +7,7 @@ import { createContactSearcher } from 'dashboard/components-next/NewConversation
 import {
   buildAttributesFilterTypes,
   CONVERSATION_ATTRIBUTES,
+  whatsappChatTypeOptions,
 } from './helper/filterHelper';
 import languages from 'dashboard/components/widgets/conversation/advancedFilterItems/languages.js';
 
@@ -92,10 +93,7 @@ export function useConversationFilterContext() {
         attributeName: t('FILTER.ATTRIBUTES.WHATSAPP_CHAT_TYPE'),
         label: t('FILTER.ATTRIBUTES.WHATSAPP_CHAT_TYPE'),
         inputType: 'searchSelect',
-        options: [
-          { id: 'group', name: t('FILTER.WHATSAPP_CHAT_TYPE.GROUP') },
-          { id: 'individual', name: t('FILTER.WHATSAPP_CHAT_TYPE.INDIVIDUAL') },
-        ],
+        options: whatsappChatTypeOptions(t),
         dataType: 'text',
         filterOperators: [operators.value.equal_to],
         attributeModel: 'standard',
