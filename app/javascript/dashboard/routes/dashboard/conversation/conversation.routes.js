@@ -2,14 +2,12 @@
 import { frontendURL } from '../../../helper/URLHelper';
 import store from '../../../store';
 import ConversationView from './ConversationView.vue';
+import {
+  ROLES,
+  CONVERSATION_PERMISSIONS as CONVERSATION_ROLE_PERMISSIONS,
+} from 'dashboard/constants/permissions.js';
 
-const CONVERSATION_PERMISSIONS = [
-  'administrator',
-  'agent',
-  'conversation_manage',
-  'conversation_unassigned_manage',
-  'conversation_participating_manage',
-];
+const CONVERSATION_PERMISSIONS = [...ROLES, ...CONVERSATION_ROLE_PERMISSIONS];
 
 const isFolderAvailable = async folderId => {
   let folders = store.getters['customViews/getConversationCustomViews'];
