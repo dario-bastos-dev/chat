@@ -90,6 +90,12 @@ conversations:
       - "does_not_contain"
       - "is_present"
       - "is_not_present"
+  # Not a column: Conversations::FilterService#whatsapp_chat_type_filter_query builds it.
+  whatsapp_chat_type:
+    attribute_type: "standard"
+    data_type: "whatsapp_chat_type"
+    filter_operators:
+      - "equal_to"
   browser_language:
     attribute_type: "additional_attributes"
     data_type: "text"

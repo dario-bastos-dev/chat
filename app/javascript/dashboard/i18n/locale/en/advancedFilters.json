@@ -49,7 +49,12 @@
       "TRUE": "True",
       "FALSE": "False"
     },
+    "WHATSAPP_CHAT_TYPE": {
+      "GROUP": "Group",
+      "INDIVIDUAL": "One to one"
+    },
     "ATTRIBUTES": {
+      "WHATSAPP_CHAT_TYPE": "WhatsApp chat type",
       "STATUS": "Status",
       "ASSIGNEE_NAME": "Assignee name",
       "ASSIGNEE_BOT_NAME": "Assigned bot",

@@ -47,7 +47,12 @@
       "TRUE": "Verdadeiro",
       "FALSE": "Falso"
     },
+    "WHATSAPP_CHAT_TYPE": {
+      "GROUP": "Grupo",
+      "INDIVIDUAL": "Individual"
+    },
     "ATTRIBUTES": {
+      "WHATSAPP_CHAT_TYPE": "Tipo de conversa do WhatsApp",
       "STATUS": "Status",
       "ASSIGNEE_NAME": "Usuário atribuído",
       "ASSIGNEE_BOT_NAME": "Bot atribuído",

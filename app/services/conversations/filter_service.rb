@@ -55,6 +55,23 @@ class Conversations::FilterService < FilterService
 
   private
 
+  WHATSAPP_CHAT_TYPES = %w[group individual].freeze
+
+  # Only Evolution GO inboxes hold WhatsApp groups for now, so both answers stay within them: "individual"
+  # means the one to one chats of those inboxes, not every non-group conversation of the account.
+  def whatsapp_chat_type_filter_query(query_hash)
+    chat_type = query_hash['values'].first.to_s
+    raise CustomExceptions::CustomFilter::InvalidValue.new(attribute_name: 'whatsapp_chat_type') unless WHATSAPP_CHAT_TYPES.include?(chat_type)
+
+    evolution_go_inboxes = @account.inboxes.where(channel_type: 'Channel::Whatsapp',
+                                                  channel_id: Channel::Whatsapp.where(provider: 'evolution_go').select(:id))
+    membership = chat_type == 'group' ? 'IN' : 'NOT IN'
+
+    "(conversations.inbox_id IN (#{evolution_go_inboxes.select(:id).to_sql}) " \
+      "AND conversations.contact_id #{membership} (#{@account.contacts.whatsapp_groups.select(:id).to_sql})) " \
+      "#{query_hash[:query_operator]}"
+  end
+
   # The planner hint only pays off when the label condition positively narrows the
   # result set: `equal_to` joined by AND. Negative/presence operators or an OR in the
   # payload leave the result broad, where the inbox index is the better driver.

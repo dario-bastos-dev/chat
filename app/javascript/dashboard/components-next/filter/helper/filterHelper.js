@@ -12,6 +12,7 @@ export const CONVERSATION_ATTRIBUTES = {
   DISPLAY_ID: 'display_id',
   CAMPAIGN_ID: 'campaign_id',
   LABELS: 'labels',
+  WHATSAPP_CHAT_TYPE: 'whatsapp_chat_type',
   BROWSER_LANGUAGE: 'browser_language',
   REFERER: 'referer',
   CREATED_AT: 'created_at',

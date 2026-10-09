@@ -78,6 +78,31 @@ export function useConversationFilterContext() {
     operators.value.hours_before,
   ]);
 
+  // WhatsApp groups only exist on Evolution GO inboxes for now, so the filter is offered only where
+  // it can match something; the server keeps both answers within those inboxes too.
+  const whatsappChatTypeFilterTypes = computed(() => {
+    if (!inboxes.value.some(inbox => inbox.provider === 'evolution_go')) {
+      return [];
+    }
+
+    return [
+      {
+        attributeKey: CONVERSATION_ATTRIBUTES.WHATSAPP_CHAT_TYPE,
+        value: CONVERSATION_ATTRIBUTES.WHATSAPP_CHAT_TYPE,
+        attributeName: t('FILTER.ATTRIBUTES.WHATSAPP_CHAT_TYPE'),
+        label: t('FILTER.ATTRIBUTES.WHATSAPP_CHAT_TYPE'),
+        inputType: 'searchSelect',
+        options: [
+          { id: 'group', name: t('FILTER.WHATSAPP_CHAT_TYPE.GROUP') },
+          { id: 'individual', name: t('FILTER.WHATSAPP_CHAT_TYPE.INDIVIDUAL') },
+        ],
+        dataType: 'text',
+        filterOperators: [operators.value.equal_to],
+        attributeModel: 'standard',
+      },
+    ];
+  });
+
   const searchContacts = createContactSearcher();
 
   const contactOptionName = contact =>
@@ -268,6 +293,7 @@ export function useConversationFilterContext() {
       filterOperators: presenceOperators.value,
       attributeModel: 'standard',
     },
+    ...whatsappChatTypeFilterTypes.value,
     {
       attributeKey: CONVERSATION_ATTRIBUTES.BROWSER_LANGUAGE,
       value: CONVERSATION_ATTRIBUTES.BROWSER_LANGUAGE,

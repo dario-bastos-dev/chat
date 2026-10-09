@@ -902,4 +902,51 @@ describe Conversations::FilterService do
       expect(result[:conversations].count).to eq 1
     end
   end
+
+  describe 'whatsapp_chat_type' do
+    let(:admin) { create(:user, account: account, role: :administrator) }
+    let(:evolution_go_inbox) do
+      create(:channel_whatsapp, account: account, provider: 'evolution_go',
+                                provider_config: { 'instance_token' => 't', 'instance_id' => 'i' },
+                                sync_templates: false, validate_provider_config: false,
+                                provider_instance_callbacks: false).inbox
+    end
+    let(:group_contact) { create(:contact, account: account, identifier: '120363429656097671@g.us', phone_number: nil) }
+    let!(:group_conversation) do
+      contact_inbox = create(:contact_inbox, contact: group_contact, inbox: evolution_go_inbox,
+                                             source_id: '120363429656097671@g.us')
+      create(:conversation, account: account, inbox: evolution_go_inbox, contact: group_contact, contact_inbox: contact_inbox)
+    end
+    let!(:person_conversation) do
+      person = create(:contact, account: account, phone_number: '+5527998999017')
+      contact_inbox = create(:contact_inbox, contact: person, inbox: evolution_go_inbox, source_id: '5527998999017')
+      create(:conversation, account: account, inbox: evolution_go_inbox, contact: person, contact_inbox: contact_inbox)
+    end
+
+    it 'finds only the group conversations' do
+      params = { page: 1, payload: [{ attribute_key: 'whatsapp_chat_type', filter_operator: 'equal_to',
+                                      values: ['group'], query_operator: nil }.with_indifferent_access] }
+
+      result = filter_service.new(params, admin, account).perform
+
+      expect(result[:conversations].map(&:id)).to eq([group_conversation.id])
+    end
+
+    it 'finds the one to one conversations of Evolution GO inboxes, and nothing from other channels' do
+      params = { page: 1, payload: [{ attribute_key: 'whatsapp_chat_type', filter_operator: 'equal_to',
+                                      values: ['individual'], query_operator: nil }.with_indifferent_access] }
+
+      result = filter_service.new(params, admin, account).perform
+
+      expect(result[:conversations].map(&:id)).to eq([person_conversation.id])
+    end
+
+    it 'rejects a value it does not know' do
+      params = { page: 1, payload: [{ attribute_key: 'whatsapp_chat_type', filter_operator: 'equal_to',
+                                      values: ['broadcast'], query_operator: nil }.with_indifferent_access] }
+
+      expect { filter_service.new(params, admin, account).perform }
+        .to(raise_error { |error| expect(error.class.name).to eq('CustomExceptions::CustomFilter::InvalidValue') })
+    end
+  end
 end

@@ -224,3 +224,48 @@ describe('useConversationFilterContext', () => {
     ]);
   });
 });
+
+describe('whatsapp chat type filter', () => {
+  const findChatTypeFilter = filterTypes =>
+    filterTypes.value.find(
+      filter => filter.attributeKey === 'whatsapp_chat_type'
+    );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('is offered when the account has an Evolution GO inbox', () => {
+    useMapGetter.mockImplementation(key =>
+      key === 'inboxes/getInboxes'
+        ? ref([{ id: 1, provider: 'evolution_go' }])
+        : storeValues[key] || ref([])
+    );
+
+    const { filterTypes } = useConversationFilterContext();
+
+    expect(findChatTypeFilter(filterTypes)).toMatchObject({
+      label: 'FILTER.ATTRIBUTES.WHATSAPP_CHAT_TYPE',
+      inputType: 'searchSelect',
+      attributeModel: 'standard',
+    });
+    expect(findChatTypeFilter(filterTypes).options.map(({ id }) => id)).toEqual(
+      ['group', 'individual']
+    );
+    expect(
+      findChatTypeFilter(filterTypes).filterOperators.map(({ value }) => value)
+    ).toEqual(['equal_to']);
+  });
+
+  it('is not offered when no inbox runs on Evolution GO', () => {
+    useMapGetter.mockImplementation(key =>
+      key === 'inboxes/getInboxes'
+        ? ref([{ id: 1, provider: 'whatsapp_cloud' }])
+        : storeValues[key] || ref([])
+    );
+
+    const { filterTypes } = useConversationFilterContext();
+
+    expect(findChatTypeFilter(filterTypes)).toBeUndefined();
+  });
+});
