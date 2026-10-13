@@ -151,6 +151,14 @@ describe Whatsapp::GroupParticipantConversationService do
     expect { service.perform }.to raise_error(ActiveRecord::RecordNotFound)
   end
 
+  it 'refuses a member whose contact is blocked, without opening or recording anything' do
+    create(:contact, account: account, name: 'Alex', phone_number: '+5527998999017', blocked: true)
+
+    expect { service.perform }.to(raise_error { |error| expect(error.class.name).to eq('CustomExceptions::ContactBlocked') })
+    expect(inbox.conversations.where.not(id: group_conversation.id)).to be_empty
+    expect(Conversations::ActivityMessageJob).not_to have_been_enqueued
+  end
+
   it 'refuses a conversation that is not a group' do
     direct = create(:conversation, account: account, inbox: inbox)
     service = described_class.new(group_conversation: direct, participant_jid: participant_jid, user: agent)

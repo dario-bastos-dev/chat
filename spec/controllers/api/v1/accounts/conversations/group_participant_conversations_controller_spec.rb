@@ -44,6 +44,15 @@ RSpec.describe 'Group participant conversations API', type: :request do
 
       expect(response).to have_http_status(:not_found)
     end
+
+    it 'explains why a blocked member cannot be messaged' do
+      create(:contact, account: account, name: 'Alex', phone_number: '+5527998999017', blocked: true)
+
+      post url, params: { participant_jid: '5527998999017@s.whatsapp.net' }, headers: agent.create_new_auth_token, as: :json
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body['message']).to eq('Alex is blocked. Unblock the contact to message them privately.')
+    end
   end
 
   it 'refuses an agent who cannot see the group' do

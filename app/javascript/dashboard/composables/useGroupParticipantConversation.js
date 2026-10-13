@@ -29,8 +29,12 @@ export function useGroupParticipantConversation() {
         name: 'inbox_conversation',
         params: { conversation_id: data.id },
       });
-    } catch {
-      useAlert(t('CONVERSATION.GROUP_PARTICIPANT_CONVERSATION.ERROR'));
+    } catch (error) {
+      // A refusal the agent can act on, such as a blocked contact, comes with its reason.
+      useAlert(
+        error?.response?.data?.message ||
+          t('CONVERSATION.GROUP_PARTICIPANT_CONVERSATION.ERROR')
+      );
     } finally {
       isOpening.value = false;
     }

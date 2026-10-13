@@ -7,6 +7,9 @@ class Whatsapp::GroupParticipantConversationService
   def perform
     raise ActiveRecord::RecordNotFound unless group_conversation.contact.whatsapp_group?
     raise ActiveRecord::RecordNotFound if participant.blank? || business_number?
+    # A blocked contact's conversation is created already resolved, so each attempt would leave
+    # another one behind instead of opening anything.
+    raise CustomExceptions::ContactBlocked.new(name: contact_inbox.contact.name) if contact_inbox.contact.blocked?
 
     existing_conversation || open_conversation
   end

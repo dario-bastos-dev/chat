@@ -168,6 +168,7 @@ en:
       message_not_sent: 'The message could not be delivered to WhatsApp. Check the inbox connection and try again.'
       evolution_go:
         logout_success: 'Disconnected successfully'
+        group_participant_blocked: '%{name} is blocked. Unblock the contact to message them privately.'
         logout_local_only: 'Disconnected locally'
       reauthorization:
         generic: 'Failed to reauthorize WhatsApp. Please try again.'
