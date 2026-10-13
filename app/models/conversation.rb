@@ -139,6 +139,7 @@ class Conversation < ApplicationRecord
 
   before_save :ensure_snooze_until_reset
   before_save :set_status_changed_at
+  before_save :release_from_whatsapp_group, if: -> { opened_from_whatsapp_group? && will_save_change_to_status?(to: 'resolved') }
   before_create :determine_conversation_status
   before_create :ensure_waiting_since
 
@@ -365,6 +366,13 @@ class Conversation < ApplicationRecord
     return handle_campaign_status if campaign.present?
 
     set_active_bot_conversation if inbox.active_bot? && !opened_from_whatsapp_group?
+  end
+
+  # The bot only stays out while the agent who opened the conversation from the group is on it. On an
+  # inbox locked to a single conversation the member's next message reopens this same one, and the
+  # bot has to be able to take it like any other.
+  def release_from_whatsapp_group
+    self.additional_attributes = additional_attributes.except('origin_group')
   end
 
   def handle_campaign_status

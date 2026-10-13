@@ -719,6 +719,26 @@ RSpec.describe Conversation do
     end
   end
 
+  describe 'when conversation was opened from a WhatsApp group' do
+    let(:conversation) do
+      create(:conversation, status: :open,
+                            additional_attributes: { 'origin_group' => { 'conversation_id' => 1 }, 'browser' => 'Chrome' })
+    end
+
+    it 'gives the conversation back to the bot once resolved' do
+      conversation.resolved!
+
+      expect(conversation.reload).not_to be_opened_from_whatsapp_group
+      expect(conversation.additional_attributes).to eq('browser' => 'Chrome')
+    end
+
+    it 'keeps the bot out while the agent is still on it' do
+      conversation.pending!
+
+      expect(conversation.reload).to be_opened_from_whatsapp_group
+    end
+  end
+
   describe '#botinbox: when conversation created inside inbox with agent bot' do
     let!(:bot_inbox) { create(:agent_bot_inbox) }
     let(:conversation) { create(:conversation, inbox: bot_inbox.inbox) }
