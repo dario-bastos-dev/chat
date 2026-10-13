@@ -304,7 +304,8 @@ class Whatsapp::OneoffCampaignService
       message.update!(source_id: message_id)
     else
       Rails.logger.error "[WHATSAPP LITE CAMPAIGN] ❌ Failed to send message to #{to}"
-      message.update!(status: :failed, external_error: "Failed to send message via WhatsApp Lite Provider")
+      # Evolution GO already stored the reason it gave; only providers that return a bare nil get the generic one.
+      message.update!(status: :failed, external_error: "Failed to send message via WhatsApp Lite Provider") unless message.failed?
     end
   rescue StandardError => e
     Rails.logger.error "[WHATSAPP LITE CAMPAIGN] ❌ Error sending to #{to}: #{e.message}"

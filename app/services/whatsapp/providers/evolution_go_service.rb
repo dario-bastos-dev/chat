@@ -569,21 +569,14 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     Rails.logger.info "[EVOLUTION_GO] Sending to #{formatted_number} (source: #{phone_number_or_jid}) | " \
                       "JID: #{format_recipient_jid(formatted_number)} | attachments: #{message.attachments.count}"
 
+    @send_error = nil
     # Rich types own the whole message, so they are matched before the generic text/media split.
     # /send/location and /send/link claim the source_id themselves; /send/button, /send/list and
     # /send/carousel take no `id`, so their echo is only deduped once the send returns.
-    rich_id = send_rich_message(formatted_number, message)
-    return rich_id unless rich_id == :not_rich
+    sent_id = send_rich_message(formatted_number, message)
+    sent_id = send_plain_message(formatted_number, message) if sent_id == :not_rich
 
-    reserved_id = reserve_source_id(message)
-
-    sent_id = if message.attachments.any?
-                send_message_with_attachments(formatted_number, message, reserved_id)
-              else
-                send_text_message(formatted_number, message, reserved_id)
-              end
-
-    release_source_id(message, reserved_id) if sent_id.blank?
+    record_send_failure(message) if sent_id.blank?
     sent_id
   end
 
@@ -712,6 +705,28 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     message.update_column(:source_id, nil)
   end
 
+  def send_plain_message(phone_number, message)
+    reserved_id = reserve_source_id(message)
+
+    sent_id = if message.attachments.any?
+                send_message_with_attachments(phone_number, message, reserved_id)
+              else
+                send_text_message(phone_number, message, reserved_id)
+              end
+
+    release_source_id(message, reserved_id) if sent_id.blank?
+    sent_id
+  end
+
+  # The send jobs only see a nil id and would fall back to a generic "check the connection"
+  # error, hiding the reason Evolution GO actually gave (number not on WhatsApp, instance logged
+  # out, media it could not fetch...). Marking the failure here keeps that reason on the message.
+  def record_send_failure(message)
+    return if @send_error.blank?
+
+    message.update!(status: :failed, external_error: @send_error.to_s.truncate(255))
+  end
+
   def send_text_message(phone_number, message, message_id = nil)
     body = text_message_body(format_recipient_jid(phone_number), message, message_id)
 
@@ -729,10 +744,12 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       msg_id
     else
       Rails.logger.error "[EVOLUTION_GO] Send text failed: #{response.code} - #{response.body}"
+      @send_error = response.message
       nil
     end
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO] Send text error: #{e.message}"
+    @send_error = e.message
     nil
   end
 
@@ -1049,10 +1066,12 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       msg_id
     else
       Rails.logger.error "[EVOLUTION_GO] #{label} failed: #{response.code} - #{response.body}"
+      @send_error = response.message
       nil
     end
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO] #{label} error: #{e.class} - #{e.message}"
+    @send_error = e.message
     nil
   end
 
@@ -1096,10 +1115,12 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
       msg_id
     else
       Rails.logger.error "[EVOLUTION_GO] Send media failed (#{media_type}): #{response.code} - #{response.body}"
+      @send_error = response.message
       nil
     end
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION_GO] Send media error: #{e.message}"
+    @send_error = e.message
     nil
   end
 
@@ -1286,6 +1307,7 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     EvolutionResponse.new(response.success?, response.status, response.body, parsed_response)
   rescue StandardError => e
     Rails.logger.error "[EVOLUTION CLIENT ERROR] #{e.class} - #{e.message}"
-    EvolutionResponse.new(false, 500, '', {})
+    # Kept as the body so a timeout or refused connection reads as such instead of a bare "HTTP 500".
+    EvolutionResponse.new(false, 500, e.message, {})
   end
 end
