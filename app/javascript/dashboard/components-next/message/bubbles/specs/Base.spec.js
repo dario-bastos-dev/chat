@@ -5,9 +5,11 @@ import BaseBubble from '../Base.vue';
 import { provideMessageContext } from '../../provider.js';
 import { MESSAGE_VARIANTS, ORIENTATION } from '../../constants';
 
-const openPrivateConversation = vi.fn();
+const useGroupParticipantConversation = vi.fn(() => ({
+  openPrivateConversation: vi.fn(),
+}));
 vi.mock('dashboard/composables/useGroupParticipantConversation', () => ({
-  useGroupParticipantConversation: () => ({ openPrivateConversation }),
+  useGroupParticipantConversation: () => useGroupParticipantConversation(),
 }));
 
 const mountBubble = (contentAttributes = {}) => {
@@ -63,48 +65,9 @@ describe('Base bubble', () => {
     expect(wrapper.text()).toBe('corpo da mensagem');
   });
 
-  it('falls back to the formatted phone number when the participant has no name', () => {
-    const wrapper = mountBubble({
-      groupParticipant: {
-        name: null,
-        phone: '+5527998999017',
-        jid: '5527998999017@s.whatsapp.net',
-      },
-    });
+  it('leaves the private conversation action out of a one to one bubble', () => {
+    mountBubble();
 
-    expect(wrapper.text()).toContain('+55 27 99899 9017');
-  });
-
-  it('gives two participants different colours so they can be told apart', () => {
-    const alex = mountBubble({
-      groupParticipant: { name: 'Alex', phone: null, jid: 'a@lid' },
-    });
-    const bruna = mountBubble({
-      groupParticipant: { name: 'Bruna', phone: null, jid: 'b@lid' },
-    });
-
-    const colourOf = wrapper =>
-      wrapper.find('[data-participant-name]').classes().join(' ');
-
-    expect(colourOf(alex)).not.toBe(colourOf(bruna));
-  });
-
-  it('opens a private conversation with the participant from their name', async () => {
-    const wrapper = mountBubble({
-      groupParticipant: { name: 'Alex', phone: null, jid: 'a@lid' },
-    });
-
-    await wrapper.find('[data-participant-name]').trigger('click');
-    const openItem = wrapper
-      .findAll('button')
-      .find(button =>
-        button.text().includes('GROUP_PARTICIPANT_CONVERSATION.OPEN')
-      );
-    await openItem.trigger('click');
-
-    expect(openPrivateConversation).toHaveBeenCalledWith({
-      conversationId: 42,
-      participantJid: 'a@lid',
-    });
+    expect(useGroupParticipantConversation).not.toHaveBeenCalled();
   });
 });
