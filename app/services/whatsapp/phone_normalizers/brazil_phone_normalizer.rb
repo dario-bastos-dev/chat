@@ -18,6 +18,15 @@ class Whatsapp::PhoneNormalizers::BrazilPhoneNormalizer < Whatsapp::PhoneNormali
     normalized_number
   end
 
+  # The same line written the other way. Contacts saved before the change, or typed by hand, may
+  # still hold the mobile without its ninth digit, and a landline never had one.
+  def ninth_digit_variant(waid)
+    case waid
+    when /\A(55\d{2})9(\d{8})\z/ then "#{Regexp.last_match(1)}#{Regexp.last_match(2)}"
+    when /\A(55\d{2})(\d{8})\z/ then "#{Regexp.last_match(1)}9#{Regexp.last_match(2)}"
+    end
+  end
+
   private
 
   def country_code_pattern

@@ -528,37 +528,13 @@ class Whatsapp::IncomingMessageEvolutionGoService
     extract_lid_digits(lid_jid)
   end
 
-  # Auxiliar de busca com fallback para o 9º dígito brasileiro
+  # Auxiliar de busca com fallback para o 9º dígito brasileiro; o número exato tem preferência
   def find_existing_contact_by_phone
     return nil if contact_phone_number.blank?
 
-    # 1. Busca exata
-    contact = inbox.account.contacts.find_by(phone_number: contact_phone_number)
-    return contact if contact.present?
-
-    # 2. Fallback de 9º dígito (apenas para números brasileiros)
-    # Formato e164: +55 + DDD (2 dígitos) + número (8 ou 9 dígitos)
-    clean_phone = contact_phone_number.to_s.gsub(/^\+/, '')
-    if clean_phone.start_with?('55')
-      ddd = clean_phone[2, 2]
-      number = clean_phone[4..-1]
-
-      modified_phone = if clean_phone.length == 13 && number.start_with?('9')
-                         # Remove o '9'
-                         "+55#{ddd}#{number[1..-1]}"
-                       elsif clean_phone.length == 12
-                         # Adiciona o '9'
-                         "+55#{ddd}9#{number}"
-                       end
-
-      if modified_phone.present?
-        Rails.logger.info "[EVOLUTION_GO MSG] Tentando busca com variante do 9º dígito: #{modified_phone}"
-        contact = inbox.account.contacts.find_by(phone_number: modified_phone)
-        return contact if contact.present?
-      end
-    end
-
-    nil
+    contacts = inbox.account.contacts
+    variant = Whatsapp::PhoneNormalizers::BrazilPhoneNormalizer.new.ninth_digit_variant(contact_phone_number.delete_prefix('+'))
+    contacts.find_by(phone_number: contact_phone_number) || (variant && contacts.find_by(phone_number: "+#{variant}"))
   end
 
   # Save LID → phone mapping. Outgoing echoes carry the pair as well — Chat holds the contact's

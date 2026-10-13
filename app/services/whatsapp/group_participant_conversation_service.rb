@@ -82,7 +82,7 @@ class Whatsapp::GroupParticipantConversationService
 
   def find_contact
     contacts = inbox.account.contacts
-    contact = contacts.find_by(phone_number: phone_number_variants) if phone_number
+    contact = phone_number_candidates.lazy.filter_map { |phone| contacts.find_by(phone_number: phone) }.first
     contact || lid_mapping&.contact || contacts.find_by(identifier: participant_jids)
   end
 
@@ -90,12 +90,11 @@ class Whatsapp::GroupParticipantConversationService
     "+#{phone_digits}" if phone_digits
   end
 
-  # A Brazilian mobile may have been saved with or without the ninth digit.
-  def phone_number_variants
-    variant = case phone_digits
-              when /\A(55\d{2})9(\d{8})\z/ then "#{Regexp.last_match(1)}#{Regexp.last_match(2)}"
-              when /\A(55\d{2})(\d{8})\z/ then "#{Regexp.last_match(1)}9#{Regexp.last_match(2)}"
-              end
+  # The exact number first, then the same Brazilian mobile written with or without its ninth digit.
+  def phone_number_candidates
+    return [] unless phone_digits
+
+    variant = Whatsapp::PhoneNormalizers::BrazilPhoneNormalizer.new.ninth_digit_variant(phone_digits)
     [phone_number, variant && "+#{variant}"].compact
   end
 

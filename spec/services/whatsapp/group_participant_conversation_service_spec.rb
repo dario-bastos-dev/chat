@@ -81,6 +81,13 @@ describe Whatsapp::GroupParticipantConversationService do
     expect(service.perform.contact).to eq(contact)
   end
 
+  it 'prefers the contact saved with the exact number over its ninth digit variant' do
+    create(:contact, account: account, phone_number: '+552798999017')
+    exact = create(:contact, account: account, phone_number: '+5527998999017')
+
+    expect(service.perform.contact).to eq(exact)
+  end
+
   it 'lands on the open conversation the member already has, without recording anything again' do
     first = service.perform
 

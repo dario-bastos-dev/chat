@@ -62,6 +62,23 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
       mapping = Channel::WhatsappLidMapping.find_by(account_id: inbox.account_id, lid: '27041265119351')
       expect(mapping.phone_number).to eq('5511988887777')
     end
+
+    it 'reuses the contact saved without the Brazilian ninth digit' do
+      contact = create(:contact, account: inbox.account, phone_number: '+551188887777')
+
+      service.perform
+
+      expect(inbox.messages.last.conversation.contact).to eq(contact)
+    end
+
+    it 'prefers the contact saved with the exact number over its ninth digit variant' do
+      create(:contact, account: inbox.account, phone_number: '+551188887777')
+      exact = create(:contact, account: inbox.account, phone_number: '+5511988887777')
+
+      service.perform
+
+      expect(inbox.messages.last.conversation.contact).to eq(exact)
+    end
   end
 
   describe 'messages with no renderable content' do
