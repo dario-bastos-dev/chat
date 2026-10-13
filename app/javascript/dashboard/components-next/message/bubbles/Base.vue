@@ -1,12 +1,14 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import MessageMeta from '../MessageMeta.vue';
 import CaptainGenerationDetails from '../CaptainGenerationDetails.vue';
+import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 
 import { emitter } from 'shared/helpers/mitt';
 import { useMessageContext } from '../provider.js';
 import { useI18n } from 'vue-i18n';
+import { useGroupParticipantConversation } from 'dashboard/composables/useGroupParticipantConversation';
 
 import { parsePhoneNumber } from 'libphonenumber-js';
 
@@ -24,6 +26,7 @@ const {
   inReplyTo,
   shouldGroupWithNext,
   id,
+  conversationId,
   sender,
   senderType,
   contentAttributes,
@@ -70,6 +73,26 @@ const participantColorClass = computed(() => {
 
   return PARTICIPANT_COLORS[seed % PARTICIPANT_COLORS.length];
 });
+
+const { openPrivateConversation } = useGroupParticipantConversation();
+const showParticipantMenu = ref(false);
+
+const participantMenuItems = computed(() => [
+  {
+    label: t('CONVERSATION.GROUP_PARTICIPANT_CONVERSATION.OPEN'),
+    action: 'open_private_conversation',
+    value: groupParticipant.value?.jid,
+    icon: 'i-lucide-message-circle',
+  },
+]);
+
+const openParticipantConversation = () => {
+  showParticipantMenu.value = false;
+  openPrivateConversation({
+    conversationId: conversationId.value,
+    participantJid: groupParticipant.value.jid,
+  });
+};
 
 const metaColorClass = computed(() =>
   variant.value === MESSAGE_VARIANTS.PRIVATE
@@ -177,11 +200,24 @@ const replyToPreview = computed(() => {
     </div>
     <div
       v-if="participantName"
-      data-participant-name
-      class="mb-1 font-semibold truncate"
-      :class="participantColorClass"
+      v-on-clickaway="() => (showParticipantMenu = false)"
+      class="relative mb-1"
     >
-      {{ participantName }}
+      <button
+        type="button"
+        data-participant-name
+        class="max-w-full font-semibold truncate text-start hover:underline"
+        :class="participantColorClass"
+        @click="showParticipantMenu = !showParticipantMenu"
+      >
+        {{ participantName }}
+      </button>
+      <DropdownMenu
+        v-if="showParticipantMenu"
+        :menu-items="participantMenuItems"
+        class="mt-1 w-56 top-full ltr:left-0 rtl:right-0"
+        @action="openParticipantConversation"
+      />
     </div>
     <slot />
     <template v-if="shouldShowMeta">

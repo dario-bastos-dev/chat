@@ -130,6 +130,13 @@ class ConversationApi extends ApiClient {
     });
   }
 
+  openGroupParticipantConversation({ conversationId, participantJid }) {
+    return axios.post(
+      `${this.url}/${conversationId}/group_participant_conversation`,
+      { participant_jid: participantJid }
+    );
+  }
+
   getAllAttachments(conversationId) {
     return axios.get(`${this.url}/${conversationId}/attachments`);
   }

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, watch, onMounted, ref } from 'vue';
+import { computed, watch, onMounted, ref, toRef } from 'vue';
 import {
   useMapGetter,
   useFunctionGetter,
@@ -8,12 +8,14 @@ import {
 import { useAccount } from 'dashboard/composables/useAccount';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
+import { isWhatsappGroupConversation } from 'dashboard/helper/conversationHelper';
 
 import AccordionItem from 'dashboard/components/Accordion/AccordionItem.vue';
 import ContactConversations from './ContactConversations.vue';
 import ContactDeals from './contact/ContactDeals.vue';
 import ConversationAction from './ConversationAction.vue';
 import ConversationParticipant from './ConversationParticipant.vue';
+import GroupParticipants from './GroupParticipants.vue';
 import ContactInfo from './contact/ContactInfo.vue';
 import ContactNotes from './contact/ContactNotes.vue';
 import ConversationInfo from './ConversationInfo.vue';
@@ -90,6 +92,14 @@ const conversationAdditionalAttributes = computed(
 );
 
 const channelType = computed(() => currentChat.value.meta?.channel);
+
+const isGroupConversation = computed(() =>
+  isWhatsappGroupConversation(currentChat.value)
+);
+const groupParticipants = computed(
+  () => currentChat.value.additional_attributes?.group_participants || []
+);
+const inbox = useFunctionGetter('inboxes/getInbox', toRef(props, 'inboxId'));
 
 const contactGetter = useMapGetter('contacts/getContact');
 const contactId = computed(() => currentChat.value.meta?.sender?.id);
@@ -184,6 +194,26 @@ onMounted(() => {
               <ConversationParticipant
                 :conversation-id="conversationId"
                 :inbox-id="inboxId"
+              />
+            </AccordionItem>
+          </div>
+          <div
+            v-else-if="
+              element.name === 'group_participants' && isGroupConversation
+            "
+          >
+            <AccordionItem
+              :title="$t('CONVERSATION_SIDEBAR.ACCORDION.GROUP_PARTICIPANTS')"
+              :is-open="isContactSidebarItemOpen('is_group_participants_open')"
+              @toggle="
+                value =>
+                  toggleSidebarUIState('is_group_participants_open', value)
+              "
+            >
+              <GroupParticipants
+                :conversation-id="conversationId"
+                :participants="groupParticipants"
+                :business-phone="inbox.phone_number || ''"
               />
             </AccordionItem>
           </div>

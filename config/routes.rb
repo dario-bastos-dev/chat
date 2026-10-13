@@ -159,6 +159,7 @@ Rails.application.routes.draw do
               resources :assignments, only: [:create]
               resources :labels, only: [:create, :index]
               resource :participants, only: [:show, :create, :update, :destroy]
+              resource :group_participant_conversation, only: [:create]
               resource :direct_uploads, only: [:create]
               resource :draft_messages, only: [:show, :update, :destroy]
               resources :scheduled_messages, only: [:index, :create, :update, :destroy]

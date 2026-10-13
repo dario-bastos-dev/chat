@@ -302,6 +302,9 @@ pt_BR:
       delivery_status:
         error_code: 'Código de erro: %{error_code}'
     activity:
+      group_participant_conversation:
+        opened_in_group: '%{user_name} abriu uma conversa privada com %{participant_name}'
+        opened_from_group: '%{user_name} abriu esta conversa privada a partir do grupo %{group_name}'
       captain:
         resolved: 'A conversa foi marcada como resolvida por %{user_name} por inatividade'
         resolved_with_reason: 'A conversa foi marcada como resolvida por %{user_name} (%{reason})'

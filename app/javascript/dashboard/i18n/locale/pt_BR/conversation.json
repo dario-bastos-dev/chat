@@ -191,6 +191,13 @@
       "TRANSCRIPT_SHOW_MORE": "Ver mais",
       "TRANSCRIPT_SHOW_LESS": "Mostrar menos"
     },
+    "GROUP_PARTICIPANT_CONVERSATION": {
+      "OPEN": "Conversar em privado",
+      "OPEN_WITH": "Conversar em privado com {name}",
+      "ADMIN": "Admin",
+      "EMPTY": "O grupo ainda não informou seus membros",
+      "ERROR": "Não foi possível abrir a conversa privada"
+    },
     "GROUP_MENTION": {
       "EVERYONE": "Todos",
       "EVERYONE_INFO": "Notificar todos os membros do grupo",
@@ -511,6 +518,7 @@
       "MACROS": "Macros",
       "LINEAR_ISSUES": "Problemas do Linear vinculados",
       "SHOPIFY_ORDERS": "Pedidos do Shopify",
+      "GROUP_PARTICIPANTS": "Membros do grupo",
       "SHARED_FILES": "Anexos"
     },
     "SHARED_FILES": {

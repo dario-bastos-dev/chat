@@ -207,6 +207,13 @@
       "TRANSCRIPT_SHOW_MORE": "Show more",
       "TRANSCRIPT_SHOW_LESS": "Show less"
     },
+    "GROUP_PARTICIPANT_CONVERSATION": {
+      "OPEN": "Message privately",
+      "OPEN_WITH": "Message {name} privately",
+      "ADMIN": "Admin",
+      "EMPTY": "The group has not reported its members yet",
+      "ERROR": "Could not open the private conversation"
+    },
     "GROUP_MENTION": {
       "EVERYONE": "Everyone",
       "EVERYONE_INFO": "Notify every member of the group",
@@ -529,6 +536,7 @@
       "MACROS": "Macros",
       "LINEAR_ISSUES": "Linked Linear Issues",
       "SHOPIFY_ORDERS": "Shopify Orders",
+      "GROUP_PARTICIPANTS": "Group members",
       "SHARED_FILES": "Attachments"
     },
     "SHARED_FILES": {

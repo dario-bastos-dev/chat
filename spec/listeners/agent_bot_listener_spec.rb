@@ -348,5 +348,19 @@ describe AgentBotListener do
 
       listener.message_created(Events::Base.new('message.created', Time.zone.now, message: direct_message))
     end
+
+    it 'keeps the bot out of a private conversation an agent opened from the group' do
+      member = create(:contact, account: account, phone_number: '+5511977776666')
+      member_contact_inbox = create(:contact_inbox, contact: member, inbox: channel.inbox, source_id: '5511977776666')
+      private_conversation = create(:conversation, account: account, inbox: channel.inbox, contact: member,
+                                                   contact_inbox: member_contact_inbox,
+                                                   additional_attributes: { 'origin_group' => { 'conversation_id' => 1 } })
+      member_message = create(:message, message_type: 'incoming', account: account,
+                                        inbox: channel.inbox, conversation: private_conversation)
+
+      expect(AgentBots::WebhookJob).not_to receive(:perform_later)
+
+      listener.message_created(Events::Base.new('message.created', Time.zone.now, message: member_message))
+    end
   end
 end

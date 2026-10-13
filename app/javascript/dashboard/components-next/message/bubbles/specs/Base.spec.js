@@ -5,6 +5,11 @@ import BaseBubble from '../Base.vue';
 import { provideMessageContext } from '../../provider.js';
 import { MESSAGE_VARIANTS, ORIENTATION } from '../../constants';
 
+const openPrivateConversation = vi.fn();
+vi.mock('dashboard/composables/useGroupParticipantConversation', () => ({
+  useGroupParticipantConversation: () => ({ openPrivateConversation }),
+}));
+
 const mountBubble = (contentAttributes = {}) => {
   const TestHost = defineComponent({
     components: { BaseBubble },
@@ -15,6 +20,7 @@ const mountBubble = (contentAttributes = {}) => {
         inReplyTo: ref(null),
         shouldGroupWithNext: ref(false),
         id: ref(1),
+        conversationId: ref(42),
         sender: ref({ name: 'WhatsApp group (223333)' }),
         senderType: ref('contact'),
         contentAttributes: ref(contentAttributes),
@@ -33,6 +39,7 @@ const mountBubble = (contentAttributes = {}) => {
     global: {
       plugins: [i18n],
       stubs: { MessageMeta: true, CaptainGenerationDetails: true },
+      directives: { onClickaway: {} },
     },
   });
 };
@@ -80,5 +87,24 @@ describe('Base bubble', () => {
       wrapper.find('[data-participant-name]').classes().join(' ');
 
     expect(colourOf(alex)).not.toBe(colourOf(bruna));
+  });
+
+  it('opens a private conversation with the participant from their name', async () => {
+    const wrapper = mountBubble({
+      groupParticipant: { name: 'Alex', phone: null, jid: 'a@lid' },
+    });
+
+    await wrapper.find('[data-participant-name]').trigger('click');
+    const openItem = wrapper
+      .findAll('button')
+      .find(button =>
+        button.text().includes('GROUP_PARTICIPANT_CONVERSATION.OPEN')
+      );
+    await openItem.trigger('click');
+
+    expect(openPrivateConversation).toHaveBeenCalledWith({
+      conversationId: 42,
+      participantJid: 'a@lid',
+    });
   });
 });

@@ -346,6 +346,9 @@ en:
       delivery_status:
         error_code: 'Error code: %{error_code}'
     activity:
+      group_participant_conversation:
+        opened_in_group: '%{user_name} opened a private conversation with %{participant_name}'
+        opened_from_group: '%{user_name} opened this private conversation from the group %{group_name}'
       captain:
         resolved: 'Conversation was marked resolved by %{user_name} due to inactivity'
         resolved_with_reason: 'Conversation was marked resolved by %{user_name} (%{reason})'

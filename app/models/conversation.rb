@@ -159,6 +159,12 @@ class Conversation < ApplicationRecord
     additional_attributes&.dig('conversation_language')
   end
 
+  # A private conversation an agent opened with a member of a WhatsApp group. The agent is already
+  # handling it, so no bot takes it over.
+  def opened_from_whatsapp_group?
+    additional_attributes&.dig('origin_group').present?
+  end
+
   # Be aware: The precision of created_at and last_activity_at may differ from Ruby's Time precision.
   # Our DB column (see schema) stores timestamps with second-level precision (no microseconds), so
   # if you assign a Ruby Time with microseconds, the DB will truncate it. This may cause subtle differences
@@ -358,7 +364,7 @@ class Conversation < ApplicationRecord
 
     return handle_campaign_status if campaign.present?
 
-    set_active_bot_conversation if inbox.active_bot?
+    set_active_bot_conversation if inbox.active_bot? && !opened_from_whatsapp_group?
   end
 
   def handle_campaign_status
