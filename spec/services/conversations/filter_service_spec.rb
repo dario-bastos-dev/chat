@@ -949,4 +949,48 @@ describe Conversations::FilterService do
         .to(raise_error { |error| expect(error.class.name).to eq('CustomExceptions::CustomFilter::InvalidValue') })
     end
   end
+
+  describe 'attendance' do
+    let(:admin) { create(:user, account: account, role: :administrator) }
+    let(:attendance_inbox) { create(:inbox, account: account) }
+    let!(:never_replied) { create(:conversation, account: account, inbox: attendance_inbox) }
+    let!(:replied) { create(:conversation, account: account, inbox: attendance_inbox) }
+    let!(:waiting_again) { create(:conversation, account: account, inbox: attendance_inbox) }
+
+    before do
+      never_replied.update!(first_reply_created_at: nil, waiting_since: 1.hour.ago)
+      replied.update!(first_reply_created_at: 2.hours.ago, waiting_since: nil)
+      waiting_again.update!(first_reply_created_at: 2.hours.ago, waiting_since: 10.minutes.ago)
+    end
+
+    it 'finds the conversations without a first reply or waiting for one, like the unattended folder' do
+      params = { page: 1, payload: [
+        { attribute_key: 'inbox_id', filter_operator: 'equal_to', values: [attendance_inbox.id], query_operator: 'AND' },
+        { attribute_key: 'attendance', filter_operator: 'equal_to', values: ['unattended'], query_operator: nil }
+      ].map(&:with_indifferent_access) }
+
+      result = filter_service.new(params, admin, account).perform
+
+      expect(result[:conversations].map(&:id)).to contain_exactly(never_replied.id, waiting_again.id)
+    end
+
+    it 'finds the replied conversations nobody is waiting on' do
+      params = { page: 1, payload: [
+        { attribute_key: 'inbox_id', filter_operator: 'equal_to', values: [attendance_inbox.id], query_operator: 'AND' },
+        { attribute_key: 'attendance', filter_operator: 'equal_to', values: ['attended'], query_operator: nil }
+      ].map(&:with_indifferent_access) }
+
+      result = filter_service.new(params, admin, account).perform
+
+      expect(result[:conversations].map(&:id)).to eq([replied.id])
+    end
+
+    it 'rejects a value it does not know' do
+      params = { page: 1, payload: [{ attribute_key: 'attendance', filter_operator: 'equal_to',
+                                      values: ['pending'], query_operator: nil }.with_indifferent_access] }
+
+      expect { filter_service.new(params, admin, account).perform }
+        .to(raise_error { |error| expect(error.class.name).to eq('CustomExceptions::CustomFilter::InvalidValue') })
+    end
+  end
 end

@@ -41,7 +41,11 @@ import filterQueryGenerator from '../helper/filterQueryGenerator.js';
 import languages from 'dashboard/components/widgets/conversation/advancedFilterItems/languages';
 import countries from 'shared/constants/countries';
 import { generateValuesForEditCustomViews } from 'dashboard/helper/customViewsHelper';
-import { whatsappChatTypeOptions } from 'dashboard/components-next/filter/helper/filterHelper';
+import {
+  CONVERSATION_ATTRIBUTES,
+  whatsappChatTypeOptions,
+  attendanceOptions,
+} from 'dashboard/components-next/filter/helper/filterHelper';
 import { conversationListPageURL } from '../helper/URLHelper';
 import {
   isOnMentionsView,
@@ -492,6 +496,7 @@ function setParamsForEditFolderModal() {
       { id: 'urgent', name: t('CONVERSATION.PRIORITY.OPTIONS.URGENT') },
     ],
     whatsappChatTypes: whatsappChatTypeOptions(t),
+    attendance: attendanceOptions(t),
     filterTypes: advancedFilterTypes.value,
     allCustomAttributes: conversationCustomAttributes.value,
   };
@@ -518,6 +523,22 @@ function initializeExistingFilterToModal() {
   ).map(useCamelCase);
 
   appliedFilter.value = [...appliedFilter.value, ...otherFilters];
+
+  // The advanced filter replaces the view's own query, so the unattended view carries its rule as a condition.
+  if (props.conversationType === wootConstants.CONVERSATION_TYPE.UNATTENDED) {
+    const [unattended] = attendanceOptions(t);
+    appliedFilter.value = [
+      ...appliedFilter.value,
+      {
+        attributeKey: CONVERSATION_ATTRIBUTES.ATTENDANCE,
+        attributeModel: 'standard',
+        filterOperator: 'equal_to',
+        values: unattended,
+        queryOperator: 'and',
+        customAttributeType: '',
+      },
+    ];
+  }
 }
 
 function initializeFolderToFilterModal(newActiveFolder) {

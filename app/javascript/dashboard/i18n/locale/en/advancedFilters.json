@@ -53,7 +53,12 @@
       "GROUP": "Group",
       "INDIVIDUAL": "One to one"
     },
+    "ATTENDANCE": {
+      "UNATTENDED": "Unattended",
+      "ATTENDED": "Attended"
+    },
     "ATTRIBUTES": {
+      "ATTENDANCE": "Attendance",
       "WHATSAPP_CHAT_TYPE": "WhatsApp chat type",
       "STATUS": "Status",
       "ASSIGNEE_NAME": "Assignee name",

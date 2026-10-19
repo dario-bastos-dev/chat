@@ -31,6 +31,16 @@ const filterTypes = [
     attributeModel: 'standard',
   },
   {
+    attributeKey: 'attendance',
+    attributeI18nKey: 'ATTENDANCE',
+    inputType: 'search_select',
+    dataType: 'text',
+    filterOperators: OPERATOR_TYPES_1.filter(
+      ({ value }) => value === 'equal_to'
+    ),
+    attributeModel: 'standard',
+  },
+  {
     attributeKey: 'inbox_id',
     attributeI18nKey: 'INBOX_NAME',
     inputType: 'search_select',

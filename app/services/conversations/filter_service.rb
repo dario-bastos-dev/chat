@@ -72,6 +72,20 @@ class Conversations::FilterService < FilterService
       "#{query_hash[:query_operator]}"
   end
 
+  ATTENDANCE_VALUES = %w[unattended attended].freeze
+
+  # Read from Conversation.unattended so the filter always matches the sidebar "Unattended" folder. Its columns are
+  # only tested with IS NULL / IS NOT NULL, which never yield NULL, so NOT gives exactly the attended conversations.
+  def attendance_filter_query(query_hash)
+    attendance = query_hash['values'].first.to_s
+    raise CustomExceptions::CustomFilter::InvalidValue.new(attribute_name: 'attendance') unless ATTENDANCE_VALUES.include?(attendance)
+
+    unattended = Conversation.unattended.arel.where_sql.delete_prefix('WHERE ')
+    condition = attendance == 'unattended' ? "(#{unattended})" : "NOT (#{unattended})"
+
+    "#{condition} #{query_hash[:query_operator]}"
+  end
+
   # The planner hint only pays off when the label condition positively narrows the
   # result set: `equal_to` joined by AND. Negative/presence operators or an OR in the
   # payload leave the result broad, where the inbox index is the better driver.

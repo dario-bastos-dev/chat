@@ -96,6 +96,12 @@ conversations:
     data_type: "whatsapp_chat_type"
     filter_operators:
       - "equal_to"
+  # Not a column: Conversations::FilterService#attendance_filter_query builds it.
+  attendance:
+    attribute_type: "standard"
+    data_type: "attendance"
+    filter_operators:
+      - "equal_to"
   browser_language:
     attribute_type: "additional_attributes"
     data_type: "text"

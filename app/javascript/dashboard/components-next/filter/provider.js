@@ -8,6 +8,7 @@ import {
   buildAttributesFilterTypes,
   CONVERSATION_ATTRIBUTES,
   whatsappChatTypeOptions,
+  attendanceOptions,
 } from './helper/filterHelper';
 import languages from 'dashboard/components/widgets/conversation/advancedFilterItems/languages.js';
 
@@ -170,6 +171,17 @@ export function useConversationFilterContext() {
       }),
       dataType: 'text',
       filterOperators: equalityOperators.value,
+      attributeModel: 'standard',
+    },
+    {
+      attributeKey: CONVERSATION_ATTRIBUTES.ATTENDANCE,
+      value: CONVERSATION_ATTRIBUTES.ATTENDANCE,
+      attributeName: t('FILTER.ATTRIBUTES.ATTENDANCE'),
+      label: t('FILTER.ATTRIBUTES.ATTENDANCE'),
+      inputType: 'searchSelect',
+      options: attendanceOptions(t),
+      dataType: 'text',
+      filterOperators: [operators.value.equal_to],
       attributeModel: 'standard',
     },
     {

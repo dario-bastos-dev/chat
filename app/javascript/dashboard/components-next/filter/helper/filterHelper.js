@@ -13,6 +13,7 @@ export const CONVERSATION_ATTRIBUTES = {
   CAMPAIGN_ID: 'campaign_id',
   LABELS: 'labels',
   WHATSAPP_CHAT_TYPE: 'whatsapp_chat_type',
+  ATTENDANCE: 'attendance',
   BROWSER_LANGUAGE: 'browser_language',
   REFERER: 'referer',
   CREATED_AT: 'created_at',
@@ -23,6 +24,12 @@ export const CONVERSATION_ATTRIBUTES = {
 export const whatsappChatTypeOptions = t => [
   { id: 'group', name: t('FILTER.WHATSAPP_CHAT_TYPE.GROUP') },
   { id: 'individual', name: t('FILTER.WHATSAPP_CHAT_TYPE.INDIVIDUAL') },
+];
+
+// Shared by the advanced filter and by the modal that edits a saved view, so both show the same names.
+export const attendanceOptions = t => [
+  { id: 'unattended', name: t('FILTER.ATTENDANCE.UNATTENDED') },
+  { id: 'attended', name: t('FILTER.ATTENDANCE.ATTENDED') },
 ];
 
 export const CONTACT_ATTRIBUTES = {
