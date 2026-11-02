@@ -37,12 +37,8 @@ const isEmpty = computed(() => {
   return !content.value && !attachments.value?.length;
 });
 
-// WhatsApp builds the preview card on the contact's device, so the agent only sees the card
-// here if the message carries the metadata it was sent with.
-const linkPreview = computed(() => contentAttributes.value?.linkPreview);
-
-// Same for the Evolution GO call-to-action and Pix buttons: they are rendered by the contact's
-// app, so the agent view has to redraw them from what was sent.
+// The Evolution GO call-to-action and Pix buttons are rendered by the contact's app, so the agent
+// view has to redraw them from what was sent.
 const whatsappButtons = computed(
   () => contentAttributes.value?.whatsappButtons
 );
@@ -75,35 +71,6 @@ const handleSeeOriginal = () => {
         :showing-original="renderOriginal"
         @toggle="handleSeeOriginal"
       />
-      <a
-        v-if="linkPreview"
-        :href="linkPreview.url"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="flex flex-col gap-1 p-2 -mt-1 rounded-lg bg-n-alpha-2"
-      >
-        <img
-          v-if="linkPreview.imageUrl"
-          :src="linkPreview.imageUrl"
-          :alt="linkPreview.title || linkPreview.url"
-          class="object-cover w-full rounded-md h-28"
-        />
-        <span
-          v-if="linkPreview.title"
-          class="text-sm font-medium text-n-slate-12"
-        >
-          {{ linkPreview.title }}
-        </span>
-        <span
-          v-if="linkPreview.description"
-          class="text-sm text-n-slate-11"
-        >
-          {{ linkPreview.description }}
-        </span>
-        <span class="text-sm break-all text-n-blue-11">
-          {{ linkPreview.url }}
-        </span>
-      </a>
       <div v-if="whatsappButtons" class="flex flex-col gap-1 -mt-1">
         <span
           v-if="whatsappButtons.title"
