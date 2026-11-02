@@ -8,8 +8,6 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   CAPTIONABLE_TYPES = %w[image video file].freeze
   # WhatsApp renders up to three options as buttons; past that it has to be a list.
   MAX_REPLY_BUTTONS = 3
-  URL_REGEX = %r{https?://[^\s<>"']+}
-  TRAILING_PUNCTUATION = /[.,;:!?)\]]+\z/
 
   def api_base_url
     @api_base_url ||= begin
@@ -571,7 +569,7 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
     @send_error = nil
     # Rich types own the whole message, so they are matched before the generic text/media split.
-    # /send/location and /send/link claim the source_id themselves; /send/button, /send/list and
+    # /send/location claims the source_id itself; /send/button, /send/list and
     # /send/carousel take no `id`, so their echo is only deduped once the send returns.
     sent_id = send_rich_message(formatted_number, message)
     sent_id = send_plain_message(formatted_number, message) if sent_id == :not_rich
@@ -789,41 +787,19 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     return send_interactive_message(phone_number, message) if message.content_type == 'input_select'
     return send_carousel_message(phone_number, message) if message.content_type == 'cards'
     return send_cta_button_message(phone_number, message) if whatsapp_buttons(message).present?
-    return send_link_message(phone_number, message) if link_preview(message).present?
 
     location = location_attachment(message)
     return send_location_message(phone_number, message, location) if location.present?
 
-    # A message the agent wrote carrying a link goes out through /send/link, which reads the
-    # title, the description and the thumbnail off the page itself; /send/text would deliver the
-    # bare URL with no card. Restricted to plain text on purpose: input_csat appends the survey
-    # link to its own body, and that one is meant to arrive as text, not as a preview card.
-    return send_link_message(phone_number, message) if plain_text_with_link?(message)
-
+    # A link is plain text: it goes through /send/text, which keeps mentions and never waits on
+    # Evolution GO fetching the page to build a preview card.
     :not_rich
-  end
-
-  def plain_text_with_link?(message)
-    message.content_type == 'text' && message.attachments.empty? && detected_url(message).present?
-  end
-
-  # The WhatsApp renderer flattens `[text](url)` to the bare url before this point, so matching
-  # the scheme covers markdown links too. The first match wins: an appended agent signature sits
-  # at the end, so a link the agent actually wrote takes precedence over one in the signature.
-  def detected_url(message)
-    # A sentence usually closes right after the link, and that punctuation would travel into the
-    # URL and break the lookup on Evolution GO's side.
-    message.outgoing_content.to_s[URL_REGEX].to_s.sub(TRAILING_PUNCTUATION, '').presence
-  end
-
-  def link_preview(message)
-    message.content_attributes&.dig('link_preview').presence
   end
 
   # Reply buttons ride on input_select, which every other channel understands. Call-to-action and
   # Pix buttons have no equivalent outside Evolution GO and carry fields that
   # ContentAttributeValidator would reject inside `items`, so they travel on their own key of a
-  # plain text message, the same way link_preview does.
+  # plain text message.
   def whatsapp_buttons(message)
     message.content_attributes&.dig('whatsapp_buttons').presence
   end
@@ -857,40 +833,6 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     sent_id = post_send('send/location', body, 'Location')
     release_source_id(message, reserved_id) if sent_id.blank?
     sent_id
-  end
-
-  # Two ways in: a link detected in the message text, or content_attributes['link_preview'] set
-  # through the API by a caller that wants to override the card the page would produce.
-  def send_link_message(phone_number, message)
-    recipient_jid = format_recipient_jid(phone_number)
-    preview = link_preview(message) || {}
-    reserved_id = reserve_source_id(message)
-
-    body = {
-      number: recipient_jid,
-      id: reserved_id,
-      url: preview['url'].presence || detected_url(message),
-      text: message.outgoing_content.presence || preview['url'],
-      delay: message_delay
-    }
-    body[:title] = preview['title'] if preview['title'].present?
-    body[:description] = preview['description'] if preview['description'].present?
-    body[:imgUrl] = preview['image_url'] if preview['image_url'].present?
-
-    quoted = quoted_context(message, recipient_jid)
-    body[:quoted] = quoted if quoted.present?
-
-    sent_id = post_send('send/link', body, 'Link') || fallback_link_to_text(phone_number, message, reserved_id)
-    release_source_id(message, reserved_id) if sent_id.blank?
-    sent_id
-  end
-
-  # Evolution GO builds the preview card by fetching the page itself; a slow, unreachable or
-  # bot-blocking link makes /send/link hang until its own internal timeout and fail. Falling
-  # back to plain text still gets the link to the contact, just without the card.
-  def fallback_link_to_text(phone_number, message, reserved_id)
-    Rails.logger.warn "[EVOLUTION_GO] Link send failed, falling back to plain text"
-    send_text_message(phone_number, message, reserved_id)
   end
 
   # Chatwoot's `cards` content type maps onto the carousel: each item becomes a card whose header

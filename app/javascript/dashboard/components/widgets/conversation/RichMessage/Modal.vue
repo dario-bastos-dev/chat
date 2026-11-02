@@ -13,7 +13,7 @@ const props = defineProps({
   show: { type: Boolean, default: false },
   // Only Evolution GO exposes the carousel endpoint; the Cloud API and the unofficial default
   // provider are limited to reply buttons, lists and a native location message. A link needs no
-  // form of its own: the service spots one in the message text and routes it to /send/link.
+  // form of its own: it is sent as plain text, like any other message.
   availableTypes: { type: Array, default: () => ['options'] },
 });
 
