@@ -60,6 +60,19 @@ describe Whatsapp::Providers::EvolutionGoService do
       )
     end
 
+    it 'still marks everyone when the message carries a link' do
+      stub_send('send/text')
+      message = create(:message, conversation: conversation, inbox: channel.inbox,
+                                 message_type: :outgoing, content: '@todos o cardápio novo: https://example.com/menu')
+
+      service.send_message(group_jid, message)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/text')
+          .with { |req| JSON.parse(req.body)['mentionAll'] == true }
+      )
+    end
+
     it 'marks the member whose number the agent typed' do
       stub_send('send/text')
       message = create(:message, conversation: conversation, inbox: channel.inbox,
