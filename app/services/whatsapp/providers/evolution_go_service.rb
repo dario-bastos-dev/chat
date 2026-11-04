@@ -546,28 +546,16 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   # --- Messaging ---
 
   def send_message(phone_number_or_jid, message)
-    unless evolution_go_configured? && instance_token.present?
-      Rails.logger.error "[EVOLUTION_GO] send_message blocked: " \
-                         "api_base_url=#{api_base_url.present?} global_api_token=#{global_api_token.present?} " \
-                         "instance_token=#{instance_token.present?}"
-      return
-    end
-
-    if phone_number_or_jid.blank?
-      Rails.logger.error "[EVOLUTION_GO] send_message blocked: phone_number_or_jid is blank"
-      return
-    end
-
-    formatted_number = extract_phone_number(phone_number_or_jid)
+    @send_error = nil
+    formatted_number = recipient_number(phone_number_or_jid)
     if formatted_number.blank?
-      Rails.logger.error "[EVOLUTION_GO] send_message blocked: extract_phone_number returned blank for '#{phone_number_or_jid}'"
-      return nil
+      record_send_failure(message)
+      return
     end
 
     Rails.logger.info "[EVOLUTION_GO] Sending to #{formatted_number} (source: #{phone_number_or_jid}) | " \
                       "JID: #{format_recipient_jid(formatted_number)} | attachments: #{message.attachments.count}"
 
-    @send_error = nil
     # Rich types own the whole message, so they are matched before the generic text/media split.
     # /send/location claims the source_id itself; /send/button, /send/list and
     # /send/carousel take no `id`, so their echo is only deduped once the send returns.
@@ -714,6 +702,31 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
 
     release_source_id(message, reserved_id) if sent_id.blank?
     sent_id
+  end
+
+  # These sends stop before calling Evolution GO, so there is no `error` of its own to show: the
+  # reason is set here instead of letting the send job fall back to its generic message.
+  def recipient_number(phone_number_or_jid)
+    unless evolution_go_configured? && instance_token.present?
+      Rails.logger.error '[EVOLUTION_GO] send_message blocked: ' \
+                         "api_base_url=#{api_base_url.present?} global_api_token=#{global_api_token.present?} " \
+                         "instance_token=#{instance_token.present?}"
+      @send_error = I18n.t('errors.whatsapp.evolution_go.instance_not_configured')
+      return
+    end
+
+    if phone_number_or_jid.blank?
+      Rails.logger.error '[EVOLUTION_GO] send_message blocked: phone_number_or_jid is blank'
+      @send_error = I18n.t('errors.whatsapp.evolution_go.missing_number')
+      return
+    end
+
+    formatted_number = extract_phone_number(phone_number_or_jid)
+    if formatted_number.blank?
+      Rails.logger.error "[EVOLUTION_GO] send_message blocked: extract_phone_number returned blank for '#{phone_number_or_jid}'"
+      @send_error = I18n.t('errors.whatsapp.evolution_go.invalid_number', number: phone_number_or_jid)
+    end
+    formatted_number
   end
 
   # The send jobs only see a nil id and would fall back to a generic "check the connection"

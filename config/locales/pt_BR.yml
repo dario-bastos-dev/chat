@@ -147,6 +147,9 @@ pt_BR:
         logout_success: 'Desconectado com sucesso'
         group_participant_blocked: '%{name} está bloqueado. Desbloqueie o contato para conversar em privado.'
         logout_local_only: 'Desconectado localmente'
+        instance_not_configured: 'A instância do Evolution GO desta caixa de entrada não está configurada. Reconecte a caixa de entrada e tente novamente.'
+        missing_number: 'O contato não tem um número de WhatsApp.'
+        invalid_number: 'Número de WhatsApp inválido: %{number}. Use apenas dígitos, com DDI e DDD.'
       reauthorization:
         generic: 'Falha ao reautenticar o WhatsApp. Por favor, tente novamente.'
         not_supported: 'Reautenticação não é suportado por este tipo de canal WhatsApp.'

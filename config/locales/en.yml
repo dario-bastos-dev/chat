@@ -170,6 +170,9 @@ en:
         logout_success: 'Disconnected successfully'
         group_participant_blocked: '%{name} is blocked. Unblock the contact to message them privately.'
         logout_local_only: 'Disconnected locally'
+        instance_not_configured: 'The Evolution GO instance of this inbox is not configured. Reconnect the inbox and try again.'
+        missing_number: 'The contact has no WhatsApp number.'
+        invalid_number: 'Invalid WhatsApp number: %{number}. Use digits only, with the country and area codes.'
       reauthorization:
         generic: 'Failed to reauthorize WhatsApp. Please try again.'
         not_supported: 'Reauthorization is not supported for this type of WhatsApp channel.'

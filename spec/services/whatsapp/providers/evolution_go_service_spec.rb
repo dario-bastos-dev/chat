@@ -455,6 +455,27 @@ describe Whatsapp::Providers::EvolutionGoService do
     end
   end
 
+  describe 'a send that never reaches Evolution GO' do
+    it 'tells the agent the instance is not configured' do
+      channel.merge_provider_config!('instance_token' => nil)
+
+      expect(service.send_message('5511988887777', message)).to be_nil
+      expect(message.reload).to be_failed
+      expect(message.external_error).to eq(I18n.t('errors.whatsapp.evolution_go.instance_not_configured'))
+    end
+
+    it 'tells the agent the contact has no number' do
+      expect(service.send_message('', message)).to be_nil
+      expect(message.reload.external_error).to eq(I18n.t('errors.whatsapp.evolution_go.missing_number'))
+    end
+
+    it 'shows the number that could not be used' do
+      expect(service.send_message('+55 (27) 99899-9017', message)).to be_nil
+      expect(message.reload.external_error)
+        .to eq(I18n.t('errors.whatsapp.evolution_go.invalid_number', number: '+55 (27) 99899-9017'))
+    end
+  end
+
   describe 'a message carrying a link' do
     it 'goes out through send/text like any other text' do
       stub_send('send/text')
