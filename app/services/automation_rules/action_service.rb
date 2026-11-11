@@ -1,6 +1,6 @@
 class AutomationRules::ActionService < ActionService
-  # Terceiro segmento do parametro de `create_deal`, quando a regra pede que o
-  # negocio nasca com o mesmo responsavel da conversa.
+  # Terceiro segmento do parametro de `create_deal`, quando a regra pede que conversa
+  # e negocio tenham o mesmo responsavel (no negocio novo e no que ja estava aberto).
   CONVERSATION_ASSIGNEE = 'conversation_assignee'.freeze
 
   def initialize(rule, account, conversation)
@@ -186,6 +186,7 @@ class AutomationRules::ActionService < ActionService
       )
       conversation_deal.is_primary = true
       conversation_deal.save!
+      align_assignee_with_existing_deal(existing_deal, assignee_option)
     else
       Deals::Creator.new(
         account: @account,
@@ -199,6 +200,39 @@ class AutomationRules::ActionService < ActionService
         }
       ).perform
     end
+  end
+
+  # O dono do negocio aberto e o dono do cliente: a conversa nova do mesmo contato vai
+  # para ele em vez de ficar com quem o rodizio escolheu. Se ele saiu do time da
+  # conversa (ou da caixa, quando nao ha time), quem recebeu a conversa assume o negocio.
+  def align_assignee_with_existing_deal(deal, assignee_option)
+    return unless assignee_option == CONVERSATION_ASSIGNEE
+
+    eligible_members = @conversation.team&.members || @conversation.inbox.members
+
+    if deal.assignee_id && eligible_members.exists?(id: deal.assignee_id)
+      give_back_round_robin_turn(deal.assignee_id)
+      @conversation.with_lock { @conversation.update!(assignee_id: deal.assignee_id) }
+    elsif @conversation.assignee_id
+      Deals::Updater.new(deal: deal, params: { assignee_id: @conversation.assignee_id }).perform
+    end
+  end
+
+  # Com o time aceitando auto-atribuicao, a conversa sem responsavel recebe alguem do
+  # rodizio dentro do proprio update do time (AssignmentHandler#find_assignee_from_team).
+  # Guardar quem foi permite devolver a vez se a conversa acabar com o dono do negocio.
+  def assign_team(team_ids = [])
+    assignee_before = @conversation.assignee_id
+    super
+    @round_robin_pick_id = @conversation.assignee_id if assignee_before.nil?
+  end
+
+  # Sem isso, quem o rodizio escolheu iria para o fim da fila sem ter recebido a conversa.
+  def give_back_round_robin_turn(owner_id)
+    return if @round_robin_pick_id.nil? || @round_robin_pick_id == owner_id
+
+    AutoAssignment::InboxRoundRobinService.new(inbox: @conversation.inbox).return_turn(@round_robin_pick_id)
+    @round_robin_pick_id = nil
   end
 
   def update_deal_info(params)

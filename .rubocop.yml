@@ -93,6 +93,8 @@ Metrics/BlockLength:
 Metrics/ModuleLength:
   Exclude:
     - lib/seeders/message_seeder.rb
+    # Um metodo por comando Redis usado: o tamanho cresce junto com o uso, nao com a complexidade.
+    - lib/redis/alfred.rb
     - spec/support/slack_stubs.rb
 
 Rails/HelperInstanceVariable:
