@@ -962,7 +962,7 @@ export const AUTOMATION_ACTION_TYPES = [
   {
     key: 'sync_deal_assignee',
     label: 'SYNC_DEAL_ASSIGNEE',
-    inputType: 'deal_assignee_sync',
+    inputType: 'search_select',
   },
   {
     key: 'assign_deal_agent',
@@ -972,17 +972,17 @@ export const AUTOMATION_ACTION_TYPES = [
   {
     key: 'change_deal_status',
     label: 'CHANGE_DEAL_STATUS',
-    inputType: 'deal_status_change',
+    inputType: 'search_select',
   },
   {
     key: 'add_deal_label',
     label: 'ADD_DEAL_LABEL',
-    inputType: 'deal_labels_change',
+    inputType: 'multi_select',
   },
   {
     key: 'remove_deal_label',
     label: 'REMOVE_DEAL_LABEL',
-    inputType: 'deal_labels_change',
+    inputType: 'multi_select',
   },
 ];
 
