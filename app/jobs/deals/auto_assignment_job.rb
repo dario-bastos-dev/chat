@@ -23,11 +23,16 @@ class Deals::AutoAssignmentJob < ApplicationJob
 
   private
 
+  # O negocio so vai para quem atende de onde ele veio: o time da conversa vinculada,
+  # ou a caixa (da conversa ou do proprio negocio). Sem esse contexto, como numa
+  # importacao, ele fica sem dono: sortear entre a conta inteira entregava negocios
+  # comerciais a financeiro, administrativo e contas de gestao.
   def identify_candidates(deal)
-    # If deal is linked to an inbox, prefer inbox members
-    return deal.inbox.members if deal.inbox
+    conversation = deal.conversation_deals.order(is_primary: :desc).first&.conversation
+    return conversation.team.members if conversation&.team
 
-    deal.account.users.where(account_users: { role: [:agent, :administrator] })
+    inbox = conversation&.inbox || deal.inbox
+    inbox ? inbox.members : []
   end
 
   # A contagem precisa ser escopada por conta: sem isso, negocios de outras
