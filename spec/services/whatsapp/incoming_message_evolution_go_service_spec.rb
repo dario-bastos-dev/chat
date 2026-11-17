@@ -137,6 +137,85 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
     end
   end
 
+  describe 'shared contacts' do
+    let(:vcard) do
+      "BEGIN:VCARD\nVERSION:3.0\nN:Bastos;Dário;;;\nFN:Dário Bastos\n" \
+        "item1.TEL;waid=5527998999017:+55 27 99899-9017\nitem1.X-ABLabel:Celular\nEND:VCARD"
+    end
+    let(:message_body) { { 'contactMessage' => { 'displayName' => 'Dário Bastos', 'vcard' => vcard } } }
+
+    it 'stores the card as a contact attachment with the WhatsApp number' do
+      expect { service.perform }.to change(Message, :count).by(1)
+
+      message = inbox.messages.last
+      expect(message.content).to be_blank
+      expect(message.attachments.size).to eq(1)
+
+      attachment = message.attachments.first
+      expect(attachment.file_type).to eq('contact')
+      expect(attachment.fallback_title).to eq('+5527998999017')
+      expect(attachment.meta).to eq('firstName' => 'Dário', 'lastName' => 'Bastos')
+    end
+
+    context 'when the number is not on WhatsApp' do
+      let(:message_body) do
+        {
+          'contactMessage' => {
+            'displayName' => 'Loja Centro',
+            'vcard' => "BEGIN:VCARD\nVERSION:3.0\nFN:Loja Centro\nTEL;type=WORK:+55 (27) 3333-4444\nEND:VCARD"
+          }
+        }
+      end
+
+      it 'falls back to the digits of the phone and to the display name' do
+        service.perform
+
+        attachment = inbox.messages.last.attachments.first
+        expect(attachment.fallback_title).to eq('+552733334444')
+        expect(attachment.meta).to eq('firstName' => 'Loja Centro')
+      end
+    end
+
+    context 'when several contacts are shared at once' do
+      let(:message_body) do
+        {
+          'contactsArrayMessage' => {
+            'displayName' => '2 contatos',
+            'contacts' => [
+              { 'displayName' => 'Dário Bastos', 'vcard' => vcard },
+              { 'displayName' => 'Ana', 'vcard' => "BEGIN:VCARD\nVERSION:3.0\nN:;Ana;;;\nTEL;waid=5511912345678:+55 11 91234-5678\nEND:VCARD" }
+            ]
+          }
+        }
+      end
+
+      it 'creates one message per contact so each renders as a card' do
+        expect { service.perform }.to change(Message, :count).by(2)
+
+        titles = inbox.messages.order(:id).last(2).map { |message| message.attachments.sole.fallback_title }
+        expect(titles).to eq(%w[+5527998999017 +5511912345678])
+      end
+
+      it 'does not create them again when the webhook is redelivered' do
+        service.perform
+
+        expect { described_class.new(inbox: inbox, params: params).perform }.not_to change(Message, :count)
+      end
+    end
+
+    context 'when the contact is shared from the phone' do
+      let(:info) { super().merge('IsFromMe' => true, 'Sender' => '5511999990000@s.whatsapp.net', 'RecipientAlt' => '5511988887777@s.whatsapp.net') }
+
+      it 'stores it as an outgoing contact card' do
+        service.perform
+
+        message = inbox.messages.last
+        expect(message.message_type).to eq('outgoing')
+        expect(message.attachments.sole.file_type).to eq('contact')
+      end
+    end
+  end
+
   describe 'quoted messages' do
     context 'when the id only appears in contextInfo' do
       let(:message_body) do

@@ -345,7 +345,13 @@ class Whatsapp::IncomingMessageEvolutionGoService
     return false if message_params.key?('reactionMessage')
     return false if message_params.key?('protocolMessage')
 
-    text_content.present? || detect_media.present? || location_params.present?
+    text_content.present? || detect_media.present? || location_params.present? || contact_cards.present?
+  end
+
+  # A shared contact arrives as contactMessage, or as contactsArrayMessage when several are sent
+  # at once. Each carries a vCard; the dashboard renders it from a :contact attachment.
+  def contact_cards
+    @contact_cards ||= (message_params.dig('contactsArrayMessage', 'contacts') || [message_params['contactMessage']]).compact
   end
 
   # --- Edited message handling ---
@@ -742,6 +748,10 @@ class Whatsapp::IncomingMessageEvolutionGoService
       return
     end
 
+    contact_cards.present? ? create_contact_messages : create_regular_message
+  end
+
+  def create_regular_message
     @message = @conversation.messages.new(message_attributes)
 
     # Attachments are built on the unsaved message so the single save! below commits them in the
@@ -840,6 +850,49 @@ class Whatsapp::IncomingMessageEvolutionGoService
       # A pinned location names the place and the address; a live one only carries a caption.
       fallback_title: [location['name'], location['address'], location['caption']].compact_blank.join(' - ').presence
     )
+  end
+
+  # The dashboard only renders a contact card for a message holding a single attachment, so a batch
+  # of contacts becomes one message each. They share the payload's source_id, which keeps the
+  # redelivery check in create_message working; the transaction stops a half-saved batch.
+  def create_contact_messages
+    Message.transaction do
+      contact_cards.each do |card|
+        @message = @conversation.messages.new(message_attributes)
+        attach_contact(card)
+        @message.save!
+      end
+    end
+  end
+
+  # Same shape as the WhatsApp Cloud ingest: the card reads the number from fallback_title and the
+  # name from meta.
+  def attach_contact(card)
+    vcard_lines = card['vcard'].to_s.split(/\r?\n/)
+    phone = vcard_phone(vcard_lines)
+
+    @message.attachments.new(
+      account_id: @message.account_id,
+      file_type: :contact,
+      fallback_title: phone.present? ? "+#{phone}" : '',
+      meta: vcard_name(vcard_lines, card['displayName'])
+    )
+  end
+
+  # waid is the number WhatsApp itself resolved, so it beats the TEL text, which is whatever the
+  # sender typed in their phonebook (and may lack the Brazilian ninth digit). Numbers off WhatsApp
+  # carry no waid.
+  def vcard_phone(lines)
+    tels = lines.grep(/\A(?:[\w-]+\.)?TEL[;:]/i)
+    tels.filter_map { |line| line[/waid=(\d+)/i, 1] }.first ||
+      tels.first.to_s.split(':', 2).last.to_s.gsub(/\D/, '')
+  end
+
+  def vcard_name(lines, display_name)
+    family, given = lines.grep(/\AN[;:]/i).first.to_s.split(':', 2).last.to_s.split(';')
+    return { firstName: given, lastName: family }.compact_blank if given.present? || family.present?
+
+    { firstName: display_name.presence }.compact
   end
 
   # EvoGO returns media inline as base64 and only fills mediaUrl when it has storage of its own.
