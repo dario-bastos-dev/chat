@@ -143,6 +143,7 @@
     "DOWNLOAD": "Baixar",
     "UNKNOWN_FILE_TYPE": "Arquivo desconhecido",
     "SAVE_CONTACT": "Salvar contato",
+    "START_CONVERSATION": "Iniciar conversa",
     "NO_CONTENT": "Nenhum conteúdo a ser exibido",
     "SHARED_ATTACHMENT": {
       "CONTACT": "{sender} compartilhou um contato",

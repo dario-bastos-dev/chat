@@ -25,6 +25,11 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  // Inbox to start on, when the contact can be reached through it.
+  inboxId: {
+    type: Number,
+    default: null,
+  },
   align: {
     type: String,
     default: 'end',
@@ -233,12 +238,21 @@ watch(
         ...currentContact,
         contactInboxes: mergeInboxDetails(processedInboxes, inboxesList.value),
       };
+
+      if (props.inboxId && !targetInbox.value) {
+        targetInbox.value =
+          selectedContact.value.contactInboxes.find(
+            inbox => inbox.id === props.inboxId
+          ) ?? null;
+      }
     }
   },
   { immediate: true, deep: true }
 );
 
 onMounted(() => resetContacts());
+
+defineExpose({ open: () => popoverRef.value?.show() });
 </script>
 
 <template>

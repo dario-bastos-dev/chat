@@ -144,6 +144,7 @@
     "DOWNLOAD": "Download",
     "UNKNOWN_FILE_TYPE": "Unknown File",
     "SAVE_CONTACT": "Save Contact",
+    "START_CONVERSATION": "Start conversation",
     "NO_CONTENT": "No content to display",
     "SHARED_ATTACHMENT": {
       "CONTACT": "{sender} has shared a contact",

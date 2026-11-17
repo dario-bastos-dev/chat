@@ -58,9 +58,9 @@ const senderName = computed(() => {
           </slot>
         </div>
       </div>
-      <div v-if="action" class="mb-2">
+      <div v-if="action || $slots.actions" class="mb-2 grid gap-2">
         <a
-          v-if="action.href"
+          v-if="action?.href"
           :href="action.href"
           rel="noreferrer noopener nofollow"
           target="_blank"
@@ -69,12 +69,13 @@ const senderName = computed(() => {
           {{ action.label }}
         </a>
         <button
-          v-else
+          v-else-if="action"
           class="w-full bg-n-solid-3 px-4 py-2 rounded-lg text-sm text-center border border-n-container"
           @click="action.onClick"
         >
           {{ action.label }}
         </button>
+        <slot name="actions" />
       </div>
     </div>
   </BaseBubble>

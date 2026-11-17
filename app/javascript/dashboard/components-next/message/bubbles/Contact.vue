@@ -1,17 +1,18 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import { useAlert } from 'dashboard/composables';
 import { useStore } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
 import { useMessageContext } from '../provider.js';
 import BaseAttachmentBubble from './BaseAttachment.vue';
+import ComposeConversation from 'dashboard/components-next/NewConversation/ComposeConversation.vue';
 
 import {
   DuplicateContactException,
   ExceptionWithMessage,
 } from 'shared/helpers/CustomErrors';
 
-const { attachments } = useMessageContext();
+const { attachments, inboxId } = useMessageContext();
 
 const $store = useStore();
 const { t } = useI18n();
@@ -69,24 +70,54 @@ function openContactNewTab(contactId) {
   window.open(url, '_blank');
 }
 
+async function findOrCreateContact() {
+  const contact = await filterContactByNumber(rawPhoneNumber.value);
+  if (contact) return contact;
+
+  const createdContact = await $store.dispatch(
+    'contacts/create',
+    getContactObject()
+  );
+  useAlert(t('CONTACT_FORM.SUCCESS_MESSAGE'));
+  return createdContact;
+}
+
+function alertContactError(error) {
+  if (error instanceof DuplicateContactException) {
+    if (error.data.includes('phone_number')) {
+      useAlert(t('CONTACT_FORM.FORM.PHONE_NUMBER.DUPLICATE'));
+    }
+  } else if (error instanceof ExceptionWithMessage) {
+    useAlert(error.data);
+  } else {
+    useAlert(t('CONTACT_FORM.ERROR_MESSAGE'));
+  }
+}
+
 async function addContact() {
   try {
-    let contact = await filterContactByNumber(rawPhoneNumber.value);
-    if (!contact) {
-      contact = await $store.dispatch('contacts/create', getContactObject());
-      useAlert(t('CONTACT_FORM.SUCCESS_MESSAGE'));
-    }
+    const contact = await findOrCreateContact();
     openContactNewTab(contact.id);
   } catch (error) {
-    if (error instanceof DuplicateContactException) {
-      if (error.data.includes('phone_number')) {
-        useAlert(t('CONTACT_FORM.FORM.PHONE_NUMBER.DUPLICATE'));
-      }
-    } else if (error instanceof ExceptionWithMessage) {
-      useAlert(error.data);
-    } else {
-      useAlert(t('CONTACT_FORM.ERROR_MESSAGE'));
-    }
+    alertContactError(error);
+  }
+}
+
+const composeRef = ref(null);
+const composeContactId = ref(null);
+
+// The compose form reads the contact, and the inboxes that can reach it, from the store.
+// fetchContactableInbox runs last so its list is not overwritten by the one show returns.
+async function startConversation() {
+  try {
+    const { id } = await findOrCreateContact();
+    await $store.dispatch('contacts/show', { id });
+    await $store.dispatch('contacts/fetchContactableInbox', id);
+    composeContactId.value = String(id);
+    await nextTick();
+    composeRef.value.open();
+  } catch (error) {
+    alertContactError(error);
   }
 }
 
@@ -104,5 +135,23 @@ const action = computed(() => ({
     :title="contactName"
     :content="phoneNumber"
     :action="formattedPhoneNumber ? action : null"
-  />
+  >
+    <template v-if="formattedPhoneNumber" #actions>
+      <ComposeConversation
+        ref="composeRef"
+        :contact-id="composeContactId"
+        :inbox-id="inboxId"
+      >
+        <template #trigger>
+          <!-- .stop: the popover opens once the contact is loaded, not on click -->
+          <button
+            class="w-full bg-n-solid-3 px-4 py-2 rounded-lg text-sm text-center border border-n-container"
+            @click.stop="startConversation"
+          >
+            {{ t('CONVERSATION.START_CONVERSATION') }}
+          </button>
+        </template>
+      </ComposeConversation>
+    </template>
+  </BaseAttachmentBubble>
 </template>
