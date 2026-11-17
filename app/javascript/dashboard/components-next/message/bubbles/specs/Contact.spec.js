@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { mount, flushPromises } from '@vue/test-utils';
 import { createI18n } from 'vue-i18n';
+import { useAlert } from 'dashboard/composables';
 import ContactBubble from '../Contact.vue';
 
 const dispatch = vi.fn();
@@ -46,6 +47,7 @@ describe('Contact bubble', () => {
   beforeEach(() => {
     dispatch.mockReset();
     openCompose.mockReset();
+    useAlert.mockReset();
     vi.spyOn(window, 'open').mockImplementation(() => {});
   });
 
@@ -108,5 +110,43 @@ describe('Contact bubble', () => {
     });
     expect(wrapper.find('.compose').attributes('data-contact-id')).toBe('99');
     expect(openCompose).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores further clicks while the contact is still loading', async () => {
+    let resolveFilter;
+    dispatch.mockReturnValueOnce(
+      new Promise(resolve => {
+        resolveFilter = resolve;
+      })
+    );
+
+    const wrapper = mountBubble();
+    const button = wrapper.find('.compose button');
+    await button.trigger('click');
+    await button.trigger('click');
+
+    expect(button.attributes('disabled')).toBeDefined();
+    resolveFilter([{ id: 42 }]);
+    await flushPromises();
+
+    expect(
+      dispatch.mock.calls.filter(([action]) => action === 'contacts/filter')
+    ).toHaveLength(1);
+    expect(openCompose).toHaveBeenCalledTimes(1);
+    expect(button.attributes('disabled')).toBeUndefined();
+  });
+
+  it('warns the agent and keeps the form closed when the contact cannot be created', async () => {
+    dispatch.mockResolvedValueOnce([]).mockRejectedValueOnce(new Error('boom'));
+
+    const wrapper = mountBubble();
+    await wrapper.find('.compose button').trigger('click');
+    await flushPromises();
+
+    expect(useAlert).toHaveBeenCalledWith('CONTACT_FORM.ERROR_MESSAGE');
+    expect(openCompose).not.toHaveBeenCalled();
+    expect(
+      wrapper.find('.compose button').attributes('disabled')
+    ).toBeUndefined();
   });
 });

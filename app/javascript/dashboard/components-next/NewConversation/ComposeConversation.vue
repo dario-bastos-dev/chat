@@ -238,13 +238,6 @@ watch(
         ...currentContact,
         contactInboxes: mergeInboxDetails(processedInboxes, inboxesList.value),
       };
-
-      if (props.inboxId && !targetInbox.value) {
-        targetInbox.value =
-          selectedContact.value.contactInboxes.find(
-            inbox => inbox.id === props.inboxId
-          ) ?? null;
-      }
     }
   },
   { immediate: true, deep: true }
@@ -252,7 +245,19 @@ watch(
 
 onMounted(() => resetContacts());
 
-defineExpose({ open: () => popoverRef.value?.show() });
+// Picks inboxId only as the form opens, so a later store update to the contact never undoes an
+// inbox the agent changed or cleared.
+const open = () => {
+  if (props.inboxId && !targetInbox.value) {
+    targetInbox.value =
+      selectedContact.value?.contactInboxes?.find(
+        inbox => inbox.id === props.inboxId
+      ) ?? null;
+  }
+  popoverRef.value?.show();
+};
+
+defineExpose({ open });
 </script>
 
 <template>

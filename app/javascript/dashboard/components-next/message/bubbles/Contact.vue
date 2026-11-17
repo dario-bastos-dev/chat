@@ -105,10 +105,15 @@ async function addContact() {
 
 const composeRef = ref(null);
 const composeContactId = ref(null);
+const isStartingConversation = ref(false);
 
 // The compose form reads the contact, and the inboxes that can reach it, from the store.
 // fetchContactableInbox runs last so its list is not overwritten by the one show returns.
 async function startConversation() {
+  // A second click while the first is loading would try to create the same contact twice.
+  if (isStartingConversation.value) return;
+
+  isStartingConversation.value = true;
   try {
     const { id } = await findOrCreateContact();
     await $store.dispatch('contacts/show', { id });
@@ -118,6 +123,8 @@ async function startConversation() {
     composeRef.value.open();
   } catch (error) {
     alertContactError(error);
+  } finally {
+    isStartingConversation.value = false;
   }
 }
 
@@ -145,7 +152,8 @@ const action = computed(() => ({
         <template #trigger>
           <!-- .stop: the popover opens once the contact is loaded, not on click -->
           <button
-            class="w-full bg-n-solid-3 px-4 py-2 rounded-lg text-sm text-center border border-n-container"
+            class="w-full bg-n-solid-3 px-4 py-2 rounded-lg text-sm text-center border border-n-container disabled:opacity-50 disabled:cursor-wait"
+            :disabled="isStartingConversation"
             @click.stop="startConversation"
           >
             {{ t('CONVERSATION.START_CONVERSATION') }}
