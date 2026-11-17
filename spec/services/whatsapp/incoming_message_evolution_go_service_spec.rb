@@ -154,7 +154,42 @@ describe Whatsapp::IncomingMessageEvolutionGoService do
       attachment = message.attachments.first
       expect(attachment.file_type).to eq('contact')
       expect(attachment.fallback_title).to eq('+5527998999017')
-      expect(attachment.meta).to eq('firstName' => 'Dário', 'lastName' => 'Bastos')
+      expect(attachment.meta).to eq('firstName' => 'Dário Bastos')
+    end
+
+    context 'when the vCard name is quoted-printable' do
+      let(:vcard) do
+        "BEGIN:VCARD\nVERSION:2.1\nN;CHARSET=UTF-8;ENCODING=QUOTED-PRINTABLE:Bastos;D=C3=A1rio;;;\n" \
+          "TEL;waid=5527998999017:+55 27 99899-9017\nEND:VCARD"
+      end
+
+      it 'takes the name WhatsApp already decoded' do
+        service.perform
+
+        expect(inbox.messages.last.attachments.sole.meta).to eq('firstName' => 'Dário Bastos')
+      end
+    end
+
+    context 'when the payload has no display name' do
+      let(:message_body) { { 'contactMessage' => { 'vcard' => vcard } } }
+
+      it 'uses the formatted name from the vCard' do
+        service.perform
+
+        expect(inbox.messages.last.attachments.sole.meta).to eq('firstName' => 'Dário Bastos')
+      end
+    end
+
+    context 'when the card has no phone' do
+      let(:vcard) { "BEGIN:VCARD\nVERSION:3.0\nFN:Dário Bastos\nEMAIL:dario@example.com\nEND:VCARD" }
+
+      it 'keeps the name and leaves the number empty, so the card offers no action' do
+        service.perform
+
+        attachment = inbox.messages.last.attachments.sole
+        expect(attachment.fallback_title).to eq('')
+        expect(attachment.meta).to eq('firstName' => 'Dário Bastos')
+      end
     end
 
     context 'when the number is not on WhatsApp' do

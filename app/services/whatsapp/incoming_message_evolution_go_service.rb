@@ -854,7 +854,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
 
   # The dashboard only renders a contact card for a message holding a single attachment, so a batch
   # of contacts becomes one message each. They share the payload's source_id, which keeps the
-  # redelivery check in create_message working; the transaction stops a half-saved batch.
+  # redelivery check in create_message working; the transaction stops a half-saved batch. Since
+  # WhatsApp sees a single message, deleting one card for everyone removes the whole batch there.
   def create_contact_messages
     Message.transaction do
       contact_cards.each do |card|
@@ -866,7 +867,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
   end
 
   # Same shape as the WhatsApp Cloud ingest: the card reads the number from fallback_title and the
-  # name from meta.
+  # name from meta. The name is WhatsApp's displayName, already decoded; the vCard's N field may be
+  # quoted-printable or escaped, and the card only ever shows first and last name joined anyway.
   def attach_contact(card)
     vcard_lines = card['vcard'].to_s.split(/\r?\n/)
     phone = vcard_phone(vcard_lines)
@@ -875,7 +877,7 @@ class Whatsapp::IncomingMessageEvolutionGoService
       account_id: @message.account_id,
       file_type: :contact,
       fallback_title: phone.present? ? "+#{phone}" : '',
-      meta: vcard_name(vcard_lines, card['displayName'])
+      meta: { firstName: card['displayName'].presence || vcard_formatted_name(vcard_lines) }.compact
     )
   end
 
@@ -888,11 +890,8 @@ class Whatsapp::IncomingMessageEvolutionGoService
       tels.first.to_s.split(':', 2).last.to_s.gsub(/\D/, '')
   end
 
-  def vcard_name(lines, display_name)
-    family, given = lines.grep(/\AN[;:]/i).first.to_s.split(':', 2).last.to_s.split(';')
-    return { firstName: given, lastName: family }.compact_blank if given.present? || family.present?
-
-    { firstName: display_name.presence }.compact
+  def vcard_formatted_name(lines)
+    lines.grep(/\AFN[;:]/i).first.to_s.split(':', 2).last.presence
   end
 
   # EvoGO returns media inline as base64 and only fills mediaUrl when it has storage of its own.
