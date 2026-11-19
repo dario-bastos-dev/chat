@@ -5,6 +5,7 @@ class Conversations::RedistributeService
     @team = team
     @include_deals = include_deals
     @agent_by_key = {}
+    @received = Hash.new(0)
   end
 
   def perform
@@ -21,11 +22,8 @@ class Conversations::RedistributeService
     candidate_ids = candidate_ids_for(conversation)
     return if candidate_ids.empty?
 
-    # Uma conversa do mesmo contato, ou que compartilhe um negocio aberto, ja redistribuida
-    # nesta rodada fixa o agente: senao o negocio ficaria com um e a conversa com outro.
     keys = affinity_keys(conversation)
-    agent_id = keys.filter_map { |key| @agent_by_key[key] }.find { |id| candidate_ids.include?(id) }
-    agent_id ||= candidate_ids.min_by { |id| [@load[id], id] }
+    agent_id = pick_agent(keys, candidate_ids)
 
     previous_assignee_id = conversation.assignee_id
     ActiveRecord::Base.transaction do
@@ -34,11 +32,20 @@ class Conversations::RedistributeService
     end
 
     keys.each { |key| @agent_by_key[key] = agent_id }
-    @load[agent_id] += 1
+    @received[agent_id] += 1
   # Deixar o erro derrubar o job faria o Sidekiq repetir tudo e tirar as conversas ja
   # redistribuidas de quem acabou de recebe-las; so a conversa que falhou fica para tras.
   rescue StandardError => e
     ChatwootExceptionTracker.new(e, account: @account).capture_exception
+  end
+
+  def pick_agent(keys, candidate_ids)
+    # Uma conversa do mesmo contato, ou que compartilhe um negocio aberto, ja redistribuida
+    # nesta rodada fixa o agente: senao o negocio ficaria com um e a conversa com outro.
+    pinned = keys.filter_map { |key| @agent_by_key[key] }.find { |id| candidate_ids.include?(id) }
+    # Reparte a selecao em partes iguais; a carga aberta so desempata. Ordenar pela carga total
+    # mandava a selecao inteira para quem estava com menos conversas ate ele empatar com os outros.
+    pinned || candidate_ids.min_by { |id| [@received[id], @load[id], id] }
   end
 
   def candidate_ids_for(conversation)

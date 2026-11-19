@@ -27,7 +27,7 @@ RSpec.describe Conversations::RedistributeService do
     ).perform
   end
 
-  it 'takes every conversation away from its current assignee and spreads them by open load' do
+  it 'takes every conversation away from its current assignee and spreads them evenly' do
     conversations = create_list(:conversation, 4, account: account, inbox: inbox, assignee: leaving, team: team)
 
     perform(conversations, team: team)
@@ -35,6 +35,24 @@ RSpec.describe Conversations::RedistributeService do
     assignees = conversations.map { |conversation| conversation.reload.assignee_id }
     expect(assignees).not_to include(leaving.id)
     expect(assignees.tally).to eq(agent_b.id => 2, agent_c.id => 2)
+  end
+
+  it 'splits the selection evenly even when one candidate has a much lighter load' do
+    create_list(:conversation, 6, account: account, inbox: inbox, assignee: agent_b, status: :open)
+    conversations = create_list(:conversation, 4, account: account, inbox: inbox, assignee: leaving, team: team)
+
+    perform(conversations, team: team)
+
+    expect(conversations.map { |conversation| conversation.reload.assignee_id }.tally).to eq(agent_b.id => 2, agent_c.id => 2)
+  end
+
+  it 'gives the leftover conversation to whoever has the lighter open load' do
+    create_list(:conversation, 2, account: account, inbox: inbox, assignee: agent_b, status: :open)
+    conversations = create_list(:conversation, 3, account: account, inbox: inbox, assignee: leaving, team: team)
+
+    perform(conversations, team: team)
+
+    expect(conversations.map { |conversation| conversation.reload.assignee_id }.tally).to eq(agent_b.id => 1, agent_c.id => 2)
   end
 
   it 'never gives a conversation back to its current assignee, even when they have the lowest load' do
