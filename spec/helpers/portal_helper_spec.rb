@@ -133,7 +133,7 @@ describe PortalHelper do
     context 'when theme is not present' do
       it 'returns the correct link' do
         expect(helper.generate_home_link('portal_slug', 'en', nil, true)).to eq(
-          '/hc/portal_slug/en'
+          '/hc/portal_slug/en?show_plain_layout=true'
         )
       end
     end
@@ -141,7 +141,7 @@ describe PortalHelper do
     context 'when theme is present and plain layout is enabled' do
       it 'returns the correct link' do
         expect(helper.generate_home_link('portal_slug', 'en', 'dark', true)).to eq(
-          '/hc/portal_slug/en?theme=dark'
+          '/hc/portal_slug/en?show_plain_layout=true&theme=dark'
         )
       end
     end
@@ -165,7 +165,7 @@ describe PortalHelper do
                  theme: nil,
                  is_plain_layout_enabled: true
                )).to eq(
-                 '/hc/portal_slug/en/categories/category_slug'
+                 '/hc/portal_slug/en/categories/category_slug?show_plain_layout=true'
                )
       end
     end
@@ -179,7 +179,7 @@ describe PortalHelper do
                  theme: 'dark',
                  is_plain_layout_enabled: true
                )).to eq(
-                 '/hc/portal_slug/en/categories/category_slug?theme=dark'
+                 '/hc/portal_slug/en/categories/category_slug?show_plain_layout=true&theme=dark'
                )
       end
     end
@@ -203,7 +203,7 @@ describe PortalHelper do
     context 'when theme is not present' do
       it 'returns the correct link' do
         expect(helper.generate_article_link('portal_slug', 'article_slug', nil, true)).to eq(
-          '/hc/portal_slug/articles/article_slug'
+          '/hc/portal_slug/articles/article_slug?show_plain_layout=true'
         )
       end
     end
@@ -211,7 +211,7 @@ describe PortalHelper do
     context 'when theme is present and plain layout is enabled' do
       it 'returns the correct link' do
         expect(helper.generate_article_link('portal_slug', 'article_slug', 'dark', true)).to eq(
-          '/hc/portal_slug/articles/article_slug?theme=dark'
+          '/hc/portal_slug/articles/article_slug?show_plain_layout=true&theme=dark'
         )
       end
     end

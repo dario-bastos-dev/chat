@@ -70,12 +70,14 @@ const enableCallingForInbox = async inboxId => {
 const handleSignupSuccess = async inboxData => {
   if (inboxData && inboxData.id) {
     if (props.enableCallingOnComplete) {
+      isProcessing.value = true;
       processingMessage.value = t(
         'INBOX_MGMT.ADD.WHATSAPP.EMBEDDED_SIGNUP.ENABLING_CALLING'
       );
       await enableCallingForInbox(inboxData.id);
     }
     isProcessing.value = false;
+    isAuthenticating.value = false;
     useAlert(t('INBOX_MGMT.FINISH.MESSAGE'));
     router.replace({
       name: 'settings_inboxes_add_agents',
@@ -86,6 +88,7 @@ const handleSignupSuccess = async inboxData => {
     });
   } else {
     isProcessing.value = false;
+    isAuthenticating.value = false;
     useAlert(t('INBOX_MGMT.ADD.WHATSAPP.EMBEDDED_SIGNUP.SUCCESS_FALLBACK'));
     router.replace({
       name: 'settings_inbox_list',

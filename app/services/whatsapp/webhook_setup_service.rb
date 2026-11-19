@@ -17,9 +17,9 @@ class Whatsapp::WebhookSetupService
     setup_webhook
   end
 
-  def register_callback
+  def register_callback(subscribed_fields: nil)
     validate_parameters!
-    setup_webhook
+    setup_webhook(subscribed_fields: subscribed_fields)
   end
 
   private
@@ -57,7 +57,7 @@ class Whatsapp::WebhookSetupService
     @channel.save!
   end
 
-  def setup_webhook
+  def setup_webhook(subscribed_fields: nil)
     callback_url = build_callback_url
     verify_token = @channel.provider_config['webhook_verify_token']
     phone_number_id = @channel.provider_config['phone_number_id']

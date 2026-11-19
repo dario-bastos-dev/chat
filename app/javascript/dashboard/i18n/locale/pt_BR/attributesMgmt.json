@@ -11,6 +11,7 @@
     "ATTRIBUTE_MODELS": {
       "CONVERSATION": "Conversas",
       "CONTACT": "Contato",
+      "COMPANY": "Empresa",
       "DEAL": "Negócios"
     },
     "ATTRIBUTE_TYPES": {
@@ -110,6 +111,7 @@
       "HEADER": "Atributos Personalizados",
       "CONVERSATION": "Conversas",
       "CONTACT": "Contato",
+      "COMPANY": "Empresa",
       "DEAL": "Negócios"
     },
     "LIST": {

@@ -88,6 +88,7 @@
       },
       "CARD": {
         "STATUS": {
+          "PROCESSING": "Processing",
           "COMPLETED": "Completed",
           "SCHEDULED": "Scheduled",
           "IN_PROGRESS": "In progress"
@@ -148,6 +149,7 @@
       },
       "CARD": {
         "STATUS": {
+          "PROCESSING": "Processing",
           "COMPLETED": "Completed",
           "SCHEDULED": "Scheduled"
         },

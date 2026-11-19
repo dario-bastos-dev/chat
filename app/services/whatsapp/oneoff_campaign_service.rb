@@ -5,6 +5,7 @@ class Whatsapp::OneoffCampaignService
     validate_campaign!
     campaign.processing!
     process_audience(extract_audience_labels)
+    campaign.completed!
   end
 
   private

@@ -55,12 +55,13 @@ class Public::Api::V1::Portals::BaseController < PublicController
     Rails.logger.info "Article: not found for slug: #{params[:article_slug]}"
     render_404 && return if article.blank?
 
-    @locale = if article.category.present?
-                article.category.locale
-              else
-                article.locale
-              end
-    I18n.with_locale(validate_and_get_locale(@locale), &)
+    article_locale = if article.category.present?
+                       article.category.locale
+                     else
+                       article.locale
+                     end
+    @locale = validate_and_get_locale(article_locale)
+    I18n.with_locale(@locale, &)
   end
 
   def allow_iframe_requests

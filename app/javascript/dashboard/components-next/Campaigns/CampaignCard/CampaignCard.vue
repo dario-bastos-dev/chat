@@ -66,6 +66,7 @@ const store = useStore();
 const isLoading = ref(false);
 
 const STATUS_COMPLETED = 'completed';
+const STATUS_PROCESSING = 'processing';
 
 const { formatMessage } = useMessageFormatter();
 
@@ -94,6 +95,10 @@ const campaignStatus = computed(() => {
 
   if (props.status === STATUS_COMPLETED) {
     return t('CAMPAIGN.SMS.CARD.STATUS.COMPLETED');
+  }
+
+  if (props.status === STATUS_PROCESSING) {
+    return t('CAMPAIGN.SMS.CARD.STATUS.PROCESSING');
   }
 
   const isScheduledInFuture = props.scheduledAt * 1000 > Date.now();
