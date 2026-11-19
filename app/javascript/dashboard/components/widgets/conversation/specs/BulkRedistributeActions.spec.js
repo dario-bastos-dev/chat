@@ -1,12 +1,20 @@
-import { mount } from '@vue/test-utils';
+import { mount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 import { createStore } from 'vuex';
 import { withFullI18n } from 'test-i18n';
 import BulkRedistributeActions from '../conversationBulkActions/BulkRedistributeActions.vue';
+import BulkActionsAPI from 'dashboard/api/bulkActions';
 
 withFullI18n('pt_BR');
 
 const userPermissions = { value: [] };
+
+vi.mock('dashboard/api/bulkActions', () => ({
+  default: { redistributionPreview: vi.fn() },
+}));
+
+const previewReturns = agents =>
+  BulkActionsAPI.redistributionPreview.mockResolvedValue({ data: { agents } });
 
 vi.mock('dashboard/composables/usePolicy', () => ({
   usePolicy: () => ({
@@ -36,7 +44,7 @@ const mountComponent = () => {
   });
 
   return mount(BulkRedistributeActions, {
-    props: { conversationCount: 3 },
+    props: { conversationIds: [11, 12, 13] },
     global: { plugins: [store], directives: { tooltip: {} } },
   });
 };
@@ -47,15 +55,54 @@ const buttonWithText = (wrapper, text) =>
 const pickTarget = async (wrapper, label) => {
   await wrapper.find('button').trigger('click');
   await buttonWithText(wrapper, label).trigger('click');
+  await flushPromises();
 };
 
-const confirm = wrapper =>
-  wrapper
-    .findAll('button')
-    .find(button => button.text() === 'Redistribuir')
-    .trigger('click');
+const confirmButton = wrapper =>
+  wrapper.findAll('button').find(button => button.text() === 'Redistribuir');
+
+const confirm = wrapper => confirmButton(wrapper).trigger('click');
 
 describe('BulkRedistributeActions', () => {
+  beforeEach(() => {
+    previewReturns([
+      { id: 1, name: 'Ana' },
+      { id: 2, name: 'Bruno' },
+    ]);
+  });
+
+  it('asks who will receive the selection and says it will be split evenly', async () => {
+    const wrapper = mountComponent();
+
+    await pickTarget(wrapper, 'Comercial');
+
+    expect(BulkActionsAPI.redistributionPreview).toHaveBeenCalledWith({
+      ids: [11, 12, 13],
+      teamId: 7,
+    });
+    expect(wrapper.text()).toContain('divididas igualmente entre 2 pessoas');
+  });
+
+  it('warns by name when only one person can receive the whole selection', async () => {
+    previewReturns([{ id: 1, name: 'Ana' }]);
+    const wrapper = mountComponent();
+
+    await pickTarget(wrapper, 'Comercial');
+
+    expect(wrapper.text()).toContain('Só Ana pode receber');
+    expect(confirmButton(wrapper).attributes('disabled')).toBeUndefined();
+  });
+
+  it('blocks the redistribution when nobody can receive it', async () => {
+    previewReturns([]);
+    const wrapper = mountComponent();
+
+    await pickTarget(wrapper, 'Todos os agentes');
+
+    expect(wrapper.text()).toContain('Ninguém pode receber');
+    expect(confirmButton(wrapper).attributes('disabled')).toBeDefined();
+  });
+
   it('sends the chosen team and the deals option together', async () => {
     userPermissions.value = ['administrator'];
     const wrapper = mountComponent();

@@ -203,7 +203,7 @@ onUnmounted(() => {
             @select="onAssignTeam"
           />
           <BulkRedistributeActions
-            :conversation-count="conversations.length"
+            :conversation-ids="conversations"
             @select="onRedistributeConversations"
           />
         </div>

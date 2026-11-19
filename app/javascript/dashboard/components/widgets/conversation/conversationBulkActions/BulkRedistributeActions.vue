@@ -5,14 +5,15 @@ import { useToggle } from '@vueuse/core';
 import { vOnClickOutside } from '@vueuse/components';
 import { useMapGetter } from 'dashboard/composables/store';
 import { usePolicy } from 'dashboard/composables/usePolicy';
+import BulkActionsAPI from 'dashboard/api/bulkActions';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 
 const props = defineProps({
-  conversationCount: {
-    type: Number,
+  conversationIds: {
+    type: Array,
     required: true,
   },
 });
@@ -25,6 +26,8 @@ const containerRef = useTemplateRef('containerRef');
 const [showDropdown, toggleDropdown] = useToggle(false);
 const selectedTarget = ref(null);
 const includeDeals = ref(false);
+const previewAgents = ref(null);
+const conversationCount = computed(() => props.conversationIds.length);
 
 const teams = useMapGetter('teams/getTeams');
 const bulkActionsUiFlags = useMapGetter('bulkActions/getUIFlags');
@@ -50,18 +53,49 @@ const menuItems = computed(() => [
   })),
 ]);
 
+// Quem ja e responsavel por alguma conversa da selecao fica de fora, entao a selecao pode
+// acabar inteira com uma pessoa so: a previa mostra isso antes de confirmar.
+const previewMessage = computed(() => {
+  const agents = previewAgents.value;
+  if (!agents) return '';
+  if (agents.length === 0) return t('BULK_ACTION.REDISTRIBUTE.NO_RECEIVER');
+  if (agents.length === 1) {
+    return t('BULK_ACTION.REDISTRIBUTE.SINGLE_RECEIVER', {
+      name: agents[0].name,
+    });
+  }
+  return t('BULK_ACTION.REDISTRIBUTE.RECEIVERS', { n: agents.length });
+});
+
 const reset = () => {
   selectedTarget.value = null;
   includeDeals.value = false;
+  previewAgents.value = null;
+};
+
+const loadPreview = async () => {
+  const target = selectedTarget.value;
+  previewAgents.value = null;
+  try {
+    const { data } = await BulkActionsAPI.redistributionPreview({
+      ids: props.conversationIds,
+      teamId: target.id,
+    });
+    // Uma resposta atrasada de outro time escolhido antes nao pode sobrescrever a atual.
+    if (selectedTarget.value === target) previewAgents.value = data.agents;
+  } catch {
+    // Sem previa o popover continua funcionando como antes.
+  }
 };
 
 const handleSelect = item => {
   if (item.value === 'all') {
     selectedTarget.value = { id: null };
-    return;
+  } else {
+    const team = teams.value.find(({ id }) => id === item.value);
+    selectedTarget.value = { id: team.id, name: team.name };
   }
-  const team = teams.value.find(({ id }) => id === item.value);
-  selectedTarget.value = { id: team.id, name: team.name };
+  loadPreview();
 };
 
 const handleConfirm = () => {
@@ -118,11 +152,11 @@ const handleDismiss = () => {
                 keypath="BULK_ACTION.REDISTRIBUTE.TEAM_CONFIRMATION_LABEL"
                 tag="p"
                 class="text-xs text-n-slate-11 px-1 mb-0"
-                :plural="props.conversationCount"
+                :plural="conversationCount"
               >
                 <template #n>
                   <strong class="text-n-slate-12">
-                    {{ props.conversationCount }}
+                    {{ conversationCount }}
                   </strong>
                 </template>
                 <template #teamName>
@@ -136,14 +170,25 @@ const handleDismiss = () => {
                 keypath="BULK_ACTION.REDISTRIBUTE.ALL_CONFIRMATION_LABEL"
                 tag="p"
                 class="text-xs text-n-slate-11 px-1 mb-0"
-                :plural="props.conversationCount"
+                :plural="conversationCount"
               >
                 <template #n>
                   <strong class="text-n-slate-12">
-                    {{ props.conversationCount }}
+                    {{ conversationCount }}
                   </strong>
                 </template>
               </I18nT>
+              <p
+                v-if="previewAgents"
+                class="text-xs px-1 mb-0"
+                :class="
+                  previewAgents.length > 1
+                    ? 'text-n-slate-11'
+                    : 'text-n-amber-11'
+                "
+              >
+                {{ previewMessage }}
+              </p>
               <label
                 v-if="canTransferDeals"
                 class="flex items-start gap-2 px-1 cursor-pointer"
@@ -171,7 +216,7 @@ const handleDismiss = () => {
                   sm
                   class="flex-1"
                   :label="t('BULK_ACTION.REDISTRIBUTE.CONFIRM')"
-                  :disabled="isUpdating"
+                  :disabled="isUpdating || previewAgents?.length === 0"
                   :is-loading="isUpdating"
                   @click="handleConfirm"
                 />
