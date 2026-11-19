@@ -322,4 +322,43 @@ RSpec.describe 'Api::V1::Accounts::BulkActionsController', type: :request do
       expect(response).to have_http_status(:not_found)
     end
   end
+
+  describe 'POST /api/v1/accounts/{account.id}/bulk_actions/redistribution_preview' do
+    let(:agent) { create(:user, account: account, role: :agent) }
+    let(:inbox) { create(:inbox, account: account) }
+    let(:teammate) { create(:user, account: account, role: :agent, name: 'Teammate') }
+    let(:outsider) { create(:user, account: account, role: :agent, name: 'Outsider') }
+    let(:off_inbox) { create(:user, account: account, role: :agent, name: 'Off inbox') }
+    let(:from_agent_1) { create(:conversation, account: account, inbox: inbox, assignee: agent_1) }
+    let(:from_agent_2) { create(:conversation, account: account, inbox: inbox, assignee: agent_2) }
+
+    before do
+      [agent_1, agent_2, teammate, outsider].each { |user| create(:inbox_member, inbox: inbox, user: user) }
+      [agent_1, agent_2, teammate, off_inbox].each { |user| create(:team_member, team: team_1, user: user) }
+    end
+
+    def preview(params)
+      post "/api/v1/accounts/#{account.id}/bulk_actions/redistribution_preview",
+           headers: agent.create_new_auth_token, params: params, as: :json
+    end
+
+    it 'lists the team members of the inbox that will receive, leaving out the current assignees' do
+      preview(ids: [from_agent_1.display_id, from_agent_2.display_id], team_id: team_1.id)
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['agents']).to eq([{ 'id' => teammate.id, 'name' => 'Teammate' }])
+    end
+
+    it 'lists every other inbox member when no team is given' do
+      preview(ids: [from_agent_1.display_id, from_agent_2.display_id])
+
+      expect(response.parsed_body['agents'].pluck('id')).to contain_exactly(teammate.id, outsider.id)
+    end
+
+    it 'returns not found for a team from another account' do
+      preview(ids: [from_agent_1.display_id], team_id: create(:team).id)
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
 end

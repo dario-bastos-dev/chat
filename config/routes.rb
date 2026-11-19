@@ -51,7 +51,9 @@ Rails.application.routes.draw do
           namespace :actions do
             resource :contact_merge, only: [:create]
           end
-          resource :bulk_actions, only: [:create]
+          resource :bulk_actions, only: [:create] do
+            post :redistribution_preview
+          end
           resource :onboarding, only: [:update] do
             get :help_center_generation
           end

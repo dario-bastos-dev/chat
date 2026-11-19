@@ -14,6 +14,13 @@ class Api::V1::Accounts::BulkActionsController < Api::V1::Accounts::BaseControll
     end
   end
 
+  def redistribution_preview
+    team = @current_account.teams.find(params[:team_id]) if params[:team_id].present?
+    conversations = @current_account.conversations.where(display_id: params[:ids])
+    agents = Conversations::RedistributeService.new(account: @current_account, conversations: conversations, team: team).candidates
+    render json: { agents: agents.map { |agent| { id: agent.id, name: agent.name } } }
+  end
+
   private
 
   def normalized_type
