@@ -312,6 +312,109 @@ RSpec.describe AutomationRules::ActionService do
       end
     end
 
+    describe '#perform with create_deal action' do
+      let(:pipeline) { create(:pipeline, account: account) }
+      let(:stage) { create(:stage, pipeline: pipeline) }
+      let(:team) { create(:team, account: account) }
+      let(:deal_owner) { create(:user, account: account) }
+
+      before do
+        create(:team_member, team: team, user: agent)
+        conversation.update!(team: team, assignee: agent)
+        rule.update!(actions: [{ action_name: 'create_deal', action_params: ["#{pipeline.id}:#{stage.id}:conversation_assignee"] }])
+      end
+
+      it 'creates the deal with the conversation assignee' do
+        described_class.new(rule, account, conversation).perform
+
+        expect(conversation.reload.deals.first.assignee).to eq(agent)
+      end
+
+      context 'when the contact already has an open deal' do
+        let!(:deal) do
+          create(:deal, account: account, pipeline: pipeline, stage: stage, contact: conversation.contact, assignee: deal_owner)
+        end
+
+        it 'hands the conversation to the deal owner when the owner is in the conversation team' do
+          create(:team_member, team: team, user: deal_owner)
+
+          described_class.new(rule, account, conversation).perform
+
+          expect(conversation.reload.assignee).to eq(deal_owner)
+          expect(deal.reload.assignee).to eq(deal_owner)
+          expect(conversation.deals).to contain_exactly(deal)
+        end
+
+        it 'hands the deal to the conversation assignee when the owner left the conversation team' do
+          described_class.new(rule, account, conversation).perform
+
+          expect(conversation.reload.assignee).to eq(agent)
+          expect(deal.reload.assignee).to eq(agent)
+        end
+
+        it 'hands the conversation to the deal owner when the conversation has no team and the owner is in the inbox' do
+          conversation.update!(team: nil)
+          create(:inbox_member, inbox: conversation.inbox, user: deal_owner)
+
+          described_class.new(rule, account, conversation).perform
+
+          expect(conversation.reload.assignee).to eq(deal_owner)
+        end
+
+        it 'only links the conversation when the rule does not ask for the conversation assignee' do
+          create(:team_member, team: team, user: deal_owner)
+          rule.update!(actions: [{ action_name: 'create_deal', action_params: ["#{pipeline.id}:#{stage.id}"] }])
+
+          described_class.new(rule, account, conversation).perform
+
+          expect(conversation.reload.assignee).to eq(agent)
+          expect(deal.reload.assignee).to eq(deal_owner)
+          expect(conversation.deals).to contain_exactly(deal)
+        end
+      end
+    end
+
+    describe '#perform with assign_team followed by create_deal' do
+      let(:inbox) { conversation.inbox }
+      let(:pipeline) { create(:pipeline, account: account) }
+      let(:stage) { create(:stage, pipeline: pipeline) }
+      let(:team) { create(:team, account: account, allow_offline_assignment: true) }
+      let(:other_agent) { create(:user, account: account) }
+      let(:deal_owner) { create(:user, account: account) }
+      let(:queue_key) { format(Redis::Alfred::ROUND_ROBIN_AGENTS, inbox_id: inbox.id) }
+      let(:agent_ids) { [agent.id.to_s, other_agent.id.to_s] }
+
+      before do
+        [agent, other_agent].each { |user| create(:inbox_member, inbox: inbox, user: user) }
+        [agent, other_agent, deal_owner].each { |user| create(:team_member, team: team, user: user) }
+        create(:deal, account: account, pipeline: pipeline, stage: stage, contact: conversation.contact, assignee: deal_owner)
+        AutoAssignment::InboxRoundRobinService.new(inbox: inbox.reload).reset_queue
+        rule.update!(event_name: 'conversation_created', actions: [
+                       { action_name: 'assign_team', action_params: [team.id] },
+                       { action_name: 'create_deal', action_params: ["#{pipeline.id}:#{stage.id}:conversation_assignee"] }
+                     ])
+      end
+
+      it 'gives the round robin turn back when the conversation goes to the deal owner' do
+        next_in_line = Redis::Alfred.lrange(queue_key).intersection(agent_ids).last
+
+        described_class.new(rule, account, conversation).perform
+
+        expect(conversation.reload.assignee).to eq(deal_owner)
+        expect(Redis::Alfred.lrange(queue_key).intersection(agent_ids).last).to eq(next_in_line)
+      end
+
+      it 'leaves the queue alone when the conversation already had an assignee' do
+        conversation.update!(assignee: agent)
+        queue_before = Redis::Alfred.lrange(queue_key)
+
+        described_class.new(rule, account, conversation).perform
+
+        expect(conversation.reload.assignee).to eq(deal_owner)
+        expect(Redis::Alfred.lrange(queue_key)).to eq(queue_before)
+      end
+    end
+
     describe '#perform with assign_deal_agent action' do
       let(:deal_owner) { create(:user, account: account) }
       let!(:deal) { create(:deal, account: account, contact: conversation.contact, assignee: deal_owner) }

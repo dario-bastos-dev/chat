@@ -16,6 +16,13 @@ class AutoAssignment::InboxRoundRobinService
     ::Redis::Alfred.lrem(round_robin_key, user_id)
   end
 
+  # A vez sai do fim da fila (ver get_member_from_allowed_agent_ids): devolver o
+  # agente para o fim o deixa de novo como o proximo, como se nao tivesse sido escolhido.
+  def return_turn(user_id)
+    remove_agent_from_queue(user_id)
+    ::Redis::Alfred.rpush(round_robin_key, user_id)
+  end
+
   def reset_queue
     clear_queue
     add_agent_to_queue(inbox.inbox_members.map(&:user_id))
