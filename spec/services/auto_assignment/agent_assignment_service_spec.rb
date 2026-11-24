@@ -26,6 +26,15 @@ RSpec.describe AutoAssignment::AgentAssignmentService do
       described_class.new(conversation: conversation, allowed_agent_ids: inbox_members.map(&:user_id).map(&:to_s)).perform
       expect(conversation.reload.assignee).not_to be_nil
     end
+
+    it 'keeps an existing AgentBot owner' do
+      agent_bot = create(:agent_bot, account: account)
+      conversation.update!(ai_assignee: agent_bot)
+
+      described_class.new(conversation: conversation, allowed_agent_ids: inbox_members.map(&:user_id).map(&:to_s)).perform
+
+      expect(conversation.reload.assigned_entity).to eq(agent_bot)
+    end
   end
 
   describe '#find_assignee' do
@@ -59,6 +68,13 @@ RSpec.describe AutoAssignment::AgentAssignmentService do
           expect(assignee).to be_nil
         end
       end
+    end
+
+    it 'skips an online agent who does not take conversations' do
+      inbox_members[3].user.account_users.find_by(account: account).update!(accepts_conversations: false)
+
+      expect(described_class.new(conversation: conversation,
+                                 allowed_agent_ids: inbox_members.map(&:user_id).map(&:to_s)).find_assignee).to eq(inbox_members[4].user)
     end
   end
 end

@@ -63,7 +63,7 @@ describe Whatsapp::GroupParticipantConversationService do
 
     conversation = service.perform
 
-    expect(conversation).to have_attributes(status: 'open', assignee_agent_bot: nil)
+    expect(conversation).to have_attributes(status: 'open', ai_assignee: nil)
   end
 
   it 'records the opening on the group and on the new conversation' do

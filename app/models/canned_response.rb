@@ -15,6 +15,7 @@
 
 class CannedResponse < ApplicationRecord
   include VisibilityScopable
+  include AccountCacheRevalidator
 
   validates :content, presence: true, unless: :file_attached?
   validates :short_code, presence: true

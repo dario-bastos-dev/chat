@@ -4,6 +4,7 @@
 #
 #  id                     :integer          not null, primary key
 #  additional_attributes  :jsonb
+#  ai_assignee_type       :string
 #  agent_last_seen_at     :datetime
 #  assignee_last_seen_at  :datetime
 #  cached_label_list      :text
@@ -46,6 +47,7 @@
 #  index_conversations_on_identifier_and_account_id   (identifier,account_id)
 #  index_conversations_on_inbox_id                    (inbox_id)
 #  index_conversations_on_priority                    (priority)
+#  index_conversations_on_sla_policy_id               (sla_policy_id) WHERE (sla_policy_id IS NOT NULL)
 #  index_conversations_on_status_and_account_id       (status,account_id)
 #  index_conversations_on_status_and_priority         (status,priority)
 #  index_conversations_on_team_id                     (team_id)
@@ -68,7 +70,7 @@ class Conversation < ApplicationRecord
   # been answered. WhatsApp keeps the buttons tappable, so a second tap is a repeat, not a new message.
   CSAT_FLOW_ANSWERED_SILENCE = 10.minutes
 
-  CONVERSATION_UPDATED_ADDITIONAL_ATTRIBUTE_KEYS = %w[conversation_language].freeze
+  CONVERSATION_UPDATED_ADDITIONAL_ATTRIBUTE_KEYS = %w[conversation_language auto_translate_disabled].freeze
   FILTERED_UNREAD_COUNT_ADDITIONAL_ATTRIBUTE_KEYS = %w[browser_language conversation_language mail_subject referer].freeze
   FILTERED_UNREAD_COUNT_UPDATE_KEYS = %w[
     cached_label_list campaign_id custom_attributes first_reply_created_at label_list last_activity_at priority snoozed_until waiting_since
@@ -80,17 +82,17 @@ class Conversation < ApplicationRecord
   validates :inbox_id, presence: true
   validates :contact_id, presence: true
   before_validation :validate_additional_attributes
-  before_validation :reset_agent_bot_when_assignee_present
+  before_validation :clear_invalid_ai_assignee
   validates :additional_attributes, jsonb_attributes_length: true
   validates :custom_attributes, jsonb_attributes_length: true
   validates :uuid, uniqueness: true
   validate :validate_referer_url
 
-  enum status: { open: 0, resolved: 1, pending: 2, snoozed: 3 }
-  enum priority: { low: 0, medium: 1, high: 2, urgent: 3 }
+  enum :status, { open: 0, resolved: 1, pending: 2, snoozed: 3 }
+  enum :priority, { low: 0, medium: 1, high: 2, urgent: 3 }
 
-  scope :unassigned, -> { where(assignee_id: nil) }
-  scope :assigned, -> { where.not(assignee_id: nil) }
+  scope :unassigned, -> { where(assignee_id: nil, assignee_agent_bot_id: nil) }
+  scope :assigned, -> { where.not(assignee_id: nil).or(where.not(assignee_agent_bot_id: nil)) }
   scope :assigned_to, ->(agent) { where(assignee_id: agent.id) }
   scope :sort_on_unread, lambda { |_direction|
     order(unread_messages_count_arel.desc).sort_on_last_activity_at('desc')
@@ -117,7 +119,11 @@ class Conversation < ApplicationRecord
   belongs_to :account
   belongs_to :inbox
   belongs_to :assignee, class_name: 'User', optional: true, inverse_of: :assigned_conversations
-  belongs_to :assignee_agent_bot, class_name: 'AgentBot', optional: true
+  belongs_to :ai_assignee,
+             polymorphic: true,
+             foreign_key: :assignee_agent_bot_id,
+             foreign_type: :ai_assignee_type,
+             optional: true
   belongs_to :contact
   belongs_to :contact_inbox
   belongs_to :team, optional: true
@@ -142,6 +148,7 @@ class Conversation < ApplicationRecord
   before_save :release_from_whatsapp_group, if: -> { opened_from_whatsapp_group? && will_save_change_to_status?(to: 'resolved') }
   before_create :determine_conversation_status
   before_create :ensure_waiting_since
+  after_create :mark_contact_as_lead
 
   after_update_commit :execute_after_update_commit_callbacks
   after_create_commit :notify_conversation_creation, unless: :history_sync?
@@ -193,8 +200,12 @@ class Conversation < ApplicationRecord
   end
 
   def bot_handoff!(dispatch_event: true)
+    # Best-effort eligibility check, not a lock against concurrent takeovers.
+    # The dashboard checks assignment/status again before playing the alert.
+    return false unless pending?
+
     update(waiting_since: Time.current) if waiting_since.blank?
-    self.assignee_agent_bot = nil
+    self.ai_assignee = nil
     open!
     dispatch_bot_handoff_event if dispatch_event
   end
@@ -229,14 +240,14 @@ class Conversation < ApplicationRecord
 
   # Virtual attribute till we switch completely to polymorphic assignee
   def assignee_type
-    return 'AgentBot' if assignee_agent_bot_id.present?
+    return ai_assignee_type if ai_assignee_type.present?
     return 'User' if assignee_id.present?
 
     nil
   end
 
   def assigned_entity
-    assignee_agent_bot || assignee
+    ai_assignee || assignee
   end
 
   def tweet?
@@ -350,14 +361,16 @@ class Conversation < ApplicationRecord
     self.waiting_since = created_at
   end
 
+  def mark_contact_as_lead
+    contact.update(contact_type: :lead) if contact.visitor?
+  end
+
   def validate_additional_attributes
     self.additional_attributes = {} unless additional_attributes.is_a?(Hash)
   end
 
-  def reset_agent_bot_when_assignee_present
-    return if assignee_id.blank?
-
-    self.assignee_agent_bot_id = nil
+  def clear_invalid_ai_assignee
+    self.ai_assignee = nil if assignee_id.present? || (status_changed? && open?)
   end
 
   def determine_conversation_status
@@ -387,7 +400,7 @@ class Conversation < ApplicationRecord
     self.status = agent_bot_inbox&.active? ? agent_bot_inbox.initial_conversation_status : 'pending'
     return unless agent_bot_inbox&.active? && assignee_id.blank?
 
-    self.assignee_agent_bot = inbox.agent_bot
+    self.ai_assignee = inbox.agent_bot
   end
 
   # Conversations rebuilt from WhatsApp coexistence history are months old, so they must not be treated as
@@ -427,7 +440,7 @@ class Conversation < ApplicationRecord
   end
 
   def list_of_keys
-    %w[team_id assignee_id assignee_agent_bot_id status snoozed_until custom_attributes label_list waiting_since
+    %w[team_id assignee_id assignee_agent_bot_id ai_assignee_type status snoozed_until custom_attributes label_list waiting_since
        first_reply_created_at priority]
   end
 

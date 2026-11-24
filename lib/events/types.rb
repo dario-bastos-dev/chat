@@ -25,7 +25,6 @@ module Events::Types
   # FIXME: deprecate the opened and resolved events in future in favor of status changed event.
   CONVERSATION_OPENED = 'conversation.opened'
   CONVERSATION_RESOLVED = 'conversation.resolved'
-  CAPTAIN_CONVERSATION_ENGAGED = 'captain.conversation.engaged'
   CAPTAIN_CONVERSATION_HANDED_OFF = 'captain.conversation.handed_off'
   CAPTAIN_CONVERSATION_RESOLVED = 'captain.conversation.resolved'
   CAPTAIN_RESPONSE_COMPLETED = 'captain.response.completed'
@@ -76,4 +75,5 @@ module Events::Types
   DEAL_WON = 'deal.won'
   DEAL_LOST = 'deal.lost'
   DEAL_ROTTING = 'deal.rotting'
+  COPILOT_MESSAGE_UPDATED = 'copilot.message.updated'
 end

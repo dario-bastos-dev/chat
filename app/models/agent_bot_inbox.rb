@@ -39,13 +39,14 @@ class AgentBotInbox < ApplicationRecord
   validates :inbox_id, presence: true
   validates :agent_bot_id, presence: true
   validate :validate_event_names
+  validate :ensure_exclusive_bot_provider, if: :active?
   before_validation :ensure_account_id
 
   belongs_to :inbox
   belongs_to :agent_bot
   belongs_to :account
-  enum status: { active: 0, inactive: 1 }
-  enum initial_conversation_status: { pending: 0, open: 1 }
+  enum :status, { active: 0, inactive: 1 }
+  enum :initial_conversation_status, { pending: 0, open: 1 }
 
   def event_enabled?(event_name)
     CATEGORY_EVENT_MAP.slice(*event_names).values.flatten.include?(event_name.to_s)
@@ -66,6 +67,11 @@ class AgentBotInbox < ApplicationRecord
   end
 
   private
+
+  def ensure_exclusive_bot_provider
+    provider = inbox&.conflicting_bot_provider(:agent_bot)
+    errors.add(:base, I18n.t('errors.inboxes.bot_provider_conflict', current_provider: provider, requested_provider: 'Agent Bot')) if provider
+  end
 
   def ensure_account_id
     self.account_id = inbox&.account_id

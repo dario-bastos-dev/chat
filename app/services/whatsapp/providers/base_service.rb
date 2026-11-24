@@ -80,7 +80,12 @@ class Whatsapp::Providers::BaseService
   def create_rows(items)
     rows = []
     items.each do |item|
-      row = { 'id' => item['value'], 'title' => item['title'] }
+      row = {
+        'id' => item['value'] || item[:value],
+        'title' => item['title'] || item[:title]
+      }
+      description = item_description(item)
+      row['description'] = description if description.present?
       rows << row
     end
     rows
@@ -102,10 +107,10 @@ class Whatsapp::Providers::BaseService
 
     return create_cta_url_payload(message, link_items) if link_items.any?
 
-    if items.length <= 3
-      create_button_payload(message)
-    else
+    if use_list_payload?(items)
       create_list_payload(message)
+    else
+      create_button_payload(message)
     end
   end
 
@@ -118,6 +123,14 @@ class Whatsapp::Providers::BaseService
     body = [message.outgoing_content.presence, *extra.map { |item| "#{item['title']}: #{item['uri']}" }].compact.join("\n\n")
     action = { name: 'cta_url', parameters: { display_text: primary['title'], url: primary['uri'] } }
     create_payload('cta_url', body, JSON.generate(action))
+  end
+
+  def use_list_payload?(items)
+    items.length > 3 || items.any? { |item| item_description(item).present? }
+  end
+
+  def item_description(item)
+    item['description'] || item[:description]
   end
 
   def create_button_payload(message)
@@ -134,3 +147,5 @@ class Whatsapp::Providers::BaseService
     create_payload('list', message.outgoing_content, JSON.generate(json_hash))
   end
 end
+
+Whatsapp::Providers::BaseService.prepend_mod_with('Whatsapp::Providers::BaseService')

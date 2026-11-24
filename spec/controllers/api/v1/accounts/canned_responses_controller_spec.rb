@@ -90,6 +90,18 @@ RSpec.describe 'Canned Responses API', type: :request do
 
         expect(response.parsed_body.pluck('id')).not_to include(team_response.id)
       end
+
+      it 'ignores null bytes in the search string' do
+        matching_response = create(:canned_response, account: account, content: 'Unique response', short_code: 'unique')
+
+        get "/api/v1/accounts/#{account.id}/canned_responses",
+            params: { search: "uni\0que" },
+            headers: agent.create_new_auth_token,
+            as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body).to eq([matching_response].as_json)
+      end
     end
   end
 

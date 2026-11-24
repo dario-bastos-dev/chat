@@ -20,7 +20,9 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
 
   def destroy
     ActiveRecord::Base.transaction do
-      message.update!(content: I18n.t('conversations.messages.deleted'), content_type: :text, content_attributes: { deleted: true })
+      # keeps the forward marker so replies to a deleted forward stay out of this conversation
+      message.update!(content: I18n.t('conversations.messages.deleted'), content_type: :text,
+                      content_attributes: message.content_attributes.slice('forwarded_message_id').merge(deleted: true))
       message.attachments.destroy_all
     end
   end
@@ -28,12 +30,7 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
   def retry
     return if message.blank?
 
-    service = Messages::StatusUpdateService.new(message, 'sent')
-    # external_error is a content_attributes accessor, so the status update above already clears
-    # it. Wiping the whole hash on top of that dropped everything the resend needs: the items of
-    # an interactive message, the quoted context and the translations.
-    service.perform
-    ::SendReplyJob.perform_later(message.id)
+    ::SendReplyJob.perform_later(message.id) if claim_message_retry
   rescue StandardError => e
     render_could_not_create_error(e.message)
   end
@@ -41,16 +38,13 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
   def translate
     return head :ok if already_translated_content_available?
 
-    translated_content = Integrations::GoogleTranslate::ProcessorService.new(
-      message: message,
-      target_language: permitted_params[:target_language]
-    ).perform
+    translated_content = translate_message
 
     if translated_content.present?
       translations = {}
       translations[permitted_params[:target_language]] = translated_content
       translations = message.translations.merge!(translations) if message.translations.present?
-      message.update!(translations: translations)
+      message.update!(translations: translations, translation_provider: translation_provider)
     end
 
     render json: { content: translated_content }
@@ -61,12 +55,36 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
 
   private
 
+  def translation_provider
+    'google_translate'
+  end
+
+  def translate_message
+    hook = Current.account.hooks.find_by(app_id: 'google_translate')
+    Integrations::GoogleTranslate::ProcessorService.new(hook: hook).translate_message(message, permitted_params[:target_language]) if hook
+  end
+
   def message
     @message ||= @conversation.messages.find(permitted_params[:id])
   end
 
   def message_finder
     @message_finder ||= MessageFinder.new(@conversation, params)
+  end
+
+  def claim_message_retry
+    message.with_lock do
+      next false unless message.failed?
+
+      Messages::StatusUpdateService.new(message, 'sent').perform
+      clear_source_id unless @conversation.inbox.api? || @conversation.inbox.web_widget?
+      true
+    end
+  end
+
+  def clear_source_id
+    Rails.logger.info "Cleared older source ID #{message.source_id} for message #{message.id}" if message.source_id.present?
+    message.update!(source_id: nil)
   end
 
   def permitted_params
@@ -83,3 +101,5 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     render json: { error: 'Message status update is only allowed for API inboxes' }, status: :forbidden unless @conversation.inbox.api?
   end
 end
+
+Api::V1::Accounts::Conversations::MessagesController.prepend_mod_with('Api::V1::Accounts::Conversations::MessagesController')

@@ -3,23 +3,15 @@
 # Custom template for creating a new account with an Import button and modal
 %>
 
-<% content_for(:title) { t("administrate.actions.new_resource", name: page.resource_name) } %>
+<% content_for(:title) { t("administrate.actions.new_resource", name: page.resource_name.titleize.downcase) } %>
 
-<header class="main-content__header" role="banner">
-  <h1 class="main-content__page-title">
-    <%= content_for(:title) %>
-  </h1>
+<%= render "page_header",
+           title: content_for(:title),
+           back: (display_resource_name(page.resource_name) if existing_action?(page.resource_name, :index)) do %>
+  <%= render "button", label: "Import", variant: :secondary, icon: "i-lucide-upload", onclick: "openImportModal()" %>
+<% end %>
 
-  <div style="display: flex; gap: 8px;">
-    <!-- Import Button triggering custom modal -->
-    <button type="button" class="button button--secondary" onclick="openImportModal()">Import</button>
-    <%= link_to t("administrate.actions.back"), :back, class: "button" %>
-  </div>
-</header>
-
-<section class="main-content__body">
-  <%= render "form", page: page %>
-</section>
+<%= render "form", page: page %>
 
 <!-- Import Modal Overlay -->
 <div id="import-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 9999; align-items: center; justify-content: center;">
@@ -33,8 +25,8 @@
       </div>
       
       <div style="display: flex; justify-content: flex-end; gap: 12px;">
-        <button type="button" class="button button--secondary" onclick="closeImportModal()">Cancel</button>
-        <%= f.submit "Upload and Import", class: "button" %>
+        <%= render "button", label: "Cancel", variant: :secondary, onclick: "closeImportModal()" %>
+        <%= render "button", label: "Upload and Import", submit: f %>
       </div>
     <% end %>
   </div>

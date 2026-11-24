@@ -58,8 +58,9 @@ class Api::V1::Accounts::CannedResponsesController < Api::V1::Accounts::BaseCont
   def canned_responses
     base = CannedResponse.with_visibility(current_user, Current.account_user)
     if params[:search]
-      base.where('short_code ILIKE :search OR content ILIKE :search', search: "%#{params[:search]}%")
-          .order_by_search(params[:search])
+      search = params[:search].delete("\0")
+      base.where('short_code ILIKE :search OR content ILIKE :search', search: "%#{search}%")
+          .order_by_search(search)
     else
       base
     end

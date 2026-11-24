@@ -15,7 +15,7 @@ class MessageSequenceStep < ApplicationRecord
   belongs_to :message_sequence
   belongs_to :macro, optional: true
 
-  enum step_type: { send_message: 0, send_image: 1, send_document: 2, send_audio: 3, execute_macro: 4, send_template: 5 }
+  enum :step_type, { send_message: 0, send_image: 1, send_document: 2, send_audio: 3, execute_macro: 4, send_template: 5 }
 
   has_one_attached :file
 

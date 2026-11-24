@@ -86,6 +86,10 @@ class InboxPolicy < ApplicationPolicy
     @account_user.administrator?
   end
 
+  def rotate_hmac_token?
+    @account_user.administrator?
+  end
+
   def evolution_qrcode?
     @account_user.administrator?
   end
@@ -143,6 +147,10 @@ class InboxPolicy < ApplicationPolicy
   end
 
   def disable_whatsapp_calling?
+    @account_user.administrator?
+  end
+
+  def set_call_recording?
     @account_user.administrator?
   end
 end

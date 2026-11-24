@@ -22,21 +22,19 @@ class AutomationRules::ConditionsFilterService < FilterService
     @changed_attributes = options[:changed_attributes]
   end
 
+  # Captain is asked only when its answer can change the outcome. AND and OR never negate a condition,
+  # so a rule that gives the same result with every Captain condition unmet and met gives that result
+  # whatever Captain would answer.
   def perform
     return false unless rule_valid?
+    return matches?({}) if captain_indexes.empty?
 
-    @attribute_changed_query_filter = []
+    unmet_result = matches?(captain_indexes.index_with(false))
+    return unmet_result if unmet_result == matches?(captain_indexes.index_with(true))
 
-    @rule.conditions.each_with_index do |query_hash, current_index|
-      @attribute_changed_query_filter << query_hash and next if query_hash['filter_operator'] == 'attribute_changed'
-
-      apply_filter(query_hash, current_index)
-    end
-
-    records = base_relation.where(@query_string, @filter_values.with_indifferent_access)
-    records = perform_attribute_changed_filter(records) if @attribute_changed_query_filter.any?
-
-    records.any?
+    matches?(Captain::AutomationConditionService.new(
+      conditions: @rule.conditions, conversation: @conversation, message: @options[:message]
+    ).perform)
   rescue StandardError => e
     Rails.logger.error "Error in AutomationRules::ConditionsFilterService: #{e.message}"
     Rails.logger.info "AutomationRules::ConditionsFilterService failed while processing rule #{@rule.id} for conversation #{@conversation.id}"
@@ -66,15 +64,14 @@ class AutomationRules::ConditionsFilterService < FilterService
     message_filter = @message_filters[query_hash['attribute_key']]
     definition = custom_attr_definition(query_hash['attribute_key'])
 
-    if AutomationRule::DEAL_CONDITION_ATTRIBUTES.include?(query_hash['attribute_key'])
-      result = evaluate_crm_condition(query_hash)
-      @query_string += " #{result ? '1=1' : '1=0'} #{query_hash['query_operator']} "
+    if query_hash['attribute_key'] == Captain::AutomationConditionService::ATTRIBUTE_KEY
+      @query_string += captain_query_string(query_hash, current_index)
+    elsif AutomationRule::DEAL_CONDITION_ATTRIBUTES.include?(query_hash['attribute_key'])
+      @query_string += boolean_query_string(evaluate_crm_condition(query_hash), query_hash)
     elsif query_hash['attribute_key'] == 'is_first_message'
-      result = evaluate_is_first_message_condition(query_hash)
-      @query_string += " #{result ? '1=1' : '1=0'} #{query_hash['query_operator']} "
+      @query_string += boolean_query_string(evaluate_is_first_message_condition(query_hash), query_hash)
     elsif definition&.attribute_model == 'deal_attribute'
-      result = evaluate_deal_custom_attribute(query_hash, definition)
-      @query_string += " #{result ? '1=1' : '1=0'} #{query_hash['query_operator']} "
+      @query_string += boolean_query_string(evaluate_deal_custom_attribute(query_hash, definition), query_hash)
     elsif conversation_filter
       @query_string += conversation_query_string('conversations', conversation_filter, query_hash.with_indifferent_access, current_index)
     elsif contact_filter
@@ -118,6 +115,17 @@ class AutomationRules::ConditionsFilterService < FilterService
     end
   end
 
+  # Conditions evaluated in Ruby (CRM, first message) take part in the AND/OR chain as a constant.
+  def boolean_query_string(result, query_hash)
+    " #{result ? '1=1' : '1=0'} #{query_hash['query_operator']} "
+  end
+
+  # Captain's answer is bound as a boolean so it takes part in the AND/OR chain like any SQL condition.
+  def captain_query_string(query_hash, current_index)
+    @filter_values["value_#{current_index}"] = @captain_answers[current_index]
+    " :value_#{current_index} #{query_hash['query_operator']} "
+  end
+
   def message_query_string(current_filter, query_hash, current_index)
     attribute_key = query_hash['attribute_key']
     query_operator = query_hash['query_operator']
@@ -155,55 +163,55 @@ class AutomationRules::ConditionsFilterService < FilterService
   def conversation_query_string(table_name, current_filter, query_hash, current_index)
     attribute_key = query_hash['attribute_key']
     query_operator = query_hash['query_operator']
+
+    if attribute_key == 'assignee_id' && query_hash['filter_operator'].in?(%w[is_present is_not_present])
+      return assignee_presence_filter(table_name, query_hash)
+    end
+
+    return " #{tag_filter_query(query_hash, current_index)} " if attribute_key == 'labels'
+
     filter_operator_value = filter_operation(query_hash, current_index)
 
     case current_filter['attribute_type']
     when 'additional_attributes'
       " #{table_name}.additional_attributes ->> '#{attribute_key}' #{filter_operator_value} #{query_operator} "
     when 'standard'
-      if attribute_key == 'labels'
-        build_label_query_string(query_hash, current_index, query_operator)
-      else
-        " #{table_name}.#{attribute_key} #{filter_operator_value} #{query_operator} "
-      end
+      " #{table_name}.#{attribute_key} #{filter_operator_value} #{query_operator} "
     end
-  end
-
-  def build_label_query_string(query_hash, current_index, query_operator)
-    case query_hash['filter_operator']
-    when 'equal_to', 'not_equal_to'
-      return " 1=0 #{query_operator} " if query_hash['values'].blank?
-
-      value_placeholder = "value_#{current_index}"
-      @filter_values[value_placeholder] = query_hash['values'].first
-      sql_operator = query_hash['filter_operator'] == 'equal_to' ? '=' : '!='
-      " tags.name #{sql_operator} :#{value_placeholder} #{query_operator} "
-    when 'contains', 'does_not_contain'
-      label_contains_query_string(query_hash, current_index, query_operator)
-    when 'is_present'
-      " tags.id IS NOT NULL #{query_operator} "
-    when 'is_not_present'
-      " tags.id IS NULL #{query_operator} "
-    else
-      " tags.id #{filter_operation(query_hash, current_index)} #{query_operator} "
-    end
-  end
-
-  # EXISTS olha todas as etiquetas da conversa, nao so a linha do JOIN com `tags`,
-  # entao varias condicoes "contem" combinadas com AND funcionam. "Nao contem" e o
-  # NOT EXISTS da mesma consulta: passa quando nenhuma das etiquetas esta na conversa.
-  def label_contains_query_string(query_hash, current_index, query_operator)
-    return " 1=0 #{query_operator} " if query_hash['values'].blank?
-
-    value_placeholder = "value_#{current_index}"
-    @filter_values[value_placeholder] = query_hash['values']
-    negation = 'NOT' if query_hash['filter_operator'] == 'does_not_contain'
-    " #{negation} EXISTS (SELECT 1 FROM taggings label_taggings INNER JOIN tags label_tags ON label_tags.id = label_taggings.tag_id " \
-      "WHERE label_taggings.taggable_id = conversations.id AND label_taggings.taggable_type = 'Conversation' " \
-      "AND label_tags.name IN (:#{value_placeholder})) #{query_operator} "
   end
 
   private
+
+  def captain_indexes
+    @captain_indexes ||= @rule.conditions.each_index.select do |index|
+      @rule.conditions[index]['attribute_key'] == Captain::AutomationConditionService::ATTRIBUTE_KEY
+    end
+  end
+
+  def matches?(captain_answers)
+    @captain_answers = captain_answers
+    @query_string = ''
+    @filter_values = {}
+    @attribute_changed_query_filter = []
+
+    @rule.conditions.each_with_index do |query_hash, current_index|
+      @attribute_changed_query_filter << query_hash and next if query_hash['filter_operator'] == 'attribute_changed'
+
+      apply_filter(query_hash, current_index)
+    end
+
+    records = base_relation.where(@query_string, @filter_values.with_indifferent_access)
+    records = perform_attribute_changed_filter(records) if @attribute_changed_query_filter.any?
+
+    records.any?
+  end
+
+  def filter_config
+    {
+      entity: 'Conversation',
+      table_name: 'conversations'
+    }
+  end
 
   def base_relation
     records = Conversation.where(id: @conversation.id).joins(
@@ -212,21 +220,8 @@ class AutomationRules::ConditionsFilterService < FilterService
       'LEFT OUTER JOIN messages on messages.conversation_id = conversations.id'
     )
 
-    # Only add label joins when label conditions exist
-    if label_conditions?
-      records = records.joins(
-        'LEFT OUTER JOIN taggings ON taggings.taggable_id = conversations.id AND taggings.taggable_type = \'Conversation\''
-      ).joins(
-        'LEFT OUTER JOIN tags ON taggings.tag_id = tags.id'
-      )
-    end
-
     records = records.where(messages: { id: @options[:message].id }) if @options[:message].present?
     records
-  end
-
-  def label_conditions?
-    @rule.conditions.any? { |condition| condition['attribute_key'] == 'labels' }
   end
 
   def custom_attr_definition(key)

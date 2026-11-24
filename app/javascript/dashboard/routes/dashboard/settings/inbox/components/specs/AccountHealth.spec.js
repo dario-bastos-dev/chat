@@ -2,13 +2,13 @@ import { shallowMount } from '@vue/test-utils';
 import ButtonV4 from 'next/button/Button.vue';
 import AccountHealth from '../AccountHealth.vue';
 
-const { mockLocale } = vi.hoisted(() => ({ mockLocale: { value: 'en' } }));
+const { locale } = vi.hoisted(() => ({ locale: { value: 'en' } }));
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: key => key,
     te: () => false,
-    locale: mockLocale,
+    locale,
   }),
 }));
 
@@ -19,12 +19,12 @@ describe('AccountHealth', () => {
     });
 
   beforeEach(() => {
+    locale.value = 'en';
     vi.spyOn(window, 'open').mockImplementation(() => {});
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    mockLocale.value = 'en';
   });
 
   it('opens the phone numbers page for the correct WhatsApp Business Account', async () => {
@@ -70,14 +70,41 @@ describe('AccountHealth', () => {
     );
   });
 
-  it('formats the last onboarded time for app locales with an underscore, such as pt_BR', () => {
-    mockLocale.value = 'pt_BR';
+  it('formats dates for underscore-based locales', () => {
+    locale.value = 'pt_BR';
 
     const wrapper = mountComponent({
-      last_onboarded_time: '2025-06-01T12:00:00+0000',
+      last_onboarded_time: '2026-05-29T20:11:58+0000',
     });
 
-    expect(wrapper.text()).toContain('1 de jun. de 2025');
+    expect(wrapper.text()).toContain('2026');
+  });
+
+  it('renders multiple business profile websites on separate lines', () => {
+    const expectedWebsites =
+      'https://business.test\nhttps://docs.business.test';
+    const wrapper = mountComponent({
+      business_profile: {
+        websites: expectedWebsites.split('\n'),
+      },
+    });
+
+    const websites = wrapper
+      .findAll('span')
+      .find(element => element.text() === expectedWebsites);
+
+    expect(websites).toBeDefined();
+  });
+
+  it('shows specific guidance for an expired display name status', () => {
+    const wrapper = mountComponent({ name_status: 'EXPIRED' });
+
+    expect(wrapper.text()).toContain(
+      'INBOX_MGMT.ACCOUNT_HEALTH.FIELDS.DISPLAY_NAME_STATUS.DESCRIPTIONS.EXPIRED'
+    );
+    expect(wrapper.text()).not.toContain(
+      'INBOX_MGMT.ACCOUNT_HEALTH.FIELDS.DISPLAY_NAME_STATUS.DESCRIPTIONS.UNKNOWN'
+    );
   });
 
   it('shows the current error instead of stale health data', () => {

@@ -24,7 +24,7 @@ module MessageFilterHelpers
   end
 
   def conversation_transcriptable?
-    incoming? || outgoing?
+    (incoming? || outgoing?) && !forwarded?
   end
 
   def email_reply_summarizable?

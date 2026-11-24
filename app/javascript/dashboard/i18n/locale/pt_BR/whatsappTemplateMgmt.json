@@ -3,6 +3,11 @@
     "TITLE": "Templates",
     "DESCRIPTION": "Veja os templates de mensagem sincronizados das suas caixas de entrada do WhatsApp. Para criar ou editar um template, gerencie pelo seu provedor.",
     "COUNT": "{n} template | {n} templates",
+    "LEARN_MORE": "Saiba mais sobre os modelos do WhatsApp",
+    "SYNC_TEMPLATES": "Sincronizar modelos",
+    "SYNC_SUCCESS": "A sincronização de modelos foi iniciada para todas as caixas de entrada do WhatsApp. As atualizações podem levar alguns minutos.",
+    "PARTIAL_SYNC_ERROR": "A sincronização de modelos foi iniciada para algumas caixas de entrada do WhatsApp, mas outras não puderam ser sincronizadas.",
+    "SYNC_ERROR": "Não foi possível iniciar a sincronização de modelos. Por favor, Tente novamente.",
     "KNOW_MORE": "Saiba mais",
     "NEW_TEMPLATE": "Novo template",
     "SEARCH_PLACEHOLDER": "Buscar por conteúdo ou nome...",
@@ -15,9 +20,13 @@
     "PARTIAL_FETCH_ERROR": "Alguns templates do WhatsApp não puderam ser carregados. Tente novamente.",
     "LAST_SYNC_ATTEMPT": "Última tentativa de sincronização em {date}",
     "MORE_INBOXES": "+{n}",
+    "STATUSES": {
+      "UNSUBMITTED": "Não enviado para aprovação do WhatsApp"
+    },
     "FILTERS": {
       "ALL_INBOXES": "Todas as caixas de entrada",
-      "ALL_LANGUAGES": "Todos os idiomas"
+      "ALL_LANGUAGES": "Todos os idiomas",
+      "ALL_TYPES": "Todos os tipos"
     },
     "TYPES": {
       "TEXT": "Texto",

@@ -39,6 +39,10 @@ const rawPhoneNumber = computed(() => {
   return phoneNumber.value.replace(/\D/g, '');
 });
 
+const isContactInfoResponse = computed(() => {
+  return attachment.value?.meta?.isContactInfoResponse;
+});
+
 function getContactObject() {
   const contactItem = {
     name: contactName.value,
@@ -141,9 +145,9 @@ const action = computed(() => ({
     sender-translation-key="CONVERSATION.SHARED_ATTACHMENT.CONTACT"
     :title="contactName"
     :content="phoneNumber"
-    :action="formattedPhoneNumber ? action : null"
+    :action="formattedPhoneNumber && !isContactInfoResponse ? action : null"
   >
-    <template v-if="formattedPhoneNumber" #actions>
+    <template v-if="formattedPhoneNumber && !isContactInfoResponse" #actions>
       <ComposeConversation
         ref="composeRef"
         :contact-id="composeContactId"

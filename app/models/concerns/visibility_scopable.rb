@@ -5,7 +5,7 @@ module VisibilityScopable
     belongs_to :created_by, class_name: 'User', optional: true
     belongs_to :team, optional: true
 
-    enum visibility: { personal: 0, team_visibility: 1, global: 2 }
+    enum :visibility, { personal: 0, team_visibility: 1, global: 2 }
 
     validates :team_id, presence: true, if: :team_visibility?
     validate :creator_must_belong_to_team, if: :team_visibility?

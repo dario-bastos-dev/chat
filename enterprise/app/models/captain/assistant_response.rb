@@ -33,6 +33,7 @@ class Captain::AssistantResponse < ApplicationRecord
 
   validates :question, presence: true
   validates :answer, presence: true
+  validate :assistant_belongs_to_account
 
   before_validation :ensure_account
   before_validation :ensure_status
@@ -44,7 +45,7 @@ class Captain::AssistantResponse < ApplicationRecord
   scope :by_assistant, ->(assistant_id) { where(assistant_id: assistant_id) }
   scope :with_document, ->(document_id) { where(document_id: document_id) }
 
-  enum status: { approved: 1 }
+  enum :status, { approved: 1 }
 
   def self.search(query, account_id: nil)
     embedding = Captain::Llm::EmbeddingService.new(account_id: account_id).get_embedding(query)
@@ -66,7 +67,13 @@ class Captain::AssistantResponse < ApplicationRecord
   end
 
   def ensure_account
-    self.account = assistant&.account
+    self.account ||= assistant&.account
+  end
+
+  def assistant_belongs_to_account
+    return if assistant.blank? || assistant.account_id == account_id
+
+    errors.add(:assistant, :invalid)
   end
 
   def update_response_embedding

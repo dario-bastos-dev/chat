@@ -13,6 +13,8 @@ import { useAccount } from 'dashboard/composables/useAccount';
 // Espelha AutomationRules::ActionService::CONVERSATION_ASSIGNEE no backend.
 const CONVERSATION_ASSIGNEE = 'conversation_assignee';
 
+const CONTACT_EMAIL_TOKEN = '{{contact.email}}';
+
 export default {
   components: {
     AutomationActionTeamMessageInput,
@@ -105,10 +107,16 @@ export default {
       },
     },
     actionTypesAsOptions() {
-      return this.actionTypes.map(a => ({ id: a.key, name: a.label }));
+      return this.actionTypes.map(a => ({
+        id: a.key,
+        name: a.label,
+        icon: a.icon,
+      }));
     },
     isVerticalLayout() {
-      return ['team_message', 'textarea', 'deal_update'].includes(this.inputType);
+      return ['team_message', 'textarea', 'deal_update', 'email'].includes(
+        this.inputType
+      );
     },
     dealTitle: {
       get() {
@@ -306,6 +314,19 @@ export default {
       const newKey = availableAttr ? availableAttr.attributeKey : `custom_attr_${Date.now()}`;
       this.updateAttributeValue(newKey, '');
     },
+    insertContactEmailToken() {
+      const existingEmails = (this.castMessageVmodel || '')
+        .split(',')
+        .map(email => email.trim())
+        .filter(Boolean);
+
+      const hasContactEmail = existingEmails.some(
+        email => email.replace(/\s+/g, '') === CONTACT_EMAIL_TOKEN
+      );
+      if (hasContactEmail) return;
+
+      this.action_params = [[...existingEmails, CONTACT_EMAIL_TOKEN].join(',')];
+    },
   },
 };
 </script>
@@ -367,13 +388,6 @@ export default {
               :dropdown-max-height="dropdownMaxHeight"
             />
             <NextInput
-              v-else-if="inputType === 'email'"
-              v-model="action_params"
-              type="email"
-              size="sm"
-              :placeholder="$t('AUTOMATION.ACTION.EMAIL_INPUT_PLACEHOLDER')"
-            />
-            <NextInput
               v-else-if="inputType === 'url'"
               v-model="action_params"
               type="url"
@@ -397,8 +411,25 @@ export default {
           @click="removeAction"
         />
       </div>
+      <div v-if="inputType === 'email'" class="flex items-center w-full gap-2">
+        <NextInput
+          v-model="action_params"
+          type="text"
+          size="sm"
+          class="flex-1"
+          :placeholder="$t('AUTOMATION.ACTION.EMAIL_INPUT_PLACEHOLDER')"
+        />
+        <NextButton
+          sm
+          faded
+          slate
+          class="flex-shrink-0 whitespace-nowrap"
+          :label="$t('AUTOMATION.ACTION.INSERT_CONTACT_EMAIL')"
+          @click="insertContactEmailToken"
+        />
+      </div>
       <AutomationActionTeamMessageInput
-        v-if="inputType === 'team_message'"
+        v-else-if="inputType === 'team_message'"
         v-model="action_params"
         :teams="dropdownValues"
         :dropdown-max-height="dropdownMaxHeight"

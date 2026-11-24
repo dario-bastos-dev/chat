@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, computed, ref } from 'vue';
+import { onMounted, computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
@@ -31,7 +31,8 @@ const isFetchingItem = computed(() => uiFlags.value.isFetchingItem);
 const isMergingContact = computed(() => uiFlags.value.isMerging);
 const isUpdatingContact = computed(() => uiFlags.value.isUpdating);
 
-const selectedContact = computed(() => contact.value(route.params.contactId));
+const contactId = computed(() => route.params.contactId);
+const selectedContact = computed(() => contact.value(contactId.value));
 
 const showSpinner = computed(
   () => isFetchingItem.value || isMergingContact.value
@@ -100,13 +101,15 @@ const handleTabChange = tab => {
 };
 
 const fetchContactNotes = () => {
-  const { contactId } = route.params;
-  if (contactId) store.dispatch('contactNotes/get', { contactId });
+  if (contactId.value) {
+    store.dispatch('contactNotes/get', { contactId: contactId.value });
+  }
 };
 
 const fetchContactConversations = () => {
-  const { contactId } = route.params;
-  if (contactId) store.dispatch('contactConversations/get', contactId);
+  if (contactId.value) {
+    store.dispatch('contactConversations/get', contactId.value);
+  }
 };
 
 const fetchAttributes = () => {
@@ -140,12 +143,18 @@ const toggleContactBlock = async isBlocked => {
   }
 };
 
-onMounted(() => {
+const fetchContact = () => {
   fetchActiveContact();
   fetchContactNotes();
   fetchContactConversations();
+};
+
+onMounted(() => {
+  fetchContact();
   fetchAttributes();
 });
+
+watch(contactId, fetchContact);
 </script>
 
 <template>
@@ -169,6 +178,7 @@ onMounted(() => {
       </div>
       <ContactDetails
         v-else-if="selectedContact"
+        :key="contactId"
         :selected-contact="selectedContact"
         @go-to-contacts-list="goToContactsList"
       />
@@ -194,15 +204,16 @@ onMounted(() => {
             v-if="activeTab === 'attributes'"
             :selected-contact="selectedContact"
           />
-          <ContactNotes v-if="activeTab === 'notes'" />
-          <ContactHistory v-if="activeTab === 'history'" />
+          <ContactNotes v-if="activeTab === 'notes'" :key="contactId" />
+          <ContactHistory v-if="activeTab === 'history'" :key="contactId" />
           <ContactDealsSection
             v-if="activeTab === 'deals' && selectedContact?.id && isCRMEnabled"
             :contact-id="selectedContact.id"
           />
-          <ContactMedia v-if="activeTab === 'media'" />
+          <ContactMedia v-if="activeTab === 'media'" :key="contactId" />
           <ContactMerge
             v-if="activeTab === 'merge'"
+            :key="contactId"
             ref="contactMergeRef"
             :selected-contact="selectedContact"
             @go-to-contacts-list="goToContactsList"

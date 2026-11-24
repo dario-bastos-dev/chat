@@ -26,7 +26,7 @@ class ScheduledMessage < ApplicationRecord
   # Origem do agendamento quando ele parte do Kanban; a mensagem continua sendo da conversa.
   belongs_to :deal, optional: true
 
-  enum status: { pending: 0, sent: 1, cancelled: 2 }
+  enum :status, { pending: 0, sent: 1, cancelled: 2 }
 
   validates :title, :content, :scheduled_at, presence: true
   validate :scheduled_at_must_be_in_future, on: :create

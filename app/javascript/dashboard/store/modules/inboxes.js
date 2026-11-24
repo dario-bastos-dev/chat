@@ -165,6 +165,15 @@ const sendAnalyticsEvent = channelType => {
 };
 
 export const actions = {
+  getItem: async ({ commit }, inboxId) => {
+    try {
+      const { data } = await InboxesAPI.show(inboxId);
+      commit(types.default.EDIT_INBOXES, data);
+      return data;
+    } catch (error) {
+      return throwErrorMessage(error);
+    }
+  },
   revalidate: async ({ commit }, { newKey }) => {
     try {
       const isExistingKeyValid = await InboxesAPI.validateCacheKey(newKey);
@@ -238,7 +247,7 @@ export const actions = {
       return response.data;
     } catch (error) {
       commit(types.default.SET_INBOXES_UI_FLAG, { isCreating: false });
-      throw new Error(error);
+      throw error;
     }
   },
   createWhatsAppEmbeddedSignup: async ({ commit }, params) => {
@@ -352,6 +361,15 @@ export const actions = {
     } catch (error) {
       throwErrorMessage(error);
       return null;
+    }
+  },
+  rotateHmacToken: async ({ commit }, inboxId) => {
+    try {
+      const response = await InboxesAPI.rotateHmacToken(inboxId);
+      commit(types.default.EDIT_INBOXES, response.data);
+      return response.data;
+    } catch (error) {
+      return throwErrorMessage(error);
     }
   },
 };

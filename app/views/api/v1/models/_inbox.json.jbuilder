@@ -34,6 +34,7 @@ end
 ## TODO : Clean up and move the attributes into channel sub section
 
 json.tweets_enabled resource.channel.try(:tweets_enabled) if resource.twitter?
+json.provider_name resource.channel.try(:provider_name) if resource.facebook? || resource.instagram? || resource.tiktok?
 
 ## WebWidget Attributes
 json.allowed_domains resource.channel.try(:allowed_domains)
@@ -64,11 +65,24 @@ json.reauthorization_required resource.channel.try(:reauthorization_required?) i
 json.instagram_id resource.channel.try(:instagram_id) if resource.instagram?
 
 ## Tiktok Attributes
-json.reauthorization_required resource.channel.try(:reauthorization_required?) if resource.tiktok?
+if resource.tiktok?
+  json.business_id resource.channel.try(:business_id)
+  json.reauthorization_required resource.channel.try(:reauthorization_required?)
+end
+
+## Twitter Attributes
+json.profile_id resource.channel.try(:profile_id) if resource.twitter?
+
+## LINE Attributes
+json.line_channel_id resource.channel.try(:line_channel_id) if resource.channel_type == 'Channel::Line'
 
 ## Twilio Attributes
 json.messaging_service_sid resource.channel.try(:messaging_service_sid)
 json.phone_number resource.channel.try(:phone_number)
+if resource.sms? && Current.account_user&.administrator?
+  json.provider_config resource.channel.provider_config.to_h.slice('account_id', 'application_id', 'client_id')
+  json.bandwidth_oauth_enabled resource.channel.oauth?
+end
 json.medium resource.channel.try(:medium) if resource.twilio?
 if resource.twilio?
   json.content_templates resource.channel.try(:content_templates)
@@ -159,6 +173,28 @@ end
 if resource.twilio? && resource.channel.respond_to?(:voice_enabled?)
   json.voice_enabled resource.channel.voice_enabled?
   json.inbound_calls_enabled resource.channel.inbound_calls_enabled?
+  json.recording_enabled resource.channel.try(:recording_enabled?)
+  json.transcription_enabled resource.channel.try(:transcription_enabled?)
+  if ChatwootApp.enterprise?
+    json.business_hours_calls_enabled resource.channel.business_hours_calls_enabled?
+    greeting = Voice::CallAnnouncement.new(resource, :greeting)
+    json.call_greeting_enabled greeting.enabled?
+    json.call_greeting_message greeting.message
+    json.call_greeting_audio_url greeting.audio.attached? ? url_for(greeting.audio) : nil
+    unanswered = Voice::CallAnnouncement.new(resource, :unanswered)
+    json.unanswered_call_message unanswered.message
+    json.unanswered_call_audio_url unanswered.audio.attached? ? url_for(unanswered.audio) : nil
+    json.unanswered_call_timeout_seconds resource.channel.unanswered_call_timeout_seconds
+    # Empty while out-of-hours callers hear the missed-call message
+    out_of_hours = Voice::CallAnnouncement.new(resource, :out_of_hours)
+    json.out_of_hours_call_message out_of_hours.saved_message.to_s
+    json.out_of_hours_call_audio_url out_of_hours.audio.attached? ? url_for(out_of_hours.audio) : nil
+    json.ring_strategy resource.channel.sequential_ringing? ? 'sequential' : 'simultaneous'
+    json.ring_step_seconds resource.channel.ring_step_seconds
+    json.assignee_rings_first resource.channel.assignee_rings_first?
+    json.call_cooldown_seconds resource.channel.call_cooldown_seconds
+  end
+  json.account_auth_token_configured resource.channel.try(:account_auth_token_configured?) == true
   json.voice_configured resource.channel.try(:twiml_app_sid).present?
   json.has_api_key_secret resource.channel.try(:api_key_secret).present?
   if resource.channel.try(:twiml_app_sid).present?
@@ -171,4 +207,13 @@ end
 if resource.channel_type == 'Channel::Whatsapp' && resource.channel.respond_to?(:voice_enabled?)
   json.voice_enabled resource.channel.voice_enabled?
   json.inbound_calls_enabled resource.channel.inbound_calls_enabled?
+  json.recording_enabled resource.channel.try(:recording_enabled?)
+  json.transcription_enabled resource.channel.try(:transcription_enabled?)
+end
+
+## Bandwidth SMS callback authentication
+if resource.sms? && Current.account_user&.administrator?
+  json.callback_auth_username Channel::Sms::CALLBACK_USERNAME
+  json.callback_auth_password resource.channel.secret
+  json.callback_auth_enforced resource.channel.callback_auth_enforced
 end

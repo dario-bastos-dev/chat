@@ -6,6 +6,8 @@ import { getUnixTime } from 'date-fns';
 import { findSnoozeTime } from 'dashboard/helper/snoozeHelpers';
 import { emitter } from 'shared/helpers/mitt';
 import { useBulkActions } from 'dashboard/composables/chatlist/useBulkActions.js';
+import { usePolicy } from 'dashboard/composables/usePolicy';
+import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import wootConstants from 'dashboard/constants/globals';
 import {
   CMD_BULK_ACTION_SNOOZE_CONVERSATION,
@@ -20,6 +22,7 @@ import BulkUpdateActions from './BulkUpdateActions.vue';
 import BulkLabelActions from './BulkLabelActions.vue';
 import BulkTeamActions from './BulkTeamActions.vue';
 import BulkRedistributeActions from './BulkRedistributeActions.vue';
+import BulkMacroActions from './BulkMacroActions.vue';
 import CustomSnoozeModal from 'dashboard/components/CustomSnoozeModal.vue';
 
 const props = defineProps({
@@ -66,7 +69,13 @@ const {
   onAssignTeamsForBulk: onAssignTeam,
   onRedistributeConversations,
   onUpdateConversations,
+  onExecuteMacro,
 } = useBulkActions();
+
+const { isFeatureFlagEnabled } = usePolicy();
+const isMacrosEnabled = computed(() =>
+  isFeatureFlagEnabled(FEATURE_FLAGS.MACROS)
+);
 
 const getConversationById = useMapGetter('getConversationById');
 
@@ -205,6 +214,11 @@ onUnmounted(() => {
           <BulkRedistributeActions
             :conversation-ids="conversations"
             @select="onRedistributeConversations"
+          />
+          <BulkMacroActions
+            v-if="isMacrosEnabled"
+            :conversation-count="conversations.length"
+            @execute="onExecuteMacro"
           />
         </div>
       </div>

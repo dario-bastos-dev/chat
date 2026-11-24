@@ -113,7 +113,7 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
   end
 
   def upload_template_media(file, format)
-    Whatsapp::MediaUploadService.new(whatsapp_channel).upload(file, format)
+    Whatsapp::TemplateMediaUploadService.new(whatsapp_channel).upload(file, format)
   end
 
   def media_url(media_id, phone_number_id = nil)
@@ -247,7 +247,8 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
   end
 
   def build_attachment_content(type, attachment, message)
-    type_content = { 'link' => attachment.download_url }
+    # Referencing uploaded media by id avoids Meta's fwdproxy download, which is rate limited per ASN (error 131053).
+    type_content = Whatsapp::MediaUploadService.new(whatsapp_channel, attachment).perform || { 'link' => attachment.download_url }
     type_content['caption'] = message.outgoing_content unless %w[audio sticker].include?(type)
     type_content['filename'] = attachment.file.filename if type == 'document'
     type_content['voice'] = true if voice_message?(type, attachment)

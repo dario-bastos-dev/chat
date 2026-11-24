@@ -12,8 +12,11 @@ export const buildCreatePayload = ({
   ccEmails = '',
   bccEmails = '',
   toEmails = '',
+  subject,
   templateParams,
   isVoiceMessage = false,
+  emailHtmlContent,
+  forwardedAttachmentIds,
 }) => {
   let payload;
   if (files && files.length !== 0) {
@@ -32,6 +35,9 @@ export const buildCreatePayload = ({
     if (toEmails) {
       payload.append('to_emails', toEmails);
     }
+    if (subject) {
+      payload.append('subject', subject);
+    }
     if (contentAttributes) {
       payload.append('content_attributes', JSON.stringify(contentAttributes));
     }
@@ -41,6 +47,12 @@ export const buildCreatePayload = ({
     if (isVoiceMessage) {
       payload.append('is_voice_message', true);
     }
+    if (emailHtmlContent) {
+      payload.append('email_html_content', emailHtmlContent);
+    }
+    forwardedAttachmentIds?.forEach(id => {
+      payload.append('forwarded_attachment_ids[]', id);
+    });
   } else {
     payload = {
       content: message,
@@ -51,7 +63,10 @@ export const buildCreatePayload = ({
       cc_emails: ccEmails,
       bcc_emails: bccEmails,
       to_emails: toEmails,
+      subject,
       template_params: templateParams,
+      email_html_content: emailHtmlContent,
+      forwarded_attachment_ids: forwardedAttachmentIds,
     };
   }
   return payload;
@@ -73,8 +88,11 @@ class MessageApi extends ApiClient {
     ccEmails = '',
     bccEmails = '',
     toEmails = '',
+    subject,
     templateParams,
     isVoiceMessage = false,
+    emailHtmlContent,
+    forwardedAttachmentIds,
   }) {
     return axios({
       method: 'post',
@@ -89,8 +107,11 @@ class MessageApi extends ApiClient {
         ccEmails,
         bccEmails,
         toEmails,
+        subject,
         templateParams,
         isVoiceMessage,
+        emailHtmlContent,
+        forwardedAttachmentIds,
       }),
     });
   }
@@ -120,6 +141,12 @@ class MessageApi extends ApiClient {
         target_language: targetLanguage,
       }
     );
+  }
+
+  autoTranslate(conversationId, messageIds) {
+    return axios.post(`${this.url}/${conversationId}/messages/auto_translate`, {
+      message_ids: messageIds,
+    });
   }
 }
 

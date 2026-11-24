@@ -15,6 +15,8 @@ json.enabled resource.enabled
 json.campaign_type resource.campaign_type
 if resource.campaign_type == 'one_off'
   json.scheduled_at resource.scheduled_at.to_i
+  json.started_at resource.started_at&.to_i
+  json.completed_at resource.completed_at&.to_i
   json.audience resource.audience
   json.conversations_count resource.conversations_count
   json.total_contacts resource.total_contacts

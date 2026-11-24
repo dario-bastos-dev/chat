@@ -25,7 +25,7 @@ class Account::ContactsExportJob < ApplicationJob
   private
 
   def generate_csv(headers)
-    csv_data = CSV.generate do |csv|
+    csv_data = CSVSafe.generate do |csv|
       csv << headers.map { |h| I18n.t("contacts.export.#{h}", default: h.humanize) }
       contacts.find_each do |contact|
         csv << headers.map { |header| get_value(contact, header) }

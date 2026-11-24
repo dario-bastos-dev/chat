@@ -10,8 +10,8 @@ module Api::V1::Accounts::Concerns::WhatsappProfileManagement
   end
 
   def whatsapp_profile
-    render json: { payload: business_profile_service.fetch, verticals: Whatsapp::BusinessProfileService::VERTICALS }
-  rescue Whatsapp::BusinessProfileService::ApiError => e
+    render json: { payload: business_profile_service.fetch, verticals: Whatsapp::BusinessProfileSettingsService::VERTICALS }
+  rescue Whatsapp::BusinessProfileSettingsService::ApiError => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
@@ -20,14 +20,14 @@ module Api::V1::Accounts::Concerns::WhatsappProfileManagement
     attributes[:profile_picture_handle] = upload_profile_picture! if params[:profile_picture].present?
 
     render json: { payload: business_profile_service.update!(attributes) }
-  rescue Whatsapp::BusinessProfileService::ApiError, Whatsapp::MediaUploadService::UploadError => e
+  rescue Whatsapp::BusinessProfileSettingsService::ApiError, Whatsapp::TemplateMediaUploadService::UploadError => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
   private
 
   def business_profile_service
-    Whatsapp::BusinessProfileService.new(@inbox.channel)
+    Whatsapp::BusinessProfileSettingsService.new(@inbox.channel)
   end
 
   def whatsapp_profile_params
@@ -37,8 +37,8 @@ module Api::V1::Accounts::Concerns::WhatsappProfileManagement
   end
 
   def upload_profile_picture!
-    result = Whatsapp::MediaUploadService.new(@inbox.channel).upload(params[:profile_picture], 'IMAGE')
-    raise Whatsapp::MediaUploadService::UploadError, result[:error] unless result[:success]
+    result = Whatsapp::TemplateMediaUploadService.new(@inbox.channel).upload(params[:profile_picture], 'IMAGE')
+    raise Whatsapp::TemplateMediaUploadService::UploadError, result[:error] unless result[:success]
 
     result[:handle]
   end

@@ -2,17 +2,12 @@ import { MESSAGE_TYPES } from '../constants.js';
 
 /**
  * Determines if a message should be grouped with the next message
- * @param {Number} index - Index of the current message
- * @param {Array} searchList - Array of messages to check
+ * @param {Object} current - Current message
+ * @param {Object} next - Next message, absent at a campaign entry or the end
  * @returns {Boolean} - Whether the message should be grouped with next
  */
-export const shouldGroupWithNext = (index, searchList) => {
-  if (index === searchList.length - 1) return false;
-
-  const current = searchList[index];
-  const next = searchList[index + 1];
-
-  if (next.status === 'failed') return false;
+export const shouldGroupWithNext = (current, next) => {
+  if (!next || next.status === 'failed') return false;
 
   const nextSenderId = next.senderId ?? next.sender?.id;
   const currentSenderId = current.senderId ?? current.sender?.id;

@@ -28,9 +28,9 @@ module Filters::FilterHelper
   end
 
   def build_condition_query_string(current_filter, query_hash, current_index)
-    filter_operator_value = filter_operation(query_hash, current_index)
-
     return handle_nil_filter(query_hash, current_index) if current_filter.nil?
+
+    filter_operator_value = filter_operation(query_hash, current_index)
 
     case current_filter['attribute_type']
     when 'additional_attributes'
@@ -78,8 +78,8 @@ module Filters::FilterHelper
     end
   end
 
-  def date_filter(_current_filter, query_hash, filter_operator_value)
-    "#{filter_config[:table_name]}.#{query_hash[:attribute_key]} " \
+  def date_filter(current_filter, query_hash, filter_operator_value)
+    "(#{filter_config[:table_name]}.#{query_hash[:attribute_key]})::#{current_filter['data_type']} " \
       "#{filter_operator_value} #{query_hash[:query_operator]}"
   end
 
@@ -93,7 +93,20 @@ module Filters::FilterHelper
   end
 
   def default_filter(query_hash, filter_operator_value)
+    if query_hash[:attribute_key] == 'assignee_id' && query_hash[:filter_operator].in?(%w[is_present is_not_present])
+      return assignee_presence_filter(filter_config[:table_name], query_hash)
+    end
+
     "#{filter_config[:table_name]}.#{query_hash[:attribute_key]} #{filter_operator_value} #{query_hash[:query_operator]}"
+  end
+
+  # Assignee ownership can live in either column until it is standardized as a polymorphic association.
+  def assignee_presence_filter(table_name, query_hash)
+    if query_hash[:filter_operator] == 'is_present'
+      return "(#{table_name}.assignee_id IS NOT NULL OR #{table_name}.assignee_agent_bot_id IS NOT NULL) #{query_hash[:query_operator]}"
+    end
+
+    "(#{table_name}.assignee_id IS NULL AND #{table_name}.assignee_agent_bot_id IS NULL) #{query_hash[:query_operator]}"
   end
 
   def text_search_on_display_id?(query_hash)
@@ -101,11 +114,12 @@ module Filters::FilterHelper
   end
 
   def validate_single_condition(condition)
-    return if condition['query_operator'].nil?
-    return if condition['query_operator'].empty?
+    values = Array.wrap(condition['values'])
+    raise CustomExceptions::CustomFilter::InvalidValue.new(attribute_name: condition['attribute_key']) if values.any? { |v| v.respond_to?(:to_h) }
 
-    operator = condition['query_operator'].upcase
-    raise CustomExceptions::CustomFilter::InvalidQueryOperator.new({}) unless %w[AND OR].include?(operator)
+    return if condition['query_operator'].to_s.empty?
+
+    raise CustomExceptions::CustomFilter::InvalidQueryOperator.new({}) unless %w[AND OR].include?(condition['query_operator'].to_s.upcase)
   end
 
   def conversation_status_values(values)

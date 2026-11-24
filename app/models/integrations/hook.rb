@@ -18,30 +18,52 @@ class Integrations::Hook < ApplicationRecord
   include Reauthorizable
 
   attr_readonly :app_id, :account_id, :inbox_id, :hook_type
-  before_validation :ensure_hook_type
+  before_validation :ensure_hook_type, on: :create
+  before_validation :normalize_shopify_reference_id, if: :shopify?
   after_create :trigger_setup_if_crm
 
   # TODO: Remove guard once encryption keys become mandatory (target 3-4 releases out).
   encrypts :access_token, deterministic: true if Chatwoot.encryption_configured?
 
   validates :account_id, presence: true
+  validate :inbox_must_belong_to_account
   validates :app_id, presence: true
+  validates :access_token, length: { maximum: ->(hook) { hook.app_id == 'stripe' ? MAX_TEXT_COLUMN_LENGTH : MAX_STRING_COLUMN_LENGTH } }
   validates :inbox_id, presence: true, if: -> { hook_type == 'inbox' }
+  validates :reference_id, presence: true, format: { with: Shopify::ShopDomain::FORMAT }, if: :shopify?
+  validates :reference_id,
+            uniqueness: { case_sensitive: false, conditions: -> { where(app_id: 'shopify') } },
+            if: :shopify?
   validate :validate_settings_json_schema
   validate :ensure_feature_enabled
+  validate :ensure_exclusive_bot_provider, if: -> { dialogflow? && enabled? }
   validate :validate_openai_api_key, if: :validate_openai_api_key?
   validate :validate_cloudflare_realtimekit_credentials, if: :validate_cloudflare_realtimekit_credentials?
+  validate :validate_google_translate_credentials, if: -> { google_translate? && will_save_change_to_settings? }
   validates :app_id, uniqueness: { scope: [:account_id], unless: -> { app.present? && app.params[:allow_multiple_hooks].present? } }
 
   # TODO: This seems to be only used for slack at the moment
   # We can add a validator when storing the integration settings and toggle this in future
-  enum status: { disabled: 0, enabled: 1 }
+  enum :status, { disabled: 0, enabled: 1 }
 
   belongs_to :account
   belongs_to :inbox, optional: true
   has_secure_token :access_token
 
-  enum hook_type: { account: 0, inbox: 1 }
+  enum :hook_type, { account: 0, inbox: 1 }
+
+  def inbox_belongs_to_account?
+    inbox.present? && inbox.account_id == account_id
+  end
+
+  def shopify_custom_app
+    account.shopify_custom_app if app_id == 'shopify' && settings['custom_app_id'].present?
+  end
+
+  scope :with_shopify_custom_app_id, lambda { |custom_app_id|
+    custom_app_id_field = Arel::Nodes::InfixOperation.new('->>', arel_table[:settings], Arel::Nodes.build_quoted('custom_app_id'))
+    where(custom_app_id_field.eq(custom_app_id&.to_s))
+  }
 
   scope :account_hooks, -> { where(hook_type: 'account') }
   scope :inbox_hooks, -> { where(hook_type: 'inbox') }
@@ -52,6 +74,12 @@ class Integrations::Hook < ApplicationRecord
 
   def slack?
     app_id == 'slack'
+  end
+
+  # Alert mode makes the Slack integration one way. Conversations are pushed to Slack,
+  # but replies posted in the Slack thread are never synced back to the customer.
+  def slack_alert_mode?
+    slack? && settings['message_mode'] == 'alert'
   end
 
   def dialogflow?
@@ -68,6 +96,14 @@ class Integrations::Hook < ApplicationRecord
 
   def notion?
     app_id == 'notion'
+  end
+
+  def shopify?
+    app_id == 'shopify'
+  end
+
+  def google_translate?
+    app_id == 'google_translate'
   end
 
   def disable
@@ -91,12 +127,36 @@ class Integrations::Hook < ApplicationRecord
 
   private
 
+  def inbox_must_belong_to_account
+    # Existing invalid links must remain disableable; their inbox and account are readonly.
+    return if persisted? && disabled?
+    return if inbox_id.blank? && inbox.blank?
+    return if inbox_belongs_to_account?
+
+    errors.add(:inbox_id, 'must belong to the same account as the hook')
+  end
+
+  def ensure_exclusive_bot_provider
+    return unless inbox_belongs_to_account?
+
+    provider = inbox.conflicting_bot_provider(:dialogflow)
+    errors.add(:base, I18n.t('errors.inboxes.bot_provider_conflict', current_provider: provider, requested_provider: 'Dialogflow')) if provider
+  end
+
   def ensure_feature_enabled
+    return if shopify? && disabled?
+
     errors.add(:feature_flag, 'Feature not enabled') unless feature_allowed?
   end
 
   def ensure_hook_type
-    self.hook_type = app.params[:hook_type] if app.present?
+    return if app.blank?
+
+    self.hook_type = app.params[:hook_type]
+  end
+
+  def normalize_shopify_reference_id
+    self.reference_id = Shopify::ShopDomain.normalize(reference_id)
   end
 
   def validate_settings_json_schema
@@ -149,6 +209,12 @@ class Integrations::Hook < ApplicationRecord
     errors.add(:base, I18n.t("errors.cloudflare.realtimekit.#{result.error}"))
   end
 
+  def validate_google_translate_credentials
+    return if Integrations::GoogleTranslate::CredentialsValidator.valid?(self)
+
+    errors.add(:base, I18n.t('errors.google_translate.invalid_credentials'))
+  end
+
   def settings_api_key(value)
     settings_value(value, 'api_key')
   end
@@ -178,3 +244,4 @@ class Integrations::Hook < ApplicationRecord
     %w[leadsquared].include?(app_id)
   end
 end
+Integrations::Hook.include_mod_with('Concerns::IntegrationsHook')

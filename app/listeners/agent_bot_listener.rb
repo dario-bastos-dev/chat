@@ -130,10 +130,9 @@ class AgentBotListener < BaseListener
   def agent_bots_for(inbox, conversation = nil)
     return [] if bot_silenced_in_group?(inbox, conversation) || conversation&.opened_from_whatsapp_group?
 
-    bots = []
-    bots << conversation.assignee_agent_bot if conversation&.assignee_agent_bot.present?
-    inbox_bot = active_inbox_agent_bot(inbox)
-    bots << inbox_bot if inbox_bot.present?
+    bots = [active_inbox_agent_bot(inbox)]
+    bots << conversation.ai_assignee if conversation&.assignee_type == 'AgentBot'
+
     bots.compact.uniq
   end
 

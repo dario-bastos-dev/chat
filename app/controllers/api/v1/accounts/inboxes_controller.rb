@@ -5,11 +5,14 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   # we are already handling the authorization in fetch inbox
   before_action :check_authorization, except: [:show]
 
-  include Api::V1::Accounts::Concerns::WhatsappHealthManagement
+  include Api::V1::Accounts::Concerns::InboxHealthManagement
+  include Api::V1::Accounts::Concerns::InboxSecretManagement
   include Api::V1::Accounts::Concerns::WhatsappProfileManagement
+  include Api::V1::Accounts::Concerns::BandwidthConfiguration
+  before_action :prepare_bandwidth_configuration, only: [:create, :update]
 
   def index
-    @inboxes = policy_scope(Current.account.inboxes)
+    @inboxes = inbox_scope
                .includes(:channel, :portal, :working_hours, { avatar_attachment: :blob })
                .order_by_name
   end
@@ -78,19 +81,13 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     head :ok
   end
 
-  def reset_secret
-    return head :not_found unless @inbox.api?
-
-    @inbox.channel.reset_secret!
-  end
-
   def destroy
     ::DeleteObjectJob.perform_later(@inbox, Current.user, request.ip) if @inbox.present?
     render status: :ok, json: { message: I18n.t('messages.inbox_deletetion_response') }
   end
 
   # `sync_templates`, `health` and `message_templates` actions are provided by
-  # Api::V1::Accounts::Concerns::WhatsappHealthManagement.
+  # Api::V1::Accounts::Concerns::InboxHealthManagement.
 
   def evolution_qrcode
     Rails.logger.info "[EVOLUTION CONTROLLER] === QR CODE REQUEST ==="
@@ -296,6 +293,8 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   end
 
   private
+
+  def inbox_scope = policy_scope(Current.account.inboxes)
 
   def fetch_inbox
     @inbox = Current.account.inboxes.find(params[:id])

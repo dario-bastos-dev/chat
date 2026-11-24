@@ -7,6 +7,7 @@ import { convertToAttributeSlug } from 'dashboard/helper/commons.js';
 import { normalizeRegexPattern } from 'shared/helpers/Validators';
 import { ATTRIBUTE_MODELS, ATTRIBUTE_TYPES } from './constants';
 import { useAccount } from 'dashboard/composables/useAccount';
+import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import TagInput from 'dashboard/components-next/taginput/TagInput.vue';
@@ -21,7 +22,7 @@ export default {
       type: Function,
       default: () => {},
     },
-    // Passes 0 or 1 based on the selected AttributeModel tab selected in the UI
+    // Passes 0, 1 or 2 (the attribute_model enum) based on the selected tab
     // Needs a better data type, todo: refactor this component later
     selectedAttributeModelTab: {
       type: Number,
@@ -54,12 +55,17 @@ export default {
   computed: {
     ...mapGetters({
       uiFlags: 'getUIFlags',
+      accountId: 'getCurrentAccountId',
+      isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
     }),
     models() {
+      const companiesEnabled = this.isFeatureEnabledonAccount(
+        this.accountId,
+        FEATURE_FLAGS.COMPANIES
+      );
       const filteredModels = ATTRIBUTE_MODELS.filter(item => {
-        if (item.id === 2) {
-          return this.isCloudFeatureEnabled('crm');
-        }
+        if (item.key === 'DEAL') return this.isCloudFeatureEnabled('crm');
+        if (item.key === 'COMPANY') return companiesEnabled;
         return true;
       });
       return filteredModels.map(item => ({

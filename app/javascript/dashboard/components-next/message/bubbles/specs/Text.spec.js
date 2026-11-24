@@ -8,9 +8,17 @@ vi.mock('../../provider.js', () => ({
   useMessageContext: () => ({
     content: ref('olha isso https://example.com/promo'),
     attachments: ref([]),
+    id: ref(1),
     contentAttributes,
     messageType: ref(1),
+    contactSide: ref(false),
+    status: ref('sent'),
+    showingOriginal: ref(false),
+    isCaptainMessage: ref(false),
   }),
+}));
+vi.mock('dashboard/composables/store', () => ({
+  useMapGetter: () => ref(() => ({ pending: false })),
 }));
 vi.mock('dashboard/composables/useTranslations', () => ({
   useTranslations: () => ({

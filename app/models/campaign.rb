@@ -10,6 +10,8 @@
 #  enabled                            :boolean          default(TRUE)
 #  message                            :text             not null
 #  scheduled_at                       :datetime
+#  started_at                         :datetime
+#  completed_at                       :datetime
 #  template_params                    :jsonb
 #  title                              :string           not null
 #  trigger_only_during_business_hours :boolean          default(FALSE)
@@ -51,9 +53,10 @@ class Campaign < ApplicationRecord
   belongs_to :inbox
   belongs_to :sender, class_name: 'User', optional: true
 
-  enum campaign_type: { ongoing: 0, one_off: 1 }
+  enum :campaign_type, { ongoing: 0, one_off: 1 }
   # TODO : enabled attribute is unneccessary . lets move that to the campaign status with additional statuses like draft, disabled etc.
-  enum campaign_status: { active: 0, completed: 1, paused: 2, processing: 3 }
+  # paused keeps 2 and processing 3: the fork shipped these values before upstream added processing as 2.
+  enum :campaign_status, { active: 0, completed: 1, paused: 2, processing: 3 }
 
   validates :cadence_interval, presence: true, numericality: { greater_than_or_equal_to: 1 }
   validates :pause_after, numericality: { greater_than: 0 }, allow_nil: true
@@ -63,6 +66,7 @@ class Campaign < ApplicationRecord
 
   before_validation :ensure_message_not_nil
   before_validation :ensure_correct_campaign_attributes
+  before_update :set_completed_at, if: :marking_completed?
   after_create_commit :load_attributes_created_by_db_triggers
   after_create_commit :dispatch_create_event
   after_update_commit :dispatch_update_event
@@ -72,9 +76,9 @@ class Campaign < ApplicationRecord
   after_destroy_commit :invalidate_filtered_unread_count_filters
 
   def trigger!
-    reload
     return unless one_off?
-    return unless active? || paused?
+    return unless feature_enabled?
+    return unless mark_processing!
 
     execute_campaign
   end
@@ -158,6 +162,28 @@ class Campaign < ApplicationRecord
 
   private
 
+  def feature_enabled?
+    account.feature_enabled?(:campaigns)
+  end
+
+  def mark_processing!
+    # Multiple scheduler jobs can pick the same campaign; lock before flipping status to avoid duplicate sends.
+    # A paused campaign is resumed from where it stopped, so it is a valid starting state too.
+    with_lock do
+      next if completed? || processing? || scheduled_at > Time.current
+
+      update!(campaign_status: :processing, started_at: started_at || Time.current)
+    end
+  end
+
+  def marking_completed?
+    will_save_change_to_campaign_status? && completed?
+  end
+
+  def set_completed_at
+    self.completed_at ||= Time.current
+  end
+
   def ensure_message_not_nil
     self.message ||= ''
   end
@@ -169,7 +195,7 @@ class Campaign < ApplicationRecord
     when 'Sms'
       Sms::OneoffSmsCampaignService.new(campaign: self).perform
     when 'Whatsapp', 'API'
-      Whatsapp::OneoffCampaignService.new(campaign: self).perform if account.feature_enabled?(:whatsapp_campaign)
+      Whatsapp::OneoffCampaignService.new(campaign: self).perform
     end
   end
 
@@ -261,3 +287,4 @@ class Campaign < ApplicationRecord
     "NEW.display_id := nextval('camp_dpid_seq_' || NEW.account_id);"
   end
 end
+Campaign.include_mod_with('Campaign')

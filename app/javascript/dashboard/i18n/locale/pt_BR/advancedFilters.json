@@ -19,6 +19,8 @@
       "OR": "OU"
     },
     "INPUT_PLACEHOLDER": "Inserir valor",
+    "MULTI_VALUE_INPUT_PLACEHOLDER": "Digite um valor e pressione Enter para adicionar mais",
+    "MULTI_VALUE_INPUT_PLACEHOLDER_SHORT": "Digite um valor",
     "CONTACT_SEARCH_PLACEHOLDER": "Pesquisar contatos",
     "CONTACT_FALLBACK": "Contato #{id}",
     "OPERATOR_LABELS": {
@@ -32,6 +34,8 @@
       "days_before": "É X dias antes",
       "hours_before": "É X horas antes",
       "starts_with": "Começa com",
+      "detects": "Detecta",
+      "does_not_detect": "Não detecta",
       "equalTo": "Igual a",
       "notEqualTo": "Diferente",
       "contains": "Contém",

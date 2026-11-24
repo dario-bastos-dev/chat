@@ -3,8 +3,12 @@ import { useAlert } from 'dashboard/composables';
 import { computed, onBeforeMount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
-import { picoSearch } from '@scmmishra/pico-search';
 import { useAdmin } from 'dashboard/composables/useAdmin';
+import {
+  usePageCommands,
+  recordCommands,
+} from 'dashboard/modules/command-bar/composables/usePageCommands';
+import { picoSearch } from '@chatwoot/pico-search';
 
 import AddLabel from './AddLabel.vue';
 import EditLabel from './EditLabel.vue';
@@ -74,6 +78,7 @@ const openDeletePopup = response => {
   showDeleteConfirmationPopup.value = true;
   selectedLabel.value = response;
 };
+
 const closeDeletePopup = () => {
   showDeleteConfirmationPopup.value = false;
 };
@@ -109,6 +114,26 @@ const tableHeaders = computed(() => {
 onBeforeMount(() => {
   store.dispatch('labels/get');
 });
+
+usePageCommands(() => [
+  { id: 'add_label', title: t('LABEL_MGMT.HEADER_BTN_TXT'), run: openAddPopup },
+  ...recordCommands({
+    id: 'edit_label',
+    title: t('LABEL_MGMT.EDIT.TITLE'),
+    icon: 'i-lucide-pencil',
+    records: records.value,
+    label: item => item.title,
+    run: openEditPopup,
+  }),
+  ...recordCommands({
+    id: 'delete_label',
+    title: t('COMMAND_BAR.COMMANDS.DELETE_LABEL'),
+    icon: 'i-lucide-trash-2',
+    records: records.value,
+    label: item => item.title,
+    run: openDeletePopup,
+  }),
+]);
 </script>
 
 <template>
@@ -152,7 +177,7 @@ onBeforeMount(() => {
         <template #row="{ items }">
           <BaseTableRow v-for="label in items" :key="label.title" :item="label">
             <template #default>
-              <BaseTableCell>
+              <BaseTableCell class="whitespace-nowrap">
                 <div class="flex items-center gap-2">
                   <span class="text-body-main text-n-slate-12">
                     {{ label.title }}
@@ -165,7 +190,7 @@ onBeforeMount(() => {
                 </div>
               </BaseTableCell>
 
-              <BaseTableCell>
+              <BaseTableCell class="w-full">
                 <span class="text-body-main text-n-slate-11">
                   {{ label.description }}
                 </span>
