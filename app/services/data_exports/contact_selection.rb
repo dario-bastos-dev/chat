@@ -1,6 +1,8 @@
 class DataExports::ContactSelection
-  DEFAULT_COLUMNS = %w[id name email phone_number labels].freeze
-  OPTION_KEYS = %w[column_names payload label scope_name].freeze
+  # Every contact custom attribute is appended to these when no columns are chosen.
+  DEFAULT_COLUMNS = %w[id name email phone_number identifier created_at last_activity_at country_code blocked city company_name labels].freeze
+  ADDITIONAL_ATTRIBUTE_COLUMNS = %w[city company_name].freeze
+  OPTION_KEYS = %w[column_names payload label scope_name timezone].freeze
   FILTER_KEYS = %w[attribute_key attribute_model filter_operator query_operator custom_attribute_type values timezone].freeze
 
   attr_reader :options
@@ -13,8 +15,7 @@ class DataExports::ContactSelection
 
   def validate!
     validate_shape!
-    invalid_columns = columns - (Contact.column_names + ['labels'])
-    raise ArgumentError, 'Unsupported export columns.' if invalid_columns.any?
+    validate_columns_and_timezone!
     raise ArgumentError, 'The selected label is unavailable.' if options[:label].present? && !@account.labels.exists?(title: options[:label])
 
     contacts.limit(1).load
@@ -25,7 +26,18 @@ class DataExports::ContactSelection
   end
 
   def columns
-    options[:column_names].presence || DEFAULT_COLUMNS
+    options[:column_names].presence || (DEFAULT_COLUMNS + custom_attribute_keys)
+  end
+
+  def custom_attribute_keys
+    @custom_attribute_keys ||= @account.custom_attribute_definitions.contact_attribute.pluck(:attribute_key)
+  end
+
+  # The browser sends its timezone; exports created without one use the account reporting timezone.
+  def timezone
+    return Filters::DateFilterHelper.timezone(options[:timezone]) if options[:timezone].present?
+
+    ActiveSupport::TimeZone[@account.reporting_timezone.presence || 'UTC']
   end
 
   def contacts
@@ -36,6 +48,14 @@ class DataExports::ContactSelection
   end
 
   private
+
+  def validate_columns_and_timezone!
+    invalid_columns = columns - (Contact.column_names + ADDITIONAL_ATTRIBUTE_COLUMNS + custom_attribute_keys + ['labels'])
+    raise ArgumentError, 'Unsupported export columns.' if invalid_columns.any?
+    raise ArgumentError, 'timezone must be a string.' if options.key?(:timezone) && !options[:timezone].is_a?(String)
+
+    timezone # raises CustomFilter::InvalidValue for an unknown identifier
+  end
 
   def validate_shape!
     unknown_keys = options.keys - OPTION_KEYS

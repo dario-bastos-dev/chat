@@ -85,7 +85,7 @@ RSpec.describe 'Contact data operations API', type: :request do
     post "#{base_url}/data_exports?label=unavailable&scope_name=Query&unexpected=true", headers: headers, params: {}, as: :json
 
     expect(response).to have_http_status(:ok)
-    expect(account.data_exports.last.export_options).to eq('column_names' => %w[id name email phone_number labels])
+    expect(account.data_exports.last.export_options).to eq('column_names' => DataExports::ContactSelection::DEFAULT_COLUMNS)
   end
 
   it 'rejects unknown options in the request body before queuing an export' do

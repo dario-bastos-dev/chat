@@ -24,10 +24,17 @@ requestBody:
         properties:
           column_names:
             type: array
-            description: Contact column names to export. Omitted or empty uses the default columns.
+            description: |
+              Columns to export: contact column names, `labels`, `city`, `company_name` or the key of a
+              contact custom attribute. Omitted or empty uses the default columns followed by every
+              contact custom attribute of the account.
             items:
               type: string
-            default: [id, name, email, phone_number, labels]
+            default: [id, name, email, phone_number, identifier, created_at, last_activity_at, country_code, blocked, city, company_name, labels]
+          timezone:
+            type: string
+            description: IANA timezone used to write timestamps. Omitted uses the account reporting timezone.
+            example: America/Sao_Paulo
           payload:
             type: array
             description: Contact filters, using the same format as POST /contacts/filter. A non-empty payload takes precedence over label.

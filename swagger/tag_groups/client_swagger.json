@@ -4066,7 +4066,7 @@
           },
           "auto_add_assignee_as_participant": {
             "type": "boolean",
-            "description": "Add the conversation assignee as a participant automatically.",
+            "description": "Add the conversation assignee as a participant automatically",
             "example": true
           },
           "working_hours_enabled": {
@@ -4241,7 +4241,7 @@
           },
           "auto_add_assignee_as_participant": {
             "type": "boolean",
-            "description": "Add the conversation assignee as a participant automatically.",
+            "description": "Add the conversation assignee as a participant automatically",
             "example": true
           },
           "working_hours_enabled": {

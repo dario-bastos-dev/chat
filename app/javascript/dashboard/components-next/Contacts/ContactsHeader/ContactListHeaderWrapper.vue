@@ -91,6 +91,7 @@ const openContactExportDialog = () => {
     const draft = saveExportDraft(accountId.value, {
       ...query,
       label: route.params.label || '',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       scope_name:
         props.activeSegment?.name ||
         (props.hasAppliedFilters

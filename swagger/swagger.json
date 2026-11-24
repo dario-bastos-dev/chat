@@ -3766,7 +3766,7 @@
                 "properties": {
                   "column_names": {
                     "type": "array",
-                    "description": "Contact column names to export. Omitted or empty uses the default columns.",
+                    "description": "Columns to export: contact column names, `labels`, `city`, `company_name` or the key of a\ncontact custom attribute. Omitted or empty uses the default columns followed by every\ncontact custom attribute of the account.\n",
                     "items": {
                       "type": "string"
                     },
@@ -3775,8 +3775,20 @@
                       "name",
                       "email",
                       "phone_number",
+                      "identifier",
+                      "created_at",
+                      "last_activity_at",
+                      "country_code",
+                      "blocked",
+                      "city",
+                      "company_name",
                       "labels"
                     ]
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "description": "IANA timezone used to write timestamps. Omitted uses the account reporting timezone.",
+                    "example": "America/Sao_Paulo"
                   },
                   "payload": {
                     "type": "array",
@@ -14396,7 +14408,7 @@
           },
           "auto_add_assignee_as_participant": {
             "type": "boolean",
-            "description": "Add the conversation assignee as a participant automatically.",
+            "description": "Add the conversation assignee as a participant automatically",
             "example": true
           },
           "working_hours_enabled": {
@@ -14571,7 +14583,7 @@
           },
           "auto_add_assignee_as_participant": {
             "type": "boolean",
-            "description": "Add the conversation assignee as a participant automatically.",
+            "description": "Add the conversation assignee as a participant automatically",
             "example": true
           },
           "working_hours_enabled": {

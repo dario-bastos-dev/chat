@@ -94,6 +94,42 @@ RSpec.describe DataExports::ContactsJob do
     expect(data_export.export_file.download.lines.size).to eq(1)
   end
 
+  context 'with contact custom attributes' do
+    before do
+      create(:custom_attribute_definition, account: account, attribute_model: :contact_attribute, attribute_key: 'plan')
+      create(:custom_attribute_definition, account: account, attribute_model: :conversation_attribute, attribute_key: 'channel_source')
+    end
+
+    it 'exports them by default alongside the city and company name' do
+      create(:contact, account: account, email: 'person@example.com', custom_attributes: { 'plan' => 'gold' },
+                       additional_attributes: { 'city' => 'Curitiba', 'company_name' => 'Acme' })
+      described_class.perform_now(data_export, data_export.active_run_id)
+
+      rows = CSV.parse(data_export.export_file.download.force_encoding(Encoding::UTF_8).delete_prefix("\uFEFF"), headers: true)
+      expect(rows.headers).to include('plan', 'city', 'company_name')
+      expect(rows.headers).not_to include('channel_source')
+      expect(rows.first.to_h).to include('plan' => 'gold', 'city' => 'Curitiba', 'company_name' => 'Acme')
+    end
+  end
+
+  context 'with a timezone' do
+    let(:options) { { column_names: %w[email created_at], timezone: 'America/Sao_Paulo' } }
+
+    it 'writes timestamps in that timezone' do
+      create(:contact, account: account, email: 'person@example.com', created_at: Time.utc(2026, 1, 10, 2, 30))
+      described_class.perform_now(data_export, data_export.active_run_id)
+
+      expect(data_export.export_file.download).to include('person@example.com,2026-01-09 23:30:00 -0300')
+    end
+  end
+
+  it 'rejects an unknown timezone before creating an export' do
+    expect do
+      DataExports::CreationService.new(account: account, initiated_by: admin, options: { timezone: 'Mars/Olympus' }).perform
+    end.to raise_error(ArgumentError)
+    expect(account.data_exports).to be_empty
+  end
+
   it 'rejects unsupported columns before creating an export' do
     expect do
       DataExports::CreationService.new(account: account, initiated_by: admin, options: { column_names: ['destroy!'] }).perform

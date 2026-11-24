@@ -13,6 +13,7 @@ class DataExports::ContactsJob < ApplicationJob
     contacts = contacts.where(id: ..(contacts.maximum(:id) || 0))
     total = contacts.count
     data_export.with_lock { data_export.update!(total_records: total) if owned? }
+    @selection = selection
     Tempfile.create(['contacts-export', '.csv']) do |file|
       write_csv(file, contacts, selection.columns)
       publish(file) if owned?
@@ -77,8 +78,18 @@ class DataExports::ContactsJob < ApplicationJob
   def write_batch(csv, batch, columns)
     labels = columns.include?('labels') ? labels_for(batch) : {}
     batch.each do |contact|
-      csv << columns.map { |column| column == 'labels' ? labels.fetch(contact.id, []).join(',') : contact.public_send(column) }
+      csv << columns.map { |column| column == 'labels' ? labels.fetch(contact.id, []).join(',') : column_value(contact, column) }
     end
+  end
+
+  def column_value(contact, column)
+    if Contact.column_names.include?(column)
+      value = contact.public_send(column)
+      return value.is_a?(ActiveSupport::TimeWithZone) ? value.in_time_zone(@selection.timezone) : value
+    end
+    return contact.additional_attributes&.dig(column) if DataExports::ContactSelection::ADDITIONAL_ATTRIBUTE_COLUMNS.include?(column)
+
+    contact.custom_attributes&.dig(column)
   end
 
   def labels_for(batch)
