@@ -299,7 +299,7 @@ describe Contacts::FilterService do
         expect(result[:contacts].pluck(:id)).not_to include(en_contact.id)
       end
 
-      it 'binds last_activity_at comparison values as the end of the day in the account timezone' do
+      it 'binds last_activity_at comparison values as the start of the next day in the account timezone' do
         date_value = '2024-01-01'
         params[:payload] = [
           {
@@ -314,8 +314,8 @@ describe Contacts::FilterService do
         filters = service.instance_variable_get(:@filters)['contacts']
         condition_query = service.send(:build_condition_query, filters, params[:payload].first, 0)
 
-        expect(condition_query).to include('contacts.last_activity_at > :value_0')
-        expect(service.instance_variable_get(:@filter_values)['value_0']).to eq(Time.utc(2024, 1, 1).end_of_day)
+        expect(condition_query).to include('contacts.last_activity_at >= :value_0')
+        expect(service.instance_variable_get(:@filter_values)['value_0']).to eq(Time.utc(2024, 1, 2))
       end
 
       it 'rejects invalid last_activity_at comparison values' do

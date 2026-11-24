@@ -17,7 +17,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
   describe '#perform' do
     context 'when the conversation messaging window is open' do
       before do
-        allow_any_instance_of(Conversation).to receive(:can_reply?).and_return(true)
+        allow_any_instance_of(Conversations::MessageWindowService).to receive(:can_reply?).and_return(true)
       end
 
       it 'executes the step, creates the outgoing message, and advances current_step' do
@@ -37,7 +37,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
 
     context 'when the conversation messaging window is closed' do
       before do
-        allow_any_instance_of(Conversation).to receive(:can_reply?).and_return(false)
+        allow_any_instance_of(Conversations::MessageWindowService).to receive(:can_reply?).and_return(false)
       end
 
       it 'pauses the sequence, sets waiting_interaction to true, and creates a private note explaining the pause' do
@@ -59,7 +59,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
     context 'when the sequence link is already in waiting_interaction status' do
       before do
         conv_seq.update!(waiting_interaction: true)
-        allow_any_instance_of(Conversation).to receive(:can_reply?).and_return(true)
+        allow_any_instance_of(Conversations::MessageWindowService).to receive(:can_reply?).and_return(true)
       end
 
       it 'does not process the sequence link' do
@@ -80,7 +80,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
       end
 
       it 'executes the macro, does not create an outgoing message, and advances current_step when window is open' do
-        allow_any_instance_of(Conversation).to receive(:can_reply?).and_return(true)
+        allow_any_instance_of(Conversations::MessageWindowService).to receive(:can_reply?).and_return(true)
         execution_service = double
         expect(Macros::ExecutionService).to receive(:new).with(macro, conversation, anything).and_return(execution_service)
         expect(execution_service).to receive(:perform)
@@ -94,7 +94,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
       end
 
       it 'executes the macro even when the conversation messaging window is closed' do
-        allow_any_instance_of(Conversation).to receive(:can_reply?).and_return(false)
+        allow_any_instance_of(Conversations::MessageWindowService).to receive(:can_reply?).and_return(false)
         execution_service = double
         expect(Macros::ExecutionService).to receive(:new).with(macro, conversation, anything).and_return(execution_service)
         expect(execution_service).to receive(:perform)
@@ -117,7 +117,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
       it 'creates a private note and advances current_step when the macro has been deleted' do
         macro.destroy!
         step_1.reload
-        allow_any_instance_of(Conversation).to receive(:can_reply?).and_return(true)
+        allow_any_instance_of(Conversations::MessageWindowService).to receive(:can_reply?).and_return(true)
 
         expect {
           described_class.new.perform
@@ -145,7 +145,7 @@ RSpec.describe MessageSequences::ProcessJob, type: :job do
       end
 
       before do
-        allow_any_instance_of(Conversation).to receive(:can_reply?).and_return(false)
+        allow_any_instance_of(Conversations::MessageWindowService).to receive(:can_reply?).and_return(false)
         step_1.update!(step_type: :send_template, template_params: template_params, content: nil)
       end
 
