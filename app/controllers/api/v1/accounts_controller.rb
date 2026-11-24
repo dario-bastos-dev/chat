@@ -49,9 +49,10 @@ class Api::V1::AccountsController < Api::BaseController
 
   def cache_keys
     expires_in 10.seconds, public: false, stale_while_revalidate: 5.minutes
-    # Labels and inboxes are always refetched instead of trusting the account cache key.
+    # Labels, inboxes and canned responses are always refetched instead of trusting the account cache key: labels and
+    # canned responses are filtered by the user's team visibility, which changes without touching those records.
     now = Time.now.utc.to_f.to_s
-    render json: { cache_keys: @account.cache_keys.merge(label: now, inbox: now) }, status: :ok
+    render json: { cache_keys: @account.cache_keys.merge(label: now, inbox: now, canned_response: now) }, status: :ok
   end
 
   def update

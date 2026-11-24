@@ -432,6 +432,18 @@ RSpec.describe 'Accounts API', type: :request do
       expect(response.parsed_body['cache_keys'].keys).to match_array(%w[label inbox team canned_response])
     end
 
+    it 'changes the canned response key when only team membership changed' do
+      get "/api/v1/accounts/#{account.id}/cache_keys", headers: admin.create_new_auth_token, as: :json
+      before_key = response.parsed_body['cache_keys']['canned_response']
+
+      travel 1.second
+      create(:team_member, team: create(:team, account: account), user: admin)
+      get "/api/v1/accounts/#{account.id}/cache_keys", headers: admin.create_new_auth_token, as: :json
+
+      # Canned responses are filtered by team visibility, so a cached list must not outlive a membership change.
+      expect(response.parsed_body['cache_keys']['canned_response']).not_to eq(before_key)
+    end
+
     it 'sets the appropriate cache headers' do
       get "/api/v1/accounts/#{account.id}/cache_keys",
           headers: admin.create_new_auth_token,
