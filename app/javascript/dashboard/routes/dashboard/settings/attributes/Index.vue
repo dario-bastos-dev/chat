@@ -31,7 +31,7 @@ const { currentAccount, isCloudFeatureEnabled } = useAccount();
 const inboxes = useMapGetter('inboxes/getInboxes');
 
 const [showAddPopup, toggleAddPopup] = useToggle(false);
-const selectedTabIndex = ref(0);
+const selectedTabKey = ref(0);
 const searchQuery = ref('');
 const uiFlags = computed(() => getters['attributes/getUIFlags'].value);
 const [showEditPopup, toggleEditPopup] = useToggle(false);
@@ -85,6 +85,12 @@ const tabsForTabBar = computed(() =>
   tabs.value.map(tab => ({ label: tab.name, key: tab.key }))
 );
 
+// TabBar highlights by position, and hidden tabs (deal without CRM) shift the
+// positions away from the keys.
+const activeTabIndex = computed(() =>
+  tabs.value.findIndex(tab => tab.key === selectedTabKey.value)
+);
+
 onMounted(() => {
   store.dispatch('attributes/get');
 });
@@ -96,7 +102,7 @@ const attributeModel = computed(() => {
     2: 'deal_attribute',
     3: 'company_attribute',
   };
-  return modelMap[selectedTabIndex.value] || 'conversation_attribute';
+  return modelMap[selectedTabKey.value] || 'conversation_attribute';
 });
 
 const attributes = computed(() =>
@@ -104,7 +110,7 @@ const attributes = computed(() =>
 );
 
 const onClickTabChange = tab => {
-  selectedTabIndex.value = tab.key;
+  selectedTabKey.value = tab.key;
   searchQuery.value = '';
 };
 
@@ -231,7 +237,7 @@ usePageCommands(() => [
         <template #tabs>
           <TabBar
             :tabs="tabsForTabBar"
-            :initial-active-tab="selectedTabIndex"
+            :initial-active-tab="activeTabIndex"
             @tab-changed="onClickTabChange"
           />
         </template>
@@ -277,7 +283,7 @@ usePageCommands(() => [
       v-if="showAddPopup"
       v-model:show="showAddPopup"
       :on-close="hideAddPopup"
-      :selected-attribute-model-tab="selectedTabIndex"
+      :selected-attribute-model-tab="selectedTabKey"
     />
     <woot-modal v-model:show="showEditPopup" :on-close="hideEditPopup">
       <EditAttribute
