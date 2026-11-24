@@ -222,18 +222,31 @@ RSpec.describe DataImports::Csv::Importer do
     expect(data_import.reload).to be_processing
   end
 
+  it 'creates the labels a row names but the account does not have yet' do
+    data_import.import_file.attach(io: StringIO.new("name,email,tags\nJane,jane@example.com,\"Cliente VIP, vip\"\n"),
+                                   filename: 'contacts.csv')
+    create(:label, account: account, title: 'vip')
+    DataImports::Csv::PreparationJob.perform_now(data_import, run_id)
+    importer.import_contacts_page
+    importer.finish!
+
+    expect(data_import.reload).to be_completed
+    expect(account.labels.pluck(:title)).to contain_exactly('vip', 'cliente_vip')
+    expect(account.contacts.find_by!(email: 'jane@example.com').label_list).to contain_exactly('cliente_vip', 'vip')
+  end
+
   it 'allows a corrected rejected row with an escaped phone number to be imported again' do
-    data_import.import_file.attach(io: StringIO.new("name,email,phone_number,labels\nJane,jane@example.com,+14155552671,missing\n"),
+    data_import.import_file.attach(io: StringIO.new("name,email,phone_number\nJane,invalid-email,+14155552671\n"),
                                    filename: 'contacts.csv')
     DataImports::Csv::PreparationJob.perform_now(data_import, run_id)
     importer.import_contacts_page
     importer.finish!
     rejected = data_import.failed_records.download
     expect(rejected).to include("'+14155552671")
-    create(:label, account: account, title: 'missing')
     corrected = create(:data_import, account: account, source_provider: 'csv', source_type: 'file', import_types: ['contacts'],
                                      source_metadata: { active_import_run_id: 'corrected' },
-                                     import_file: { io: StringIO.new(rejected), filename: 'corrected.csv' })
+                                     import_file: { io: StringIO.new(rejected.sub('invalid-email', 'jane@example.com')),
+                                                    filename: 'corrected.csv' })
     DataImports::Csv::PreparationJob.perform_now(corrected, 'corrected')
     corrected_importer = described_class.new(data_import: corrected, run_id: 'corrected')
     corrected_importer.import_contacts_page
@@ -260,38 +273,43 @@ RSpec.describe DataImports::Csv::Importer do
     end
     let(:csv) do
       CSV.generate do |output|
-        output << %w[name identifier email labels note -region '-literal]
+        output << %w[name identifier email phone_number note -region '-literal]
         existing_contacts.each_with_index do |contact, index|
-          output << ["Updated #{index}", contact.identifier, contact.email, 'missing', "'literal note", 'West', 'Literal header']
+          output << ["Updated #{index}", contact.identifier, contact.email, 'not-a-phone', "'literal note", 'West', 'Literal header']
         end
       end
     end
+    # Re-imports the rejected file as downloaded; examples that fix the rows override it.
+    let(:corrected_csv) { data_import.failed_records.download }
     let(:corrected_import) do
       create(:data_import, account: account, source_provider: 'csv', source_type: 'file', import_types: ['contacts'],
                            source_metadata: { active_import_run_id: 'corrected' },
-                           import_file: { io: StringIO.new(data_import.failed_records.download), filename: 'corrected.csv' })
+                           import_file: { io: StringIO.new(corrected_csv), filename: 'corrected.csv' })
     end
     let(:corrected_importer) { described_class.new(data_import: corrected_import, run_id: 'corrected') }
 
-    it 'updates the original contacts without changing identifiers, emails, or literal apostrophes' do
-      DataImports::Csv::PreparationJob.perform_now(data_import, run_id)
-      importer.import_contacts_page
-      importer.finish!
-      create(:label, account: account, title: 'missing')
+    context 'with the invalid phone numbers cleared in the rejected file' do
+      let(:corrected_csv) { data_import.failed_records.download.gsub(',not-a-phone,', ',,') }
 
-      expect do
-        DataImports::Csv::PreparationJob.perform_now(corrected_import, 'corrected')
-        corrected_importer.import_contacts_page
-        corrected_importer.finish!
-      end.not_to change(account.contacts, :count)
+      it 'updates the original contacts without changing identifiers, emails, or literal apostrophes' do
+        DataImports::Csv::PreparationJob.perform_now(data_import, run_id)
+        importer.import_contacts_page
+        importer.finish!
 
-      expect(corrected_import.reload).to be_completed
-      expect(corrected_import.stats['contacts']).to include('created' => 0, 'updated' => identities.size, 'failed' => 0)
-      existing_contacts.each_with_index do |contact, index|
-        expect(contact.reload.identifier).to eq(identities[index].first)
-        expect(contact.email).to eq(identities[index].last)
-        expect(contact.name).to eq("Updated #{index}")
-        expect(contact.custom_attributes).to eq('note' => "'literal note", '-region' => 'West', "'-literal" => 'Literal header')
+        expect do
+          DataImports::Csv::PreparationJob.perform_now(corrected_import, 'corrected')
+          corrected_importer.import_contacts_page
+          corrected_importer.finish!
+        end.not_to change(account.contacts, :count)
+
+        expect(corrected_import.reload).to be_completed
+        expect(corrected_import.stats['contacts']).to include('created' => 0, 'updated' => identities.size, 'failed' => 0)
+        existing_contacts.each_with_index do |contact, index|
+          expect(contact.reload.identifier).to eq(identities[index].first)
+          expect(contact.email).to eq(identities[index].last)
+          expect(contact.name).to eq("Updated #{index}")
+          expect(contact.custom_attributes).to eq('note' => "'literal note", '-region' => 'West', "'-literal" => 'Literal header')
+        end
       end
     end
 
