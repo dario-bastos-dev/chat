@@ -280,6 +280,19 @@ describe Whatsapp::Providers::EvolutionGoService do
       )
     end
 
+    it 'addresses a contact first seen by lid through the jid kept in its identifier' do
+      stub_send('send/text')
+      contact = create(:contact, account: channel.account, identifier: '85826969051362@lid', phone_number: nil)
+      create(:contact_inbox, contact: contact, inbox: channel.inbox, source_id: '85826969051362')
+
+      service.send_message('85826969051362', message)
+
+      expect(WebMock).to(
+        have_requested(:post, 'https://evogo.test/send/text')
+          .with { |req| JSON.parse(req.body)['number'] == '85826969051362@lid' }
+      )
+    end
+
     it 'releases the claimed source_id when nothing was sent' do
       stub_send('send/text', status: 500)
 

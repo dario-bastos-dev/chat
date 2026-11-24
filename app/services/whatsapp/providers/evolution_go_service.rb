@@ -1198,6 +1198,9 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     known = known_jid(source_id)
     return known if known.present?
 
+    stored = stored_contact_jid(source_id)
+    return stored if stored.present?
+
     # If it's a LID (starts with 1 or 2 and is long, or we detected it before)
     # Standard phone numbers are usually shorter than LIDs
     if source_id.length > 15 || source_id.start_with?('1', '2')
@@ -1209,6 +1212,22 @@ class Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
     end
 
     "#{source_id}@s.whatsapp.net"
+  end
+
+  # A contact first seen by LID keeps only the LID digits as its source_id, and those digits can
+  # look like any phone number: an LID starting with 8 was being sent to <lid>@s.whatsapp.net and
+  # WhatsApp refused it. The contact identifier keeps the full JID, so it settles which one it is.
+  def stored_contact_jid(source_id)
+    @stored_contact_jids ||= {}
+    return @stored_contact_jids[source_id] if @stored_contact_jids.key?(source_id)
+
+    @stored_contact_jids[source_id] = identifier_jid(source_id)
+  end
+
+  def identifier_jid(source_id)
+    contact_inbox = whatsapp_channel.inbox.contact_inboxes.find_by(source_id: source_id)
+    jid = known_jid(contact_inbox&.contact&.identifier)
+    jid if jid.to_s.start_with?("#{source_id}@")
   end
 
   # delay_time is stored in seconds. Older builds stored milliseconds and told the two apart by
