@@ -17,6 +17,16 @@
 #To learn more, please read the Rails Internationalization guide
 #available at https://guides.rubyonrails.org/i18n.html.
 pt_BR:
+  instagram:
+    no_accounts: 'Nenhuma conta do Instagram foi compartilhada. Conecte novamente e selecione uma conta profissional do Instagram.'
+    connection_expired: 'Esta conexão com o Instagram expirou. Comece novamente.'
+    authorization_expired: 'Esta autorização do Instagram expirou. Inicie a conexão novamente.'
+    wrong_account: 'Reconecte usando a conta do Instagram que já está vinculada a esta caixa de entrada.'
+    invalid_account: 'Selecione uma conta do Instagram compartilhada durante esta conexão.'
+    subscription_failed: 'Não foi possível ativar as mensagens do Instagram. Verifique as permissões do app e conecte novamente.'
+    missing_credentials: 'Configure o App ID, o App Secret e o Configuration ID do app Meta do Login Unificado no Super Admin antes de conectar o Instagram.'
+    request_failed: 'O Instagram não conseguiu concluir a solicitação. Tente novamente.'
+    encryption_required: 'Configure as chaves de criptografia do Active Record antes de ativar o Login Unificado do Instagram.'
   hello: 'Olá, mundo'
   administrator_notifications:
     captain:

@@ -7,6 +7,7 @@ import Banner from 'dashboard/components-next/banner/Banner.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import AccountPicker from './instagram/AccountPicker.vue';
 import { useAccount } from 'dashboard/composables/useAccount';
+import { useAlert } from 'dashboard/composables';
 import { META_RESTRICTION_STATUS_URL } from 'dashboard/constants/globals';
 
 const { t } = useI18n();
@@ -48,12 +49,17 @@ const requestAuthorization = async () => {
   if (isInstagramConnectionDisabled.value) return;
 
   isRequestingAuthorization.value = true;
-  const response = await instagramClient.generateAuthorization();
-  const {
-    data: { url },
-  } = response;
-
-  window.location.href = url;
+  try {
+    const {
+      data: { url },
+    } = await instagramClient.generateAuthorization();
+    window.location.href = url;
+  } catch (error) {
+    useAlert(
+      error.response?.data?.error || t('INBOX_MGMT.ADD.INSTAGRAM.ERROR_MESSAGE')
+    );
+    isRequestingAuthorization.value = false;
+  }
 };
 </script>
 

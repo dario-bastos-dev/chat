@@ -12,6 +12,11 @@ Bundler.require(*Rails.groups)
 # We rely on DOTENV to load the environment variables
 # We need these environment variables to load the specific APM agent
 Dotenv::Rails.load
+
+# Fills the ACTIVE_RECORD_ENCRYPTION_* variables from a persisted keys file when opted in.
+require_relative 'active_record_encryption_keys'
+ActiveRecordEncryptionKeys.load!
+
 require 'datadog' if ENV.fetch('DD_TRACE_AGENT_URL', false).present?
 require 'elastic-apm' if ENV.fetch('ELASTIC_APM_SECRET_TOKEN', false).present?
 require 'scout_apm' if ENV.fetch('SCOUT_KEY', false).present?
