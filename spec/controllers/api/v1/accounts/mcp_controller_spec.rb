@@ -277,6 +277,14 @@ RSpec.describe 'MCP API', type: :request do
         expect(label.reload.title).to eq('billing')
       end
 
+      it 'explains invalid values instead of passing on the API error page' do
+        call_tool('set_conversation_status', { conversation_id: conversation.display_id, status: 'bogus' })
+
+        expect(reply.dig('result', 'isError')).to be(true)
+        expect(tool_text).to eq('status must be one of: open, resolved, pending, snoozed')
+        expect(conversation.reload).to be_open
+      end
+
       it 'reports validation errors from the API' do
         call_tool('create_label', { title: 'has spaces' })
 

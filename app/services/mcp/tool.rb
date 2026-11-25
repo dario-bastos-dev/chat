@@ -56,13 +56,15 @@ class Mcp::Tool
   end
 
   def validate_arguments!(arguments)
-    unknown = arguments.keys - parameters.keys
-    raise Mcp::InvalidArguments, "Unknown arguments: #{unknown.join(', ')}" if unknown.any?
+    raise_if_any('Unknown arguments', arguments.keys - parameters.keys)
+    raise_if_any('Missing required arguments', required - arguments.keys)
+    raise_if_any('Arguments must be numeric ids', path_parameter_names.reject { |key| arguments[key].to_s.match?(NUMERIC_ID) })
 
-    missing = required - arguments.keys
-    raise Mcp::InvalidArguments, "Missing required arguments: #{missing.join(', ')}" if missing.any?
+    errors = Mcp::ArgumentValidator.new(parameters: parameters, required: required).errors(arguments)
+    raise Mcp::InvalidArguments, errors.join('; ') if errors.any?
+  end
 
-    invalid = path_parameter_names.reject { |key| arguments[key].to_s.match?(NUMERIC_ID) }
-    raise Mcp::InvalidArguments, "Arguments must be numeric ids: #{invalid.join(', ')}" if invalid.any?
+  def raise_if_any(message, names)
+    raise Mcp::InvalidArguments, "#{message}: #{names.join(', ')}" if names.any?
   end
 end

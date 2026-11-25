@@ -28,6 +28,13 @@ RSpec.describe Mcp::Tool do
       expect { get_conversation.path_for('conversation_id' => 12, 'account_id' => 2) }
         .to raise_error(Mcp::InvalidArguments, 'Unknown arguments: account_id')
     end
+
+    it 'rejects values that do not match the declared schema' do
+      set_status = Mcp::ToolCatalog.find('set_conversation_status')
+
+      expect { set_status.path_for('conversation_id' => 12, 'status' => 'bogus') }
+        .to raise_error(Mcp::InvalidArguments, 'status must be one of: open, resolved, pending, snoozed')
+    end
   end
 
   describe '#request_arguments' do
@@ -76,6 +83,12 @@ RSpec.describe Mcp::Tool do
   describe 'catalog' do
     it 'only has tools that read, create or update data' do
       expect(Mcp::ToolCatalog.tools.map(&:http_method).uniq).to contain_exactly('GET', 'POST', 'PATCH')
+    end
+
+    it 'only declares argument types the validator understands' do
+      types = Mcp::ToolCatalog.tools.flat_map { |tool| tool.definition[:inputSchema][:properties].values.pluck('type') }
+
+      expect(types.uniq - Mcp::ArgumentValidator::TYPES.keys).to be_empty
     end
 
     it 'declares every path placeholder as a required argument' do
