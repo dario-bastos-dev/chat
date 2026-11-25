@@ -1,5 +1,12 @@
 # Runs a tool by sending the request to the account's REST API with the credentials of the MCP caller,
 # so every permission, validation and feature flag of the API applies to the tool as well.
+#
+# The request goes through the whole middleware stack, ActionDispatch::Executor included. That middleware completes
+# the execution of the outer request before it starts its own, so once the call returns Current is empty, the query
+# cache is cleared and the completion hooks run a second time when the outer request ends. The outer request only
+# renders the result, which needs none of that. Database connections are leased per query, so nothing is held across
+# the call. Checked without transactional specs on Rails 8.0: 20 threads on a pool of 5 finished with no errors and no
+# connection left busy. Re-check that if the outer request ever does more after the tool runs, or if Rails is upgraded.
 class Mcp::ToolRunner
   Result = Struct.new(:text, :error)
 
