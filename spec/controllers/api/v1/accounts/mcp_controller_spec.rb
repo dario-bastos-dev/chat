@@ -79,11 +79,13 @@ RSpec.describe 'MCP API', type: :request do
         expect(tool_text).to include('vip')
       end
 
-      it 'accepts a Bearer access token' do
+      it 'accepts a Bearer access token and uses it to call the tools' do
+        create(:label, account: account, title: 'vip')
         post url, headers: { Authorization: "Bearer #{admin.access_token.token}" },
-                  params: { jsonrpc: '2.0', id: 1, method: 'ping' }, as: :json
+                  params: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_labels', arguments: {} } }, as: :json
 
-        expect(response).to have_http_status(:ok)
+        expect(reply.dig('result', 'isError')).to be(false)
+        expect(tool_text).to include('vip')
       end
     end
 
@@ -177,6 +179,42 @@ RSpec.describe 'MCP API', type: :request do
         expect(ids).to eq([resolved.display_id])
       end
 
+      it 'sends list arguments as query arrays' do
+        conversation.update_labels(%w[vip])
+        create(:conversation, account: account, inbox: inbox)
+        call_tool('list_conversations', { status: 'all', labels: %w[vip] })
+
+        expect(tool_json.dig('data', 'payload').pluck('id')).to eq([conversation.display_id])
+      end
+
+      describe 'every reading tool' do
+        let(:sample_arguments) do
+          {
+            'list_inboxes' => {},
+            'list_agents' => {},
+            'list_teams' => {},
+            'list_labels' => {},
+            'list_custom_attribute_definitions' => { attribute_model: 'contact_attribute' },
+            'list_contacts' => { page: 1, sort: '-last_activity_at', labels: %w[vip] },
+            'search_contacts' => { q: 'maria', page: 1 },
+            'get_contact' => { contact_id: contact.id },
+            'list_contact_conversations' => { contact_id: contact.id },
+            'list_conversations' => { status: 'all', assignee_type: 'all', inbox_id: inbox.id, page: 1 },
+            'get_conversation_counts' => { status: 'open', inbox_id: inbox.id },
+            'get_conversation' => { conversation_id: conversation.display_id },
+            'list_messages' => { conversation_id: conversation.display_id, before: 1_000_000 }
+          }
+        end
+
+        Mcp::ToolCatalog.tools.select(&:read_only?).each do |tool|
+          it "runs #{tool.name} without errors" do
+            call_tool(tool.name, sample_arguments.fetch(tool.name))
+
+            expect(reply.dig('result', 'isError')).to be(false), tool_text
+          end
+        end
+      end
+
       it 'lists the messages of a conversation' do
         create(:message, account: account, inbox: inbox, conversation: conversation, content: 'Hello there')
         call_tool('list_messages', { conversation_id: conversation.display_id })
@@ -267,6 +305,49 @@ RSpec.describe 'MCP API', type: :request do
         call_tool('set_conversation_custom_attributes', { conversation_id: conversation.display_id, custom_attributes: { order: '42' } })
 
         expect(conversation.reload.custom_attributes).to include('order' => '42')
+      end
+
+      it 'starts a conversation with a first message' do
+        call_tool('create_conversation', { inbox_id: inbox.id, contact_id: conversation.contact_id, message: { content: 'Welcome' } })
+
+        started = account.conversations.where.not(id: conversation.id).last
+        expect(reply.dig('result', 'isError')).to be(false)
+        expect(started.messages.last).to have_attributes(content: 'Welcome', message_type: 'outgoing')
+      end
+
+      it 'unassigns the agent when the assignee is null' do
+        create(:inbox_member, inbox: inbox, user: agent)
+        conversation.update!(assignee: agent)
+        call_tool('assign_conversation', { conversation_id: conversation.display_id, assignee_id: nil })
+
+        expect(conversation.reload.assignee).to be_nil
+      end
+
+      it 'removes the team when the team id is 0' do
+        conversation.update!(team: create(:team, account: account))
+        call_tool('assign_conversation', { conversation_id: conversation.display_id, team_id: 0 })
+
+        expect(conversation.reload.team).to be_nil
+      end
+
+      it 'sets the priority of a conversation' do
+        call_tool('set_conversation_priority', { conversation_id: conversation.display_id, priority: 'high' })
+
+        expect(conversation.reload.priority).to eq('high')
+      end
+
+      it 'replaces the labels of a contact' do
+        contact = create(:contact, account: account)
+        call_tool('set_contact_labels', { contact_id: contact.id, labels: %w[vip lead] })
+
+        expect(contact.reload.label_list).to match_array(%w[vip lead])
+      end
+
+      it 'updates a label' do
+        label = create(:label, account: account, title: 'billing')
+        call_tool('update_label', { label_id: label.id, title: 'renamed', color: '#00ff00' })
+
+        expect(label.reload).to have_attributes(title: 'renamed', color: '#00ff00')
       end
 
       it 'keeps the permissions of the user of the token' do

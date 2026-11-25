@@ -85,6 +85,20 @@ RSpec.describe Mcp::Tool do
       expect(Mcp::ToolCatalog.tools.map(&:http_method).uniq).to contain_exactly('GET', 'POST', 'PATCH')
     end
 
+    it 'only points at endpoints that exist' do
+      Mcp::ToolCatalog.tools.each do |tool|
+        path = "/api/v1/accounts/1/#{tool.path.gsub(Mcp::Tool::PATH_PARAMETER, '1')}"
+        route = Rails.application.routes.recognize_path(path, method: tool.http_method)
+        # A typo such as contacts/searchx would still match contacts/:id, so every captured segment must be one of the ids filled in above.
+        captured = route.except(:controller, :action, :account_id, :format).values
+
+        expect(route[:controller]).to start_with('api/v1/accounts/'), "#{tool.name} is not routed to the account API"
+        expect(captured.uniq - ['1']).to be_empty, "#{tool.name} points at #{path}, which matches #{route[:controller]}##{route[:action]} by accident"
+      rescue ActionController::RoutingError
+        raise "#{tool.name} points at #{tool.http_method} #{path}, which is not a route"
+      end
+    end
+
     it 'only declares argument types the validator understands' do
       types = Mcp::ToolCatalog.tools.flat_map { |tool| tool.definition[:inputSchema][:properties].values.pluck('type') }
 
