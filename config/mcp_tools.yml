@@ -6,6 +6,9 @@
 #   method      HTTP verb of the endpoint. Only GET tools are available while MCP_SERVER_READ_ONLY is on.
 #   path        Endpoint below /api/v1/accounts/:account_id. {name} segments are filled from numeric arguments.
 #   body_key    Nest the remaining arguments under this key, for endpoints that expect `{ label: { ... } }`.
+#   destructive Whether the tool may overwrite existing data. Clients use it to ask for confirmation. Tools that
+#               change data are destructive unless they say `destructive: false`, which only creating tools do.
+#   open_world  The tool reaches people outside of Chatwoot, for example by sending a message to a customer.
 #   parameters  JSON Schema properties of the tool arguments.
 #   required    Names of the arguments the caller must send.
 
@@ -160,6 +163,7 @@
   description: Create a contact. Pass inbox_id to also make it reachable through that inbox.
   method: post
   path: contacts
+  destructive: false
   parameters:
     name:
       type: string
@@ -228,6 +232,8 @@
   description: Start a conversation for a contact in an inbox, optionally with a first outgoing message.
   method: post
   path: conversations
+  destructive: false
+  open_world: true
   parameters:
     inbox_id:
       type: integer
@@ -261,6 +267,8 @@
   description: Send a message in a conversation, or add a private note that only agents can see.
   method: post
   path: conversations/{conversation_id}/messages
+  destructive: false
+  open_world: true
   parameters:
     conversation_id: *conversation_id
     content:
@@ -339,6 +347,7 @@
   description: Create a label.
   method: post
   path: labels
+  destructive: false
   body_key: label
   parameters:
     title:

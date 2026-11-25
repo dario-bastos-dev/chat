@@ -41,12 +41,35 @@ RSpec.describe Mcp::Tool do
   end
 
   describe '#definition' do
-    it 'describes the arguments as a JSON Schema and marks reading tools as read-only' do
-      definition = get_conversation.definition
+    def annotations_of(name)
+      Mcp::ToolCatalog.find(name).definition[:annotations]
+    end
 
-      expect(definition[:inputSchema]).to include(type: 'object', required: ['conversation_id'])
-      expect(definition[:annotations]).to eq(readOnlyHint: true, destructiveHint: false)
-      expect(send_message.definition[:annotations][:readOnlyHint]).to be(false)
+    it 'describes the arguments as a JSON Schema' do
+      expect(get_conversation.definition[:inputSchema]).to include(type: 'object', required: ['conversation_id'])
+    end
+
+    it 'marks reading tools as read-only and harmless' do
+      expect(annotations_of('get_conversation')).to eq(readOnlyHint: true, destructiveHint: false, openWorldHint: false)
+    end
+
+    it 'marks tools that overwrite existing data as destructive so clients can ask for confirmation' do
+      %w[update_contact update_label set_contact_labels set_conversation_labels set_conversation_status assign_conversation
+         set_conversation_priority set_conversation_custom_attributes].each do |name|
+        expect(annotations_of(name)).to include(readOnlyHint: false, destructiveHint: true)
+      end
+    end
+
+    it 'marks tools that only add data as not destructive' do
+      %w[create_contact create_conversation create_label send_message].each do |name|
+        expect(annotations_of(name)).to include(readOnlyHint: false, destructiveHint: false)
+      end
+    end
+
+    it 'marks tools that reach the customer outside of Chatwoot as open world' do
+      expect(annotations_of('send_message')).to include(openWorldHint: true)
+      expect(annotations_of('create_conversation')).to include(openWorldHint: true)
+      expect(annotations_of('update_contact')).to include(openWorldHint: false)
     end
   end
 

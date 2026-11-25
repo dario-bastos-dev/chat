@@ -10,6 +10,8 @@ class Mcp::Tool
     @http_method = attributes.fetch('method').upcase
     @path = attributes.fetch('path')
     @body_key = attributes['body_key']
+    @destructive = attributes.fetch('destructive') { !read_only? }
+    @open_world = attributes.fetch('open_world', false)
     @parameters = attributes.fetch('parameters', {})
     @required = attributes.fetch('required', [])
   end
@@ -23,7 +25,7 @@ class Mcp::Tool
       name: name,
       description: description,
       inputSchema: input_schema,
-      annotations: { readOnlyHint: read_only?, destructiveHint: false }
+      annotations: { readOnlyHint: read_only?, destructiveHint: destructive, openWorldHint: open_world }
     }
   end
 
@@ -41,7 +43,7 @@ class Mcp::Tool
 
   private
 
-  attr_reader :parameters, :required
+  attr_reader :parameters, :required, :destructive, :open_world
 
   def input_schema
     schema = { type: 'object', properties: parameters }
