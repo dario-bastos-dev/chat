@@ -21,7 +21,7 @@ class Mcp::ToolRunner
   def call(tool, arguments)
     path = tool.path_for(arguments)
     status, _headers, body = Rails.application.call(rack_env(tool, path, tool.request_arguments(arguments)))
-    Result.new(read_body(body), status >= 400)
+    Result.new(result_text(status, read_body(body)), status >= 300)
   end
 
   private
@@ -51,6 +51,13 @@ class Mcp::ToolRunner
       value = request.headers[name].presence || request.env[env_name]
       env[env_name] = value if value.present?
     end
+  end
+
+  # Endpoints that answer with no body, such as head :ok, would otherwise give the client an empty text.
+  def result_text(status, text)
+    return text if text.present?
+
+    status >= 300 ? "The request failed with status #{status}" : 'OK'
   end
 
   def read_body(body)

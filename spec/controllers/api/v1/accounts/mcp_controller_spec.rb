@@ -343,6 +343,7 @@ RSpec.describe 'MCP API', type: :request do
         call_tool('set_conversation_priority', { conversation_id: conversation.display_id, priority: 'high' })
 
         expect(conversation.reload.priority).to eq('high')
+        expect(tool_text).to eq('OK')
       end
 
       it 'replaces the labels of a contact' do
