@@ -79,6 +79,15 @@ RSpec.describe 'MCP API', type: :request do
         expect(tool_text).to include('vip')
       end
 
+      it 'accepts the api_access_token header as it reaches the server over HTTP' do
+        create(:label, account: account, title: 'vip')
+        post url, env: { 'HTTP_API_ACCESS_TOKEN' => admin.access_token.token },
+                  params: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_labels', arguments: {} } }, as: :json
+
+        expect(reply.dig('result', 'isError')).to be(false)
+        expect(tool_text).to include('vip')
+      end
+
       it 'accepts a Bearer access token and uses it to call the tools' do
         create(:label, account: account, title: 'vip')
         post url, headers: { Authorization: "Bearer #{admin.access_token.token}" },

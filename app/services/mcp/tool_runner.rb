@@ -38,8 +38,11 @@ class Mcp::ToolRunner
 
   def forwarded_headers
     AUTH_HEADERS.each_with_object({}) do |name, env|
-      value = request.headers[name]
-      env["HTTP_#{name.upcase.tr('-', '_')}"] = value if value.present?
+      env_name = "HTTP_#{name.upcase.tr('-', '_')}"
+      # Rails only maps names without underscores to HTTP_*, so api_access_token is stored as is by test clients
+      # and as HTTP_API_ACCESS_TOKEN when it comes over HTTP. The API accepts both, and so must the forwarding.
+      value = request.headers[name].presence || request.env[env_name]
+      env[env_name] = value if value.present?
     end
   end
 
