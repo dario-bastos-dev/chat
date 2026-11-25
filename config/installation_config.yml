@@ -788,7 +788,7 @@
   type: boolean
 - name: MCP_SERVER_READ_ONLY
   display_title: 'MCP Server Read-only Mode'
-  description: 'Only expose tools that read data. Turn this off to let MCP clients also create and update contacts, conversations, messages and labels.'
+  description: 'Only expose tools that read data. Turn this off to let MCP clients also create and update contacts, conversations, messages and labels. Messages are sent to real customers, and what customers write reaches the AI model as untrusted input, so connect clients with the token of an agent that only has access to the inboxes it should handle.'
   value: true
   locked: false
   type: boolean
