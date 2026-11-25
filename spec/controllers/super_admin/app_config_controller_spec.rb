@@ -20,6 +20,14 @@ RSpec.describe 'Super Admin Application Config API', type: :request do
         expect(response).to have_http_status(:success)
         expect(response.body).to include(config.value)
       end
+
+      it 'shows the MCP server settings page' do
+        sign_in(super_admin, scope: :super_admin)
+        get '/super_admin/app_config?config=mcp'
+
+        expect(response).to have_http_status(:success)
+        expect(response.body).to include('MCP_SERVER_ENABLED', 'MCP_SERVER_READ_ONLY')
+      end
     end
   end
 
@@ -44,6 +52,14 @@ RSpec.describe 'Super Admin Application Config API', type: :request do
 
         config = GlobalConfig.get('FB_APP_ID')
         expect(config['FB_APP_ID']).to eq('FB_APP_ID')
+      end
+
+      it 'saves the MCP server settings' do
+        sign_in(super_admin, scope: :super_admin)
+        post '/super_admin/app_config?config=mcp', params: { app_config: { MCP_SERVER_ENABLED: 'true', MCP_SERVER_READ_ONLY: 'false' } }
+
+        expect(response).to redirect_to(super_admin_app_config_path(config: 'mcp'))
+        expect(GlobalConfig.get('MCP_SERVER_ENABLED', 'MCP_SERVER_READ_ONLY').values.map(&:to_s)).to eq(%w[true false])
       end
 
       it 'asks admins to restart web and worker processes for runtime config changes' do

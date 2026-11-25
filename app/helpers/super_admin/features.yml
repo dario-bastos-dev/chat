@@ -53,6 +53,12 @@ captain:
   enabled: true
   icon: 'i-woot-captain text-n-violet-9'
   config_key: 'captain'
+mcp_server:
+  name: 'MCP Server'
+  description: 'Let AI clients read and act on conversations and contacts through the Model Context Protocol.'
+  enabled: true
+  icon: 'i-lucide-plug-zap'
+  config_key: 'mcp'
 
 # ------- Communication Channels ------- #
 live_chat:

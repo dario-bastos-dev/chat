@@ -778,3 +778,18 @@
   value: 'production'
   locked: false
 ## ---- End of mobile incoming-call push ---- ##
+
+## ------ MCP Server Config ------ ##
+- name: MCP_SERVER_ENABLED
+  display_title: 'Enable MCP Server'
+  description: 'Expose a Model Context Protocol endpoint at /api/v1/accounts/{account_id}/mcp so AI clients can use conversations, contacts and messages. Requests authenticate with a user access token.'
+  value: false
+  locked: false
+  type: boolean
+- name: MCP_SERVER_READ_ONLY
+  display_title: 'MCP Server Read-only Mode'
+  description: 'Only expose tools that read data. Turn this off to let MCP clients also create and update contacts, conversations, messages and labels.'
+  value: true
+  locked: false
+  type: boolean
+## ---- End of MCP Server Config ---- ##

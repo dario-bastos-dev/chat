@@ -463,6 +463,7 @@ Rails.application.routes.draw do
             end
           end
           resources :labels, only: [:index, :show, :create, :update, :destroy]
+          resource :mcp, only: [:show, :create], controller: :mcp
 
           resources :notifications, only: [:index, :update, :destroy] do
             collection do
